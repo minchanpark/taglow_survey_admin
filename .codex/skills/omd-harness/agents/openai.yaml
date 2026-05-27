@@ -1,0 +1,4 @@
+interface:
+  display_name: "OMD Harness"
+  short_description: "Run the full OMD design pipeline"
+  default_prompt: "Use $omd:harness to run the full design pipeline for a new page or surface from scratch."

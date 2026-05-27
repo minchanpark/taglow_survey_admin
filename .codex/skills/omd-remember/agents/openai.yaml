@@ -1,0 +1,4 @@
+interface:
+  display_name: "OMD Remember"
+  short_description: "Log design preferences for later merge"
+  default_prompt: "Use $omd:remember to log this design preference or correction for later merge."

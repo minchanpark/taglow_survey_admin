@@ -1,0 +1,4 @@
+interface:
+  display_name: "OMD Sync"
+  short_description: "Sync DESIGN.md shims across agents"
+  default_prompt: "Use $omd:sync to refresh DESIGN.md shims for Claude, Codex, OpenCode, and Cursor."

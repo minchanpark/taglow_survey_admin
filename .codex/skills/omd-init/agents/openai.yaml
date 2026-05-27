@@ -1,0 +1,4 @@
+interface:
+  display_name: "OMD Init"
+  short_description: "Bootstrap DESIGN.md from reference brands"
+  default_prompt: "Use $omd:init to bootstrap DESIGN.md from a matched reference brand and install agent shims."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "OMD Codex Image"
+  short_description: "Materialize image specs across Codex channels"
+  default_prompt: "Use $omd:codex-image to materialize OMD image spec blocks into generated or sourced image files."

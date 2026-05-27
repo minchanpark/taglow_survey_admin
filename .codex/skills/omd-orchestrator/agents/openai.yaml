@@ -1,0 +1,4 @@
+interface:
+  display_name: "OMD Orchestrator"
+  short_description: "Supervise multi-agent design workflows"
+  default_prompt: "Use $omd:orchestrator to route this multi-role design/content workflow through the OMD agents."

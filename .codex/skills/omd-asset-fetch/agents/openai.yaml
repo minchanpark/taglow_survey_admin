@@ -1,0 +1,4 @@
+interface:
+  display_name: "OMD Asset Fetch"
+  short_description: "Fill placeholders with licensed assets"
+  default_prompt: "Use $omd:asset-fetch to replace placeholders with verified free-license assets and record attribution."

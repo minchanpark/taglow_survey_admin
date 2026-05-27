@@ -1,0 +1,4 @@
+interface:
+  display_name: "OMD Locale Adapter"
+  short_description: "Adapt Korean source content across locales"
+  default_prompt: "Use $omd:locale-adapter to adapt the Korean source into EN, JP, or ZH-TW versions."

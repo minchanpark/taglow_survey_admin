@@ -1,0 +1,4 @@
+interface:
+  display_name: "OMD Reference Capture"
+  short_description: "Capture live brand tokens and references"
+  default_prompt: "Use $omd:reference-capture to capture live brand tokens, structure cues, and reference assets."
