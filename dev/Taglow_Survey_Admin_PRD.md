@@ -1,4 +1,4 @@
-# Taglow Survey Admin PRD v8_1
+# Taglow Survey Admin PRD
 
 # 1. 문서 개요
 

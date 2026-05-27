@@ -1,0 +1,31 @@
+{
+  "reference_id": "linear.app",
+  "description": "Taglow Survey Admin design system for a clean Linear-like student-organization survey analysis dashboard.",
+  "mode": "inspired",
+  "delta_set": {
+    "axes": {
+      "density.shift": 1,
+      "radius.delta_px": 0,
+      "color.saturation_pct": -6,
+      "color.lightness_pct": 4
+    },
+    "voiceHints": [
+      "Korean-first operational admin copy",
+      "plain-language analytics wording",
+      "calm warning language for low sample sizes"
+    ],
+    "matchedKeywords": [
+      "technical",
+      "minimal",
+      "serious",
+      "premium",
+      "elegant",
+      "dashboard",
+      "analysis"
+    ],
+    "warnings": [
+      "Linear reference DESIGN.md was not available locally; generated from installed fingerprint and project PRD/TDD."
+    ]
+  },
+  "bootstrapped_at": "2026-05-27T15:42:17Z"
+}
