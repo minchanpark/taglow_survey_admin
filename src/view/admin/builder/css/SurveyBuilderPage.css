@@ -313,6 +313,55 @@
   line-height: var(--tg-line-dense);
 }
 
+.tg-builder-upload-card,
+.tg-builder-config-note {
+  display: grid;
+  gap: var(--tg-space-4);
+  border: 1px dashed var(--tg-border-strong);
+  border-radius: var(--tg-radius-sm);
+  padding: var(--tg-space-6);
+  color: var(--tg-text-muted);
+  background: var(--tg-bg-panel);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-builder-upload-card > div,
+.tg-builder-config-note {
+  display: flex;
+  align-items: center;
+  gap: var(--tg-space-4);
+}
+
+.tg-builder-upload-card small {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-upload-button {
+  position: relative;
+  display: inline-flex;
+  width: fit-content;
+  min-height: 32px;
+  align-items: center;
+  gap: var(--tg-space-3);
+  border: 1px solid var(--tg-border-strong);
+  border-radius: var(--tg-radius-sm);
+  padding: 0 var(--tg-space-5);
+  color: var(--tg-text-strong);
+  background: var(--tg-bg-raised);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-upload-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
 .tg-builder-check {
   display: flex;
   align-items: center;

@@ -46,6 +46,12 @@ export function createFakeParticipantSurveyController(
 ): ParticipantSurveyController {
   return {
     getPublishedSurveyByIdentifier: async () => fakeParticipantSurveyDetail,
+    uploadQuestionImage: async (command) => ({
+      storageBucket: "survey-assets",
+      storagePath: `participant-uploads/${command.surveyId}/user-1/${command.questionId}/image.png`,
+      signedUrl: "https://example.com/uploaded.png",
+      metadata: {},
+    }),
     ...overrides,
   };
 }

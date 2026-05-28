@@ -601,6 +601,7 @@ question_type:
 - ranking
 - text
 - image_tag
+- participant_image_tag
 - attention_check
 
 metric_type:
@@ -1611,6 +1612,7 @@ AdminPayloadMapper
 Validation
 - scale config schema
 - image_tag config schema
+- participant_image_tag config schema
 - publish validation
 - filter schema
 

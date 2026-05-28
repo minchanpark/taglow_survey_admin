@@ -7,10 +7,12 @@ import {
   Copy,
   FilePlus2,
   FileText,
+  ImageIcon,
   Loader2,
   Plus,
   Save,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -30,6 +32,7 @@ import {
   useSurveyDetailQuery,
   useUpdateQuestionMutation,
   useUpdateSectionMutation,
+  useUploadSurveyImageMutation,
 } from "../../../api/admin/query";
 import type {
   JsonRecord,
@@ -41,6 +44,7 @@ import type {
   QuestionSetTemplateId,
   QuestionType,
   SectionType,
+  SurveyAsset,
   SurveySection,
 } from "../../../api/admin/model";
 import { Button, EmptyState, ErrorState, LoadingState, StatusBadge } from "../../../components";
@@ -73,6 +77,7 @@ const questionTypes: Array<{ value: QuestionType; label: string }> = [
   { value: "ranking", label: "순위" },
   { value: "text", label: "주관식" },
   { value: "image_tag", label: "이미지 태깅" },
+  { value: "participant_image_tag", label: "태깅 건의" },
   { value: "attention_check", label: "주의력 확인" },
 ];
 
@@ -251,7 +256,12 @@ export function SurveyBuilderPage() {
           isStructureLocked={isStructureLocked}
           onSelectQuestion={(questionId) => setSelectedQuestionId(questionId)}
         />
-        <QuestionEditor surveyId={surveyId} question={selectedQuestion} isStructureLocked={isStructureLocked} />
+        <QuestionEditor
+          surveyId={surveyId}
+          question={selectedQuestion}
+          assets={detailQuery.data.assets}
+          isStructureLocked={isStructureLocked}
+        />
       </div>
 
       {isImportOpen ? <QuestionSetImportDialog surveyId={surveyId} onClose={() => setImportOpen(false)} /> : null}
@@ -681,7 +691,7 @@ function QuestionPanel(props: {
   }
 }
 
-function QuestionEditor(props: { surveyId: string; question?: Question; isStructureLocked: boolean }) {
+function QuestionEditor(props: { surveyId: string; question?: Question; assets: SurveyAsset[]; isStructureLocked: boolean }) {
   const updateQuestionMutation = useUpdateQuestionMutation();
   const deleteQuestionMutation = useDeleteQuestionMutation();
   const editForm = useForm<EditQuestionForm>({
@@ -774,6 +784,9 @@ function QuestionEditor(props: { surveyId: string; question?: Question; isStruct
         </div>
 
         <QuestionConfigFields
+          surveyId={props.surveyId}
+          question={question}
+          assets={props.assets}
           questionType={watchedQuestionType}
           configJson={watchedConfigJson}
           disabled={isBusy}
@@ -850,11 +863,15 @@ function QuestionEditor(props: { surveyId: string; question?: Question; isStruct
 }
 
 function QuestionConfigFields(props: {
+  surveyId: string;
+  question: Question;
+  assets: SurveyAsset[];
   questionType: QuestionType;
   configJson: string;
   disabled: boolean;
   onConfigChange: (configJson: string) => void;
 }) {
+  const uploadMutation = useUploadSurveyImageMutation();
   const config = parseJsonRecord(props.configJson) ?? {};
   const setConfig = (patch: JsonRecord) => props.onConfigChange(stringifyConfig({ ...config, ...patch } as QuestionConfig));
 
@@ -928,8 +945,47 @@ function QuestionConfigFields(props: {
 
   if (props.questionType === "image_tag") {
     const tagTypes = Array.isArray(config.tagTypes) ? config.tagTypes.filter((tag): tag is string => typeof tag === "string") : [];
+    const assetId = typeof config.assetId === "string" ? config.assetId : undefined;
+    const asset = props.assets.find((item) => item.id === assetId);
     return (
       <div className="tg-builder-config-panel">
+        <div className="tg-builder-upload-card">
+          <div>
+            <ImageIcon size={16} aria-hidden="true" />
+            <span>{asset ? asset.storagePath : "이미지 태깅에 사용할 사진을 업로드해주세요."}</span>
+          </div>
+          <label className="tg-builder-upload-button">
+            <Upload size={15} aria-hidden="true" />
+            <span>이미지 업로드</span>
+            <input
+              aria-label="이미지 업로드"
+              type="file"
+              accept="image/*"
+              disabled={props.disabled || uploadMutation.isPending}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                uploadMutation.mutate(
+                  {
+                    surveyId: props.surveyId,
+                    sectionId: props.question.sectionId,
+                    questionId: props.question.id,
+                    file,
+                    metadata: { usage: "question_image_tag" },
+                  },
+                  {
+                    onSuccess: (asset) => {
+                      setConfig({ assetId: asset.id });
+                    },
+                  },
+                );
+              }}
+            />
+          </label>
+          <small>업로드 후 저장을 누르면 질문에 이미지가 연결됩니다.</small>
+          {uploadMutation.isError ? <small>{getErrorDetail(uploadMutation.error) ?? "이미지를 업로드하지 못했습니다."}</small> : null}
+        </div>
         <label className="tg-builder-field">
           <span>최대 태그 수</span>
           <input
@@ -943,6 +999,27 @@ function QuestionConfigFields(props: {
           <span>태그 유형</span>
           <textarea
             rows={4}
+            value={tagTypes.join("\n")}
+            disabled={props.disabled}
+            onChange={(event) => setConfig({ tagTypes: splitLines(event.target.value) })}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  if (props.questionType === "participant_image_tag") {
+    const tagTypes = Array.isArray(config.tagTypes) ? config.tagTypes.filter((tag): tag is string => typeof tag === "string") : [];
+    return (
+      <div className="tg-builder-config-panel">
+        <div className="tg-builder-config-note">
+          <ImageIcon size={16} aria-hidden="true" />
+          <span>관리자는 태깅 카테고리만 정하고, 참여자가 직접 사진을 올려 지점을 표시합니다.</span>
+        </div>
+        <label className="tg-builder-field">
+          <span>태깅 카테고리</span>
+          <textarea
+            rows={5}
             value={tagTypes.join("\n")}
             disabled={props.disabled}
             onChange={(event) => setConfig({ tagTypes: splitLines(event.target.value) })}
@@ -1174,6 +1251,16 @@ function defaultQuestionConfig(questionType: QuestionType): QuestionConfig {
       tagTypes: ["불편"],
       requireText: true,
       enableZoom: true,
+    };
+  }
+  if (questionType === "participant_image_tag") {
+    return {
+      maxTags: 3,
+      tagTypes: ["불편", "수리 요청", "개선 제안"],
+      requireText: true,
+      enableZoom: true,
+      acceptedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+      maxFileSizeMb: 10,
     };
   }
   if (questionType === "attention_check") {

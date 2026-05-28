@@ -41,6 +41,11 @@ type SupabaseClientLike = {
     }): Promise<{ data: unknown; error: unknown }>;
     signOut(): Promise<{ error: unknown }>;
   };
+  storage?: {
+    from(bucket: string): {
+      createSignedUrl(path: string, expiresIn: number): Promise<{ data: { signedUrl?: string } | null; error: unknown }>;
+    };
+  };
   from(table: string): any;
   rpc(fn: string, args?: Record<string, unknown>): SupabaseResult<unknown>;
 };
@@ -195,10 +200,11 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     await this.empty(this.supabase.from("questions").delete().eq("id", questionId));
   }
 
-  listAssets(surveyId: string): Promise<RawSurveyAsset[]> {
-    return this.many<RawSurveyAsset>(
+  async listAssets(surveyId: string): Promise<RawSurveyAsset[]> {
+    const rows = await this.many<RawSurveyAsset>(
       this.supabase.from("survey_assets").select("*").eq("survey_id", surveyId).order("created_at", { ascending: false }),
     );
+    return Promise.all(rows.map((row) => this.withSignedAssetUrl(row)));
   }
 
   createAssetMetadata(payload: RawCreateAssetPayload): Promise<RawSurveyAsset> {
@@ -293,5 +299,24 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
   private async empty(query: SupabaseResult<unknown>): Promise<void> {
     const { error } = await query;
     if (error) throw normalizeAdminApiError(error);
+  }
+
+  private async withSignedAssetUrl(row: RawSurveyAsset): Promise<RawSurveyAsset> {
+    const storage = this.supabase.storage;
+    if (!storage) return row;
+
+    try {
+      const { data, error } = await storage.from(row.storage_bucket).createSignedUrl(row.storage_path, 60 * 60);
+      if (error || !data?.signedUrl) return row;
+      return {
+        ...row,
+        metadata: {
+          ...(row.metadata ?? {}),
+          signedUrl: data.signedUrl,
+        },
+      };
+    } catch {
+      return row;
+    }
   }
 }

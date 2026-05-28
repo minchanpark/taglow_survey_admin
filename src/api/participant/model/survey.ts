@@ -20,3 +20,16 @@ export type ParticipantSurveyDetail = Readonly<{
   questions: Question[];
   assets: SurveyAsset[];
 }>;
+
+export type ParticipantQuestionImageUploadCommand = Readonly<{
+  surveyId: string;
+  questionId: string;
+  file: File;
+}>;
+
+export type ParticipantQuestionImageUpload = Readonly<{
+  storageBucket: string;
+  storagePath: string;
+  signedUrl?: string;
+  metadata: JsonRecord;
+}>;

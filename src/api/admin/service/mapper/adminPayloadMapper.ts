@@ -237,6 +237,7 @@ function normalizeQuestionType(value: string): QuestionType {
     "ranking",
     "text",
     "image_tag",
+    "participant_image_tag",
     "attention_check",
   ];
   return allowed.includes(value as QuestionType) ? (value as QuestionType) : "text";

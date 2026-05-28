@@ -25,6 +25,15 @@ export function validateQuestionConfig(question: Question): string[] {
     issues.push("Image tag questions require assetId.");
   }
 
+  if (question.questionType === "participant_image_tag") {
+    if (!Array.isArray(config.tagTypes) || config.tagTypes.length === 0) {
+      issues.push("Participant image tag questions require tagTypes.");
+    }
+    if (typeof config.maxTags !== "number" || config.maxTags < 1) {
+      issues.push("Participant image tag questions require maxTags.");
+    }
+  }
+
   if (question.questionType === "attention_check" && !config.expectedValue) {
     issues.push("Attention check questions require expectedValue.");
   }

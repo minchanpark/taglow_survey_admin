@@ -7,6 +7,7 @@ import type {
   CreateQuestionCommand,
   CreateSectionCommand,
   Question,
+  SurveyAsset,
   SurveySection,
   UpdateQuestionCommand,
   UpdateSectionCommand,
@@ -53,9 +54,39 @@ const question: Question = {
   validation: {},
 };
 
+const imageTagQuestion: Question = {
+  id: "question-image",
+  surveyId: "survey-1",
+  sectionId: "section-1",
+  questionKey: "facility_tag",
+  questionType: "image_tag",
+  title: { ko: "불편한 위치를 표시해주세요." },
+  orderIndex: 1,
+  isRequired: false,
+  metricType: "none",
+  config: {
+    maxTags: 3,
+    tagTypes: ["불편"],
+    requireText: true,
+    enableZoom: true,
+  },
+  validation: {},
+};
+
+const uploadedAsset: SurveyAsset = {
+  id: "asset-1",
+  surveyId: "survey-1",
+  questionId: "question-image",
+  assetType: "image",
+  storageBucket: "survey-assets",
+  storagePath: "surveys/survey-1/images/facility.png",
+  metadata: {},
+  createdAt: "2026-05-28T00:00:00.000Z",
+};
+
 function renderBuilder(
   overrides: Partial<AdminApiController> = {},
-  fixtures: { sections?: SurveySection[]; questions?: Question[] } = {},
+  fixtures: { sections?: SurveySection[]; questions?: Question[]; assets?: SurveyAsset[] } = {},
 ) {
   return renderWithProviders(
     <MemoryRouter initialEntries={["/admin/surveys/survey-1/builder"]}>
@@ -69,7 +100,7 @@ function renderBuilder(
           survey: fakeSurvey,
           sections: fixtures.sections ?? [section],
           questions: fixtures.questions ?? [question],
-          assets: [],
+          assets: fixtures.assets ?? [],
         }),
         ...overrides,
       }),
@@ -288,6 +319,46 @@ describe("SurveyBuilderPage", () => {
         templateId: "dorm_regular_25_2",
         conflictMode: "append_skip_existing_keys",
       });
+    });
+  });
+
+  it("uploads and links an image asset for image tag questions", async () => {
+    const user = userEvent.setup();
+    const uploadSurveyImage = vi.fn<AdminApiController["uploadSurveyImage"]>(async () => uploadedAsset);
+    const updateQuestion = vi.fn<AdminApiController["updateQuestion"]>(async (command: UpdateQuestionCommand) => ({
+      ...imageTagQuestion,
+      id: command.questionId,
+      config: command.config ?? imageTagQuestion.config,
+    }));
+    renderBuilder({ uploadSurveyImage, updateQuestion }, { questions: [imageTagQuestion] });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: /불편한 위치를 표시해주세요/ }));
+    const editor = screen.getByRole("complementary", { name: "질문 편집" });
+    const file = new File(["image"], "facility.png", { type: "image/png" });
+
+    await user.upload(within(editor).getByLabelText("이미지 업로드"), file);
+
+    await waitFor(() => {
+      expect(uploadSurveyImage).toHaveBeenCalledWith({
+        surveyId: "survey-1",
+        sectionId: "section-1",
+        questionId: "question-image",
+        file,
+        metadata: { usage: "question_image_tag" },
+      });
+    });
+
+    await user.click(within(editor).getByRole("button", { name: "저장" }));
+
+    await waitFor(() => {
+      expect(updateQuestion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          questionId: "question-image",
+          questionType: "image_tag",
+          config: expect.objectContaining({ assetId: "asset-1" }),
+        }),
+      );
     });
   });
 });

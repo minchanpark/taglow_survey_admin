@@ -359,6 +359,34 @@
   gap: var(--tg-space-4);
 }
 
+.tg-preview-participant-image-tag {
+  display: grid;
+  gap: var(--tg-space-5);
+}
+
+.tg-preview-upload-button {
+  position: relative;
+  display: inline-flex;
+  width: fit-content;
+  min-height: 32px;
+  align-items: center;
+  gap: var(--tg-space-3);
+  border: 1px solid var(--tg-border-strong);
+  border-radius: var(--tg-radius-sm);
+  padding: 0 var(--tg-space-5);
+  color: var(--tg-text-strong);
+  background: var(--tg-bg-raised);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-preview-upload-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
 .tg-preview-image-tag__surface {
   position: relative;
   overflow: hidden;

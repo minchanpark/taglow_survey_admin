@@ -16,7 +16,7 @@ export function createParticipantSurveyRuntime(env: EnvConfig): ParticipantSurve
 
   const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey);
   return new GatewayBackedParticipantSurveyController(
-    new SupabaseParticipantSurveyGateway(supabase),
+    new SupabaseParticipantSurveyGateway(supabase, env.storageBucket),
     new ParticipantSurveyMapper(),
   );
 }

@@ -9,6 +9,7 @@ export type QuestionType =
   | "ranking"
   | "text"
   | "image_tag"
+  | "participant_image_tag"
   | "attention_check";
 
 export type MetricType = "none" | "satisfaction" | "importance" | "experience";
@@ -44,6 +45,15 @@ export type ImageTagQuestionConfig = Readonly<{
   enableZoom: boolean;
 }>;
 
+export type ParticipantImageTagQuestionConfig = Readonly<{
+  maxTags: number;
+  tagTypes: string[];
+  requireText: boolean;
+  enableZoom: boolean;
+  acceptedMimeTypes: string[];
+  maxFileSizeMb: number;
+}>;
+
 export type AttentionCheckQuestionConfig = Readonly<{
   expectedValue: string;
   excludeIfFailed: boolean;
@@ -54,6 +64,7 @@ export type QuestionConfig =
   | SingleChoiceQuestionConfig
   | MultiSelectQuestionConfig
   | ImageTagQuestionConfig
+  | ParticipantImageTagQuestionConfig
   | AttentionCheckQuestionConfig
   | JsonRecord;
 

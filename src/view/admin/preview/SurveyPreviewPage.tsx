@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Eye, Monitor, MousePointer2, RefreshCcw, Smartphone } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Eye, Monitor, MousePointer2, RefreshCcw, Smartphone, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { usePreviewSurveyQuery } from "../../../api/admin/query";
@@ -7,7 +7,7 @@ import { Button, EmptyState, ErrorState, LoadingState, StatusBadge, SurveyStatus
 import { useAdminPreviewStore } from "../../../store";
 import "./css/SurveyPreviewPage.css";
 
-type PreviewAnswer = string | number | string[] | RankingAnswer | ImageTagDraft[];
+type PreviewAnswer = string | number | string[] | RankingAnswer | ImageTagDraft[] | ParticipantImageTagDraft;
 type PreviewAnswers = Record<string, PreviewAnswer | undefined>;
 type RankingAnswer = Record<string, number | undefined>;
 type PreviewIssue = Readonly<{
@@ -27,6 +27,11 @@ type ImageTagDraft = Readonly<{
   xRatio: number;
   yRatio: number;
   tagType?: string;
+}>;
+type ParticipantImageTagDraft = Readonly<{
+  imageUrl?: string;
+  fileName?: string;
+  tags: ImageTagDraft[];
 }>;
 
 export function SurveyPreviewPage() {
@@ -336,6 +341,10 @@ function QuestionControl(props: {
     return <ImageTagControl {...props} />;
   }
 
+  if (props.question.questionType === "participant_image_tag") {
+    return <ParticipantImageTagControl {...props} />;
+  }
+
   if (props.question.questionType === "attention_check") {
     return (
       <label className="tg-preview-field">
@@ -508,11 +517,12 @@ function ImageTagControl(props: {
       <button
         type="button"
         className="tg-preview-image-tag__surface"
+        aria-label="이미지 태깅 영역"
         disabled={!assetId || tags.length >= maxTags}
         onClick={(event) => {
           const rect = event.currentTarget.getBoundingClientRect();
-          const xRatio = clamp((event.clientX - rect.left) / rect.width);
-          const yRatio = clamp((event.clientY - rect.top) / rect.height);
+          const xRatio = ratioFromPoint(event.clientX - rect.left, rect.width);
+          const yRatio = ratioFromPoint(event.clientY - rect.top, rect.height);
           props.onAnswerChange([...tags, { id: crypto.randomUUID(), xRatio, yRatio }]);
         }}
       >
@@ -531,6 +541,67 @@ function ImageTagControl(props: {
         <MousePointer2 size={14} aria-hidden="true" />
         <span>{tags.length} / {maxTags}</span>
       </p>
+    </div>
+  );
+}
+
+function ParticipantImageTagControl(props: {
+  question: Question;
+  answer: PreviewAnswer | undefined;
+  onAnswerChange: (answer: PreviewAnswer | undefined) => void;
+}) {
+  const config = toRecord(props.question.config);
+  const answer = isParticipantImageTagAnswer(props.answer) ? props.answer : { tags: [] };
+  const tags = answer.tags;
+  const maxTags = getNumber(config.maxTags) ?? 3;
+
+  return (
+    <div className="tg-preview-participant-image-tag">
+      <label className="tg-preview-upload-button">
+        <Upload size={14} aria-hidden="true" />
+        <span>{answer.imageUrl ? "사진 다시 선택" : "사진 선택"}</span>
+        <input
+          aria-label="사진 선택"
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            props.onAnswerChange({ imageUrl: URL.createObjectURL(file), fileName: file.name, tags: [] });
+          }}
+        />
+      </label>
+      <div className="tg-preview-image-tag">
+        <button
+          type="button"
+          className="tg-preview-image-tag__surface"
+          aria-label="이미지 태깅 영역"
+          disabled={!answer.imageUrl || tags.length >= maxTags}
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            const xRatio = ratioFromPoint(event.clientX - rect.left, rect.width);
+            const yRatio = ratioFromPoint(event.clientY - rect.top, rect.height);
+            props.onAnswerChange({ ...answer, tags: [...tags, { id: crypto.randomUUID(), xRatio, yRatio }] });
+          }}
+        >
+          {answer.imageUrl ? <img src={answer.imageUrl} alt="" /> : <span className="tg-preview-image-tag__placeholder">참여자가 사진을 업로드합니다.</span>}
+          {tags.map((tag, index) => (
+            <span
+              key={tag.id}
+              className="tg-preview-image-tag__pin"
+              style={{ left: `${tag.xRatio * 100}%`, top: `${tag.yRatio * 100}%` }}
+            >
+              {index + 1}
+            </span>
+          ))}
+        </button>
+        <p>
+          <MousePointer2 size={14} aria-hidden="true" />
+          <span>{tags.length} / {maxTags}</span>
+          {answer.fileName ? <span>{answer.fileName}</span> : null}
+        </p>
+      </div>
     </div>
   );
 }
@@ -579,6 +650,10 @@ function getPreviewIssues(sections: SurveySection[], questions: Question[], asse
       if (!assetId || !assets.some((asset) => asset.id === assetId)) {
         issues.push({ id: `asset-${question.id}`, tone: "danger", label: `${question.questionKey} 이미지 자산 연결이 없습니다.`, questionId: question.id });
       }
+    }
+
+    if (question.questionType === "participant_image_tag" && !getStringArray(config.tagTypes).length) {
+      issues.push({ id: `participant-tags-${question.id}`, tone: "danger", label: `${question.questionKey} 태깅 카테고리가 없습니다.`, questionId: question.id });
     }
 
     if (question.questionType === "attention_check" && !getString(config.expectedValue)) {
@@ -649,7 +724,7 @@ function localizedOption(value: ChoiceOption, locale: Locale): string {
 
 function getAssetPreviewUrl(asset: SurveyAsset | undefined): string | undefined {
   if (!asset) return undefined;
-  return getString(asset.metadata.publicUrl) ?? getString(asset.metadata.public_url) ?? getString(asset.metadata.url);
+  return getString(asset.metadata.signedUrl) ?? getString(asset.metadata.publicUrl) ?? getString(asset.metadata.public_url) ?? getString(asset.metadata.url);
 }
 
 function normalizeLocale(value: string | null): Locale {
@@ -683,6 +758,10 @@ function isImageTagAnswer(value: unknown): value is ImageTagDraft[] {
   return Array.isArray(value) && value.every((item) => isRecord(item) && typeof item.xRatio === "number" && typeof item.yRatio === "number");
 }
 
+function isParticipantImageTagAnswer(value: unknown): value is ParticipantImageTagDraft {
+  return isRecord(value) && Array.isArray(value.tags);
+}
+
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -703,6 +782,7 @@ function getStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
-function clamp(value: number): number {
-  return Math.min(1, Math.max(0, value));
+function ratioFromPoint(offset: number, total: number): number {
+  if (!Number.isFinite(offset) || !Number.isFinite(total) || total <= 0) return 0.5;
+  return Math.min(1, Math.max(0, offset / total));
 }

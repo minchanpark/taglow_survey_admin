@@ -1,4 +1,4 @@
-export type ParticipantSurveyApiErrorCode = "SURVEY_NOT_FOUND" | "UNKNOWN";
+export type ParticipantSurveyApiErrorCode = "SURVEY_NOT_FOUND" | "UNAUTHENTICATED" | "UPLOAD_FAILED" | "UNKNOWN";
 
 export class ParticipantSurveyApiError extends Error {
   constructor(

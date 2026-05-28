@@ -1,4 +1,4 @@
-import type { ParticipantSurveyDetail } from "../model";
+import type { ParticipantQuestionImageUpload, ParticipantQuestionImageUploadCommand, ParticipantSurveyDetail } from "../model";
 import type { ParticipantSurveyGateway } from "../service/gateway";
 import { ParticipantSurveyMapper } from "../service/mapper";
 import type { ParticipantSurveyController } from "./participantSurveyController";
@@ -18,5 +18,15 @@ export class GatewayBackedParticipantSurveyController implements ParticipantSurv
     ]);
 
     return this.mapper.toDetail({ survey, sections, questions, assets });
+  }
+
+  async uploadQuestionImage(command: ParticipantQuestionImageUploadCommand): Promise<ParticipantQuestionImageUpload> {
+    const uploaded = await this.gateway.uploadQuestionImage(command);
+    return {
+      storageBucket: uploaded.storage_bucket,
+      storagePath: uploaded.storage_path,
+      signedUrl: uploaded.signed_url,
+      metadata: uploaded.metadata,
+    };
   }
 }
