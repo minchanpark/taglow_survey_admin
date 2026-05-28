@@ -6,6 +6,12 @@ on:
       - main
     types:
       - closed
+  workflow_dispatch:
+    inputs:
+      deploy_reason:
+        description: Optional note for this manual production deploy.
+        required: false
+        type: string
 
 concurrency:
   group: deploy-admin-production
@@ -17,7 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment: production
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    if: |
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.base.ref == 'main') ||
+      (github.event_name == 'workflow_dispatch' &&
+        github.ref_name == 'main')
     permissions:
       contents: read
     env:
@@ -127,34 +138,70 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-          HOST_ONLY="${SSH_TARGET#*@}"
-          ssh-keyscan -H "$HOST_ONLY" >> ~/.ssh/known_hosts 2>/dev/null
+          RAW_TARGET="${SSH_TARGET#ssh://}"
+          SSH_USER=""
+          SSH_HOSTPORT="$RAW_TARGET"
+          SSH_PORT="22"
+
+          if [[ "$RAW_TARGET" == *@* ]]; then
+            SSH_USER="${RAW_TARGET%@*}"
+            SSH_HOSTPORT="${RAW_TARGET#*@}"
+          fi
+
+          if [[ "$SSH_HOSTPORT" =~ ^\[([^]]+)\]:([0-9]+)$ ]]; then
+            SSH_HOST="${BASH_REMATCH[1]}"
+            SSH_PORT="${BASH_REMATCH[2]}"
+          elif [[ "$SSH_HOSTPORT" =~ ^([^:]+):([0-9]+)$ ]]; then
+            SSH_HOST="${BASH_REMATCH[1]}"
+            SSH_PORT="${BASH_REMATCH[2]}"
+          else
+            SSH_HOST="$SSH_HOSTPORT"
+          fi
+
+          [[ -n "$SSH_HOST" ]] || { echo "EC2_HOST secret is empty or invalid"; exit 1; }
+          [[ "$SSH_PORT" =~ ^[0-9]+$ ]] || { echo "EC2_HOST secret has an invalid port: $SSH_PORT"; exit 1; }
+
+          if ! ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null; then
+            echo "Failed to fetch SSH host key from $SSH_HOST:$SSH_PORT"
+            echo "Check the EC2_HOST secret format and the EC2 security group inbound rule for SSH."
+            exit 1
+          fi
+
+          {
+            echo "Host deploy-target"
+            echo "  HostName $SSH_HOST"
+            echo "  Port $SSH_PORT"
+            echo "  IdentityFile ~/.ssh/id_ed25519"
+            echo "  IdentitiesOnly yes"
+            echo "  StrictHostKeyChecking yes"
+            if [[ -n "$SSH_USER" ]]; then
+              echo "  User $SSH_USER"
+            fi
+          } > ~/.ssh/config
+
+          chmod 600 ~/.ssh/config
 
       - name: Upload deploy bundle
-        env:
-          SSH_TARGET: ${{ secrets.EC2_HOST }}
         run: |
-          REMOTE_APP_ROOT='~/apps/taglow/admin'
+          REMOTE_APP_ROOT='apps/taglow/admin'
           REMOTE_BUNDLE_DIR="$REMOTE_APP_ROOT/incoming/${DEPLOY_SHA}"
 
-          ssh "$SSH_TARGET" "mkdir -p $REMOTE_BUNDLE_DIR"
+          ssh deploy-target "mkdir -p ~/$REMOTE_BUNDLE_DIR"
           scp \
             deploy.sh \
             docker-compose.prod.yml \
             "${DEPLOY_BUNDLE_DIR}/.deploy.env.next" \
             "${DEPLOY_BUNDLE_DIR}/${APP_NAME}-${DEPLOY_SHA}.tar.gz" \
-            "$SSH_TARGET:$REMOTE_BUNDLE_DIR/"
+            "deploy-target:$REMOTE_BUNDLE_DIR/"
 
       - name: Deploy on EC2
-        env:
-          SSH_TARGET: ${{ secrets.EC2_HOST }}
         run: |
-          REMOTE_APP_ROOT='~/apps/taglow/admin'
+          REMOTE_APP_ROOT='apps/taglow/admin'
           REMOTE_BUNDLE_DIR="$REMOTE_APP_ROOT/incoming/${DEPLOY_SHA}"
 
-          ssh "$SSH_TARGET" "
-            chmod +x $REMOTE_BUNDLE_DIR/deploy.sh && \
-            APP_ROOT=$REMOTE_APP_ROOT \
-            BUNDLE_DIR=$REMOTE_BUNDLE_DIR \
-            $REMOTE_BUNDLE_DIR/deploy.sh
+          ssh deploy-target "
+            chmod +x \$HOME/$REMOTE_BUNDLE_DIR/deploy.sh && \
+            APP_ROOT=\$HOME/$REMOTE_APP_ROOT \
+            BUNDLE_DIR=\$HOME/$REMOTE_BUNDLE_DIR \
+            \$HOME/$REMOTE_BUNDLE_DIR/deploy.sh
           "
