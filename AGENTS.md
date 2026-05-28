@@ -93,6 +93,15 @@ Follow the TDD defaults:
 
 Every `src` directory has its own `AGENTS.md`. Read the nearest one before editing. Deeper files override this root file only for their directory scope.
 
+## Git And Deployment
+
+- Default local/VSCode Git remote is `origin = https://github.com/minchanpark/taglow_survey_admin.git`.
+- Deployment remote is `team-newdawn = https://github.com/Team-Newdawn/tallow_survey_admin.git`.
+- Do not repoint `origin` to Team-Newdawn.
+- Push deployment candidates to `team-newdawn/dev` only through the `taglow-admin:newdawn-deploy` skill or its bundled script.
+- Create or merge `dev -> main` release PRs through the `taglow-admin:newdawn-release` skill or its bundled script.
+- Team-Newdawn production deploys from `main` after a `dev -> main` PR merge.
+
 ## Testing Expectations
 
 Add or update tests at the closest useful layer:
