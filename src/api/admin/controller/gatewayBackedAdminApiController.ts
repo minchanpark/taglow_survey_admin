@@ -139,8 +139,16 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     return this.mapper.toSurvey(row);
   }
 
+  async archiveSurvey(surveyId: string): Promise<Survey> {
+    return this.mapper.toSurvey(await this.gateway.archiveSurvey(surveyId));
+  }
+
+  deleteSurvey(surveyId: string): Promise<void> {
+    return this.gateway.deleteSurvey(surveyId);
+  }
+
   deleteDraftSurvey(surveyId: string): Promise<void> {
-    return this.gateway.deleteDraftSurvey(surveyId);
+    return this.deleteSurvey(surveyId);
   }
 
   async createSection(command: CreateSectionCommand): Promise<SurveySection> {

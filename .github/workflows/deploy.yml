@@ -1,0 +1,206 @@
+name: Deploy Admin Frontend
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+  workflow_dispatch:
+    inputs:
+      deploy_reason:
+        description: Optional note for this manual production deploy.
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-admin-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy admin frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production
+    if: |
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.base.ref == 'main') ||
+      github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+    env:
+      NODE_VERSION: "22"
+      PNPM_VERSION: "11.1.0"
+      APP_NAME: frontend-admin
+      COMPOSE_PROJECT_NAME: taglow-admin
+      HOST_PORT: "3001"
+      CANDIDATE_PORT: "3901"
+      IMAGE_REPOSITORY: taglow/frontend-admin
+      DEPLOY_BUNDLE_DIR: release
+      IMAGE_LABEL_TITLE: taglow-admin-frontend
+      DEPLOY_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out merged commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Restore production env
+        env:
+          ENV_FILE_CONTENTS: ${{ secrets.ENV_FILE }}
+        run: |
+          printf '%s' "$ENV_FILE_CONTENTS" > .env.production
+          test -s .env.production
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Prepare deploy bundle metadata
+        run: |
+          mkdir -p "$DEPLOY_BUNDLE_DIR"
+          IMAGE_ARCHIVE="${APP_NAME}-${DEPLOY_SHA}.tar.gz"
+
+          {
+            echo "APP_NAME=${APP_NAME}"
+            echo "COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}"
+            echo "HOST_PORT=${HOST_PORT}"
+            echo "CANDIDATE_PORT=${CANDIDATE_PORT}"
+            echo "HEALTHCHECK_PATH=/healthz"
+            echo "IMAGE_REPOSITORY=${IMAGE_REPOSITORY}"
+            echo "IMAGE_TAG=${DEPLOY_SHA}"
+            echo "IMAGE_ARCHIVE=${IMAGE_ARCHIVE}"
+            echo "KEEP_RELEASES=5"
+            echo "IMAGE_PRUNE_UNTIL=168h"
+            echo "IMAGE_LABEL_TITLE=${IMAGE_LABEL_TITLE}"
+          } > "$DEPLOY_BUNDLE_DIR/.deploy.env.next"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          tags: ${{ env.IMAGE_REPOSITORY }}:${{ env.DEPLOY_SHA }}
+          load: true
+          pull: true
+          provenance: false
+          cache-from: type=gha,scope=admin-frontend-runtime
+          cache-to: type=gha,mode=max,scope=admin-frontend-runtime
+          labels: |
+            org.opencontainers.image.title=${{ env.IMAGE_LABEL_TITLE }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.DEPLOY_SHA }}
+
+      - name: Export image archive
+        run: |
+          docker save "${IMAGE_REPOSITORY}:${DEPLOY_SHA}" | gzip > "${DEPLOY_BUNDLE_DIR}/${APP_NAME}-${DEPLOY_SHA}.tar.gz"
+          test -s "${DEPLOY_BUNDLE_DIR}/${APP_NAME}-${DEPLOY_SHA}.tar.gz"
+
+      - name: Remove production env from runner
+        if: always()
+        run: rm -f .env.production
+
+      - name: Configure SSH
+        env:
+          SSH_TARGET: ${{ secrets.EC2_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          RAW_TARGET="${SSH_TARGET#ssh://}"
+          SSH_USER=""
+          SSH_HOSTPORT="$RAW_TARGET"
+          SSH_PORT="22"
+
+          if [[ "$RAW_TARGET" == *@* ]]; then
+            SSH_USER="${RAW_TARGET%@*}"
+            SSH_HOSTPORT="${RAW_TARGET#*@}"
+          fi
+
+          if [[ "$SSH_HOSTPORT" =~ ^\[([^]]+)\]:([0-9]+)$ ]]; then
+            SSH_HOST="${BASH_REMATCH[1]}"
+            SSH_PORT="${BASH_REMATCH[2]}"
+          elif [[ "$SSH_HOSTPORT" =~ ^([^:]+):([0-9]+)$ ]]; then
+            SSH_HOST="${BASH_REMATCH[1]}"
+            SSH_PORT="${BASH_REMATCH[2]}"
+          else
+            SSH_HOST="$SSH_HOSTPORT"
+          fi
+
+          [[ -n "$SSH_HOST" ]] || { echo "EC2_HOST secret is empty or invalid"; exit 1; }
+          [[ "$SSH_PORT" =~ ^[0-9]+$ ]] || { echo "EC2_HOST secret has an invalid port: $SSH_PORT"; exit 1; }
+
+          if ! ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null; then
+            echo "Failed to fetch SSH host key from $SSH_HOST:$SSH_PORT"
+            echo "Check the EC2_HOST secret format and the EC2 security group inbound rule for SSH."
+            exit 1
+          fi
+
+          {
+            echo "Host deploy-target"
+            echo "  HostName $SSH_HOST"
+            echo "  Port $SSH_PORT"
+            echo "  IdentityFile ~/.ssh/id_ed25519"
+            echo "  IdentitiesOnly yes"
+            echo "  StrictHostKeyChecking yes"
+            if [[ -n "$SSH_USER" ]]; then
+              echo "  User $SSH_USER"
+            fi
+          } > ~/.ssh/config
+
+          chmod 600 ~/.ssh/config
+
+      - name: Upload deploy bundle
+        run: |
+          REMOTE_APP_ROOT='apps/taglow/admin'
+          REMOTE_BUNDLE_DIR="$REMOTE_APP_ROOT/incoming/${DEPLOY_SHA}"
+
+          ssh deploy-target "mkdir -p ~/$REMOTE_BUNDLE_DIR"
+          scp \
+            deploy.sh \
+            docker-compose.prod.yml \
+            "${DEPLOY_BUNDLE_DIR}/.deploy.env.next" \
+            "${DEPLOY_BUNDLE_DIR}/${APP_NAME}-${DEPLOY_SHA}.tar.gz" \
+            "deploy-target:$REMOTE_BUNDLE_DIR/"
+
+      - name: Deploy on EC2
+        run: |
+          REMOTE_APP_ROOT='apps/taglow/admin'
+          REMOTE_BUNDLE_DIR="$REMOTE_APP_ROOT/incoming/${DEPLOY_SHA}"
+
+          ssh deploy-target "
+            chmod +x \$HOME/$REMOTE_BUNDLE_DIR/deploy.sh && \
+            APP_ROOT=\$HOME/$REMOTE_APP_ROOT \
+            BUNDLE_DIR=\$HOME/$REMOTE_BUNDLE_DIR \
+            \$HOME/$REMOTE_BUNDLE_DIR/deploy.sh
+          "

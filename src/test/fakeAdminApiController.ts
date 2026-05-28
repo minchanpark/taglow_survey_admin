@@ -97,6 +97,8 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
     }),
     createSurvey: async (command: CreateSurveyCommand) => ({ ...fakeSurvey, title: command.title }),
     updateSurvey: async (command: UpdateSurveyCommand) => ({ ...fakeSurvey, id: command.surveyId, title: command.title ?? fakeSurvey.title }),
+    archiveSurvey: async (surveyId: string) => ({ ...fakeSurvey, id: surveyId, status: "archived" }),
+    deleteSurvey: async () => undefined,
     deleteDraftSurvey: async () => undefined,
     createSection: async (command: CreateSectionCommand): Promise<SurveySection> => ({
       id: "section-1",

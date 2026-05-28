@@ -66,8 +66,16 @@ export class HttpAdminApiGateway implements AdminApiGateway {
     return this.request<RawSurvey>(`/api/admin/surveys/${args.surveyId}`, { method: "PATCH", body: args.payload });
   }
 
-  deleteDraftSurvey(surveyId: string): Promise<void> {
+  archiveSurvey(surveyId: string): Promise<RawSurvey> {
+    return this.request<RawSurvey>(`/api/admin/surveys/${surveyId}/archive`, { method: "POST" });
+  }
+
+  deleteSurvey(surveyId: string): Promise<void> {
     return this.request<void>(`/api/admin/surveys/${surveyId}`, { method: "DELETE" });
+  }
+
+  deleteDraftSurvey(surveyId: string): Promise<void> {
+    return this.deleteSurvey(surveyId);
   }
 
   listSections(surveyId: string): Promise<RawSection[]> {

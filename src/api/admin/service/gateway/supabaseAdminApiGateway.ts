@@ -59,6 +59,8 @@ const RPC = {
   textAnswers: "get_text_answers",
 } as const;
 
+const deletableSurveyStatuses = ["draft", "closed", "archived"] as const;
+
 export class SupabaseAdminApiGateway implements AdminApiGateway {
   constructor(private readonly supabase: SupabaseClientLike) {}
 
@@ -146,16 +148,29 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     );
   }
 
-  async deleteDraftSurvey(surveyId: string): Promise<void> {
+  async archiveSurvey(surveyId: string): Promise<RawSurvey> {
     const survey = await this.getSurvey(surveyId);
-    if (survey.status !== "draft") {
-      throw new AdminApiError("SURVEY_LOCKED_AFTER_PUBLISH", "Only draft surveys can be deleted.");
+    if (survey.status !== "closed") {
+      throw new AdminApiError("SURVEY_LOCKED_AFTER_PUBLISH", "Only closed surveys can be archived.");
     }
 
-    await this.empty(this.supabase.from("survey_assets").delete().eq("survey_id", surveyId));
-    await this.empty(this.supabase.from("questions").delete().eq("survey_id", surveyId));
-    await this.empty(this.supabase.from("survey_sections").delete().eq("survey_id", surveyId));
-    await this.empty(this.supabase.from("surveys").delete().eq("id", surveyId).eq("status", "draft"));
+    return this.updateSurvey({
+      surveyId,
+      payload: { status: "archived" } as RawUpdateSurveyPayload,
+    });
+  }
+
+  async deleteSurvey(surveyId: string): Promise<void> {
+    const survey = await this.getSurvey(surveyId);
+    if (!deletableSurveyStatuses.includes(survey.status as (typeof deletableSurveyStatuses)[number])) {
+      throw new AdminApiError("SURVEY_LOCKED_AFTER_PUBLISH", "Only draft, closed, or archived surveys can be deleted.");
+    }
+
+    await this.empty(this.supabase.from("surveys").delete().eq("id", surveyId).in("status", deletableSurveyStatuses));
+  }
+
+  deleteDraftSurvey(surveyId: string): Promise<void> {
+    return this.deleteSurvey(surveyId);
   }
 
   listSections(surveyId: string): Promise<RawSection[]> {

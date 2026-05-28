@@ -43,13 +43,27 @@ export function useUpdateSurveyMutation() {
   });
 }
 
-export function useDeleteDraftSurveyMutation() {
+export function useArchiveSurveyMutation() {
   const controller = useAdminApiController();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (surveyId: string) => controller.deleteDraftSurvey(surveyId),
+    mutationFn: (surveyId: string) => controller.archiveSurvey(surveyId),
+    onSuccess: (survey) => {
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.surveys });
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.survey(survey.id) });
+    },
+  });
+}
+
+export function useDeleteSurveyMutation() {
+  const controller = useAdminApiController();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (surveyId: string) => controller.deleteSurvey(surveyId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: adminQueryKeys.surveys });
     },
   });
 }
+
+export const useDeleteDraftSurveyMutation = useDeleteSurveyMutation;

@@ -33,6 +33,8 @@ export interface AdminApiGateway {
   getSurvey(surveyId: string): Promise<RawSurvey>;
   createSurvey(payload: RawCreateSurveyPayload): Promise<RawSurvey>;
   updateSurvey(args: { surveyId: string; payload: RawUpdateSurveyPayload }): Promise<RawSurvey>;
+  archiveSurvey(surveyId: string): Promise<RawSurvey>;
+  deleteSurvey(surveyId: string): Promise<void>;
   deleteDraftSurvey(surveyId: string): Promise<void>;
 
   listSections(surveyId: string): Promise<RawSection[]>;

@@ -43,6 +43,8 @@ export interface AdminApiController {
   getSurveyDetail(surveyId: string): Promise<SurveyDetail>;
   createSurvey(command: CreateSurveyCommand): Promise<Survey>;
   updateSurvey(command: UpdateSurveyCommand): Promise<Survey>;
+  archiveSurvey(surveyId: string): Promise<Survey>;
+  deleteSurvey(surveyId: string): Promise<void>;
   deleteDraftSurvey(surveyId: string): Promise<void>;
 
   createSection(command: CreateSectionCommand): Promise<SurveySection>;

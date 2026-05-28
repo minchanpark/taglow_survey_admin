@@ -38,9 +38,49 @@
   background: var(--tg-bg-panel);
 }
 
+.tg-survey-list-page__toolbar {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  padding: var(--tg-space-2);
+  background: var(--tg-bg-panel);
+}
+
+.tg-survey-list-page__toolbar button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tg-space-4);
+  border: 0;
+  border-radius: var(--tg-radius-xs);
+  padding: 0 var(--tg-space-7);
+  color: var(--tg-text-muted);
+  background: transparent;
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-survey-list-page__toolbar button:hover {
+  color: var(--tg-text-strong);
+  background: var(--tg-bg-inset);
+}
+
+.tg-survey-list-page__toolbar button.is-active {
+  color: var(--tg-text-strong);
+  background: var(--tg-bg-raised);
+}
+
+.tg-survey-list-page__toolbar span {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+}
+
 .tg-survey-list-page__row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 112px 128px 80px 120px 160px;
+  grid-template-columns: minmax(220px, 1fr) 112px 128px 80px 120px 240px;
   min-height: 56px;
   align-items: center;
   gap: var(--tg-space-8);
@@ -128,7 +168,7 @@
   background: var(--tg-bg-inset);
 }
 
-.tg-survey-list-page__delete-button {
+.tg-survey-list-page__action-button {
   min-height: 32px;
   padding: 0 var(--tg-space-5);
   font-size: var(--tg-font-size-caption);
@@ -146,9 +186,14 @@
   line-height: var(--tg-line-dense);
 }
 
-.tg-survey-list-page__feedback--danger {
+.tg-survey-list-page__feedback--error {
   border-color: var(--tg-danger);
   color: var(--tg-danger);
+}
+
+.tg-survey-list-page__feedback--success {
+  border-color: var(--tg-success);
+  color: var(--tg-success);
 }
 
 @media (max-width: 780px) {

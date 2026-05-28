@@ -45,16 +45,39 @@ const rawSection: RawSection = {
 };
 
 describe("GatewayBackedAdminApiController question updates", () => {
-  it("forwards draft survey deletes to the gateway boundary", async () => {
-    const deleteDraftSurvey = vi.fn(async () => undefined);
+  it("forwards survey archive and delete actions to the gateway boundary", async () => {
+    const archiveSurvey = vi.fn(async (surveyId: string): Promise<RawSurvey> => ({
+      id: surveyId,
+      title: "생활관 만족도 조사",
+      description: null,
+      status: "archived",
+      public_slug: null,
+      public_code: "8K2PQA",
+      version_group_id: "version-group-1",
+      version_number: 1,
+      parent_survey_id: null,
+      is_latest_version: true,
+      settings: {},
+      created_by: "user-1",
+      published_at: null,
+      closed_at: "2026-05-28T00:00:00.000Z",
+      created_at: "2026-05-28T00:00:00.000Z",
+      updated_at: "2026-05-28T00:00:00.000Z",
+    }));
+    const deleteSurvey = vi.fn(async () => undefined);
     const controller = new GatewayBackedAdminApiController(
-      { deleteDraftSurvey } as unknown as AdminApiGateway,
+      { archiveSurvey, deleteSurvey } as unknown as AdminApiGateway,
       {} as AdminStorageGateway,
     );
 
+    const archived = await controller.archiveSurvey("survey-1");
+    await controller.deleteSurvey("survey-1");
     await controller.deleteDraftSurvey("survey-1");
 
-    expect(deleteDraftSurvey).toHaveBeenCalledWith("survey-1");
+    expect(archived.status).toBe("archived");
+    expect(archiveSurvey).toHaveBeenCalledWith("survey-1");
+    expect(deleteSurvey).toHaveBeenCalledTimes(2);
+    expect(deleteSurvey).toHaveBeenCalledWith("survey-1");
   });
 
   it("normalizes public slug clears and public code casing for survey updates", async () => {
