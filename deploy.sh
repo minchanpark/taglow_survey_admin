@@ -16,6 +16,55 @@ require_file() {
   [[ -f "$file_path" ]] || fail "missing file: $file_path"
 }
 
+port_is_available() {
+  local port="$1"
+
+  if command -v ss >/dev/null 2>&1; then
+    if ss -H -ltn "( sport = :${port} )" 2>/dev/null | grep -q .; then
+      return 1
+    fi
+    return 0
+  fi
+
+  if command -v lsof >/dev/null 2>&1; then
+    if lsof -iTCP:"$port" -sTCP:LISTEN -Pn >/dev/null 2>&1; then
+      return 1
+    fi
+    return 0
+  fi
+
+  if command -v netstat >/dev/null 2>&1; then
+    if netstat -ltn 2>/dev/null | awk -v port=":${port}" '$4 ~ port"$" { found = 1 } END { exit found ? 0 : 1 }'; then
+      return 1
+    fi
+    return 0
+  fi
+
+  fail "ss, lsof, or netstat is required to inspect listening ports"
+}
+
+choose_candidate_port() {
+  local preferred_port="$1"
+  local host_port="$2"
+  local max_attempts="${3:-50}"
+  local candidate_port
+
+  for ((offset = 0; offset < max_attempts; offset += 1)); do
+    candidate_port=$((preferred_port + offset))
+
+    if [[ "$candidate_port" == "$host_port" ]]; then
+      continue
+    fi
+
+    if port_is_available "$candidate_port"; then
+      printf '%s\n' "$candidate_port"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 http_probe() {
   local url="$1"
 
@@ -94,8 +143,14 @@ trap 'cleanup_candidate "$CANDIDATE_NAME"' EXIT
 
 command -v docker >/dev/null 2>&1 || fail "docker is required"
 docker compose version >/dev/null 2>&1 || fail "docker compose plugin is required"
+command -v flock >/dev/null 2>&1 || fail "flock is required"
 
 mkdir -p "$APP_ROOT" "$INCOMING_ROOT"
+
+exec 9>"$APP_ROOT/.deploy.lock"
+if ! flock -n 9; then
+  fail "another deployment is already in progress for $APP_NAME"
+fi
 
 if [[ -f "$CURRENT_ENV_FILE" ]]; then
   cp "$CURRENT_ENV_FILE" "$PREVIOUS_ENV_BACKUP"
@@ -108,13 +163,16 @@ fi
 log "Loading image archive $IMAGE_ARCHIVE"
 docker load --input "$IMAGE_ARCHIVE_PATH" >/dev/null
 
-log "Verifying new image on candidate port $CANDIDATE_PORT"
+SELECTED_CANDIDATE_PORT="$(choose_candidate_port "$CANDIDATE_PORT" "$HOST_PORT" 50)" \
+  || fail "could not find an available candidate port starting at $CANDIDATE_PORT"
+
+log "Verifying new image on candidate port $SELECTED_CANDIDATE_PORT"
 cleanup_candidate "$CANDIDATE_NAME"
 docker run \
   --detach \
   --rm \
   --name "$CANDIDATE_NAME" \
-  --publish "127.0.0.1:${CANDIDATE_PORT}:8080" \
+  --publish "127.0.0.1:${SELECTED_CANDIDATE_PORT}:8080" \
   --read-only \
   --tmpfs /tmp:size=64m,mode=1777 \
   --tmpfs /var/cache/nginx:size=32m \
@@ -123,7 +181,7 @@ docker run \
   --security-opt no-new-privileges:true \
   "$IMAGE_REF" >/dev/null
 
-if ! wait_for_url "http://127.0.0.1:${CANDIDATE_PORT}${HEALTHCHECK_PATH}" 30 2; then
+if ! wait_for_url "http://127.0.0.1:${SELECTED_CANDIDATE_PORT}${HEALTHCHECK_PATH}" 30 2; then
   docker logs "$CANDIDATE_NAME" || true
   fail "candidate container failed health check"
 fi
