@@ -1,0 +1,32 @@
+services:
+  frontend-admin:
+    container_name: frontend-admin
+    image: ${IMAGE_REPOSITORY}:${IMAGE_TAG}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    ports:
+      - "127.0.0.1:${HOST_PORT}:8080"
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /var/cache/nginx:size=32m
+      - /var/run:size=8m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    stop_signal: SIGQUIT
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
