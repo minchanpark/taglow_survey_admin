@@ -9,6 +9,11 @@ export type RawAdminMember = Readonly<{
   created_at: string;
 }>;
 
+export type RawAdminAuthUser = Readonly<{
+  id: string;
+  email?: string;
+}>;
+
 export type RawSurvey = Readonly<{
   id: string;
   title: string;

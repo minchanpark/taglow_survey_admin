@@ -1,0 +1,56 @@
+.tg-admin-login {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: var(--tg-space-12);
+  background: var(--tg-bg-app);
+}
+
+.tg-admin-login__panel {
+  display: grid;
+  width: min(100%, 420px);
+  gap: var(--tg-space-10);
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-md);
+  padding: var(--tg-space-16);
+  background: var(--tg-bg-panel);
+}
+
+.tg-admin-login__mark {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--tg-radius-md);
+  color: var(--tg-accent);
+  background: var(--tg-accent-soft);
+}
+
+.tg-admin-login__copy {
+  display: grid;
+  gap: var(--tg-space-3);
+}
+
+.tg-admin-login__copy h1,
+.tg-admin-login__copy p {
+  margin: 0;
+}
+
+.tg-admin-login__copy h1 {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-page-title);
+  font-weight: var(--tg-weight-bold);
+  line-height: var(--tg-line-page-title);
+}
+
+.tg-admin-login__copy p {
+  color: var(--tg-text-muted);
+}
+
+.tg-admin-login__copy .tg-admin-login__eyebrow {
+  color: var(--tg-accent);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-caption);
+}

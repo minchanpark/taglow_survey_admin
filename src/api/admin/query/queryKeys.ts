@@ -1,6 +1,7 @@
 import type { AnalysisFilters, HeatmapFilters, PreviewOptions, TextAnswerFilters } from "../model";
 
 export const adminQueryKeys = {
+  adminSession: ["admin", "session"] as const,
   currentAdmin: ["admin", "currentAdmin"] as const,
   surveys: ["admin", "surveys"] as const,
   survey: (surveyId: string) => ["admin", "survey", surveyId] as const,

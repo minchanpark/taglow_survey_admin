@@ -3,6 +3,7 @@ import type { AdminApiGateway } from "./adminApiGateway";
 import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
+  RawAdminAuthUser,
   RawAdminMember,
   RawBorichResult,
   RawCreateAssetPayload,
@@ -27,8 +28,26 @@ import type {
 export class HttpAdminApiGateway implements AdminApiGateway {
   constructor(private readonly options: { baseUrl: string; getAccessToken?: () => Promise<string | undefined> }) {}
 
+  getCurrentAuthUser(): Promise<RawAdminAuthUser | null> {
+    return this.request<RawAdminAuthUser | null>("/api/admin/session-user");
+  }
+
   getCurrentAdmin(): Promise<RawAdminMember | null> {
     return this.request<RawAdminMember | null>("/api/admin/current-admin");
+  }
+
+  async signInWithGoogle(args: { redirectTo: string }): Promise<void> {
+    const result = await this.request<{ redirectUrl?: string } | void>("/api/admin/auth/google", {
+      method: "POST",
+      body: args,
+    });
+    if (result && "redirectUrl" in result && result.redirectUrl) {
+      window.location.assign(result.redirectUrl);
+    }
+  }
+
+  signOut(): Promise<void> {
+    return this.request<void>("/api/admin/auth/sign-out", { method: "POST" });
   }
 
   listSurveys(): Promise<RawSurvey[]> {

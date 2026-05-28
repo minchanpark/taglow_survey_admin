@@ -1,5 +1,7 @@
 import type {
   AdminMember,
+  AdminSessionState,
+  AdminSignInCommand,
   AnalysisFilterCommand,
   BorichResult,
   CreateQuestionCommand,
@@ -28,7 +30,10 @@ import type {
 } from "../model";
 
 export interface AdminApiController {
+  getAdminSessionState(): Promise<AdminSessionState>;
   getCurrentAdmin(): Promise<AdminMember | null>;
+  signInWithGoogle(command: AdminSignInCommand): Promise<void>;
+  signOut(): Promise<void>;
 
   listSurveys(): Promise<Survey[]>;
   getSurveyDetail(surveyId: string): Promise<SurveyDetail>;

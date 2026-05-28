@@ -7,8 +7,11 @@ import { assertCreateSurveyCommand, assertUpdateSurveyCommand } from "../service
 import { assertUploadSurveyImageCommand } from "../service/validation/assetSchema";
 import { toAnalysisFilterPayload } from "../service/validation/filterSchema";
 import { validatePublishSurveyDetail } from "../service/validation/publishValidation";
+import { isHandongEmail } from "../../../utils/authDomain";
 import type {
   AdminMember,
+  AdminSessionState,
+  AdminSignInCommand,
   AnalysisFilterCommand,
   BorichResult,
   CreateQuestionCommand,
@@ -44,9 +47,44 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     private readonly mapper: AdminPayloadMapper = new AdminPayloadMapper(),
   ) {}
 
+  async getAdminSessionState(): Promise<AdminSessionState> {
+    const user = await this.gateway.getCurrentAuthUser();
+    if (!user) {
+      return {
+        isAuthenticated: false,
+        isHandongEmail: false,
+      };
+    }
+
+    const email = user.email?.toLowerCase();
+    const hasHandongDomain = isHandongEmail(email);
+    if (!hasHandongDomain) {
+      return {
+        isAuthenticated: true,
+        email,
+        isHandongEmail: false,
+      };
+    }
+
+    return {
+      isAuthenticated: true,
+      email,
+      isHandongEmail: true,
+      admin: (await this.getCurrentAdmin()) ?? undefined,
+    };
+  }
+
   async getCurrentAdmin(): Promise<AdminMember | null> {
     const row = await this.gateway.getCurrentAdmin();
     return row ? this.mapper.toAdminMember(row) : null;
+  }
+
+  signInWithGoogle(command: AdminSignInCommand): Promise<void> {
+    return this.gateway.signInWithGoogle(command);
+  }
+
+  signOut(): Promise<void> {
+    return this.gateway.signOut();
   }
 
   async listSurveys(): Promise<Survey[]> {

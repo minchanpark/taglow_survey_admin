@@ -1,6 +1,7 @@
 import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
+  RawAdminAuthUser,
   RawAdminMember,
   RawBorichResult,
   RawCreateAssetPayload,
@@ -23,7 +24,10 @@ import type {
 } from "./rawTypes";
 
 export interface AdminApiGateway {
+  getCurrentAuthUser(): Promise<RawAdminAuthUser | null>;
   getCurrentAdmin(): Promise<RawAdminMember | null>;
+  signInWithGoogle(args: { redirectTo: string }): Promise<void>;
+  signOut(): Promise<void>;
 
   listSurveys(): Promise<RawSurvey[]>;
   getSurvey(surveyId: string): Promise<RawSurvey>;

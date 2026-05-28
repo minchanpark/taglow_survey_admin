@@ -1,0 +1,64 @@
+import { ShieldCheck } from "lucide-react";
+import { useMemo } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAdminSessionQuery, useGoogleSignInMutation } from "../../../api/admin/query";
+import { Button, ErrorState, LoadingState } from "../../../components";
+import "./css/AdminLoginPage.css";
+
+type LoginLocationState = {
+  from?: { pathname?: string };
+};
+
+export function AdminLoginPage() {
+  const location = useLocation();
+  const sessionQuery = useAdminSessionQuery();
+  const signInMutation = useGoogleSignInMutation();
+
+  const redirectTo = useMemo(() => {
+    const fallbackPath = "/admin/surveys";
+    const state = location.state as LoginLocationState | null;
+    const targetPath = state?.from?.pathname ?? fallbackPath;
+    return `${window.location.origin}${targetPath}`;
+  }, [location.state]);
+
+  if (sessionQuery.isPending) {
+    return (
+      <main className="tg-admin-login">
+        <LoadingState label="세션을 확인하는 중" />
+      </main>
+    );
+  }
+
+  if (sessionQuery.data?.isAuthenticated && sessionQuery.data.isHandongEmail && sessionQuery.data.admin?.isActive) {
+    return <Navigate to="/admin/surveys" replace />;
+  }
+
+  return (
+    <main className="tg-admin-login">
+      <section className="tg-admin-login__panel" aria-labelledby="admin-login-title">
+        <div className="tg-admin-login__mark" aria-hidden="true">
+          <ShieldCheck size={22} />
+        </div>
+        <div className="tg-admin-login__copy">
+          <p className="tg-admin-login__eyebrow">Taglow Survey Admin</p>
+          <h1 id="admin-login-title">관리자 로그인</h1>
+          <p>한동대학교 Google 계정과 등록된 관리자 권한을 확인합니다.</p>
+        </div>
+        <Button
+          variant="primary"
+          icon={<ShieldCheck size={16} aria-hidden="true" />}
+          onClick={() => signInMutation.mutate({ redirectTo })}
+          disabled={signInMutation.isPending}
+        >
+          Google로 로그인
+        </Button>
+        {signInMutation.isError ? (
+          <ErrorState
+            title="로그인을 시작하지 못했습니다."
+            description="Google 로그인 설정과 네트워크 상태를 확인해주세요."
+          />
+        ) : null}
+      </section>
+    </main>
+  );
+}

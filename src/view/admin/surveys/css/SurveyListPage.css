@@ -1,0 +1,108 @@
+.tg-survey-list-page {
+  display: grid;
+  max-width: var(--tg-page-max-width);
+  gap: var(--tg-space-12);
+  padding: var(--tg-space-16);
+}
+
+.tg-survey-list-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tg-space-8);
+}
+
+.tg-survey-list-page__header h1,
+.tg-survey-list-page__eyebrow {
+  margin: 0;
+}
+
+.tg-survey-list-page__header h1 {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-page-title);
+  font-weight: var(--tg-weight-bold);
+  line-height: var(--tg-line-page-title);
+}
+
+.tg-survey-list-page__eyebrow {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-survey-list-page__table {
+  overflow: hidden;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-md);
+  background: var(--tg-bg-panel);
+}
+
+.tg-survey-list-page__row {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 112px 80px 120px;
+  min-height: 56px;
+  align-items: center;
+  gap: var(--tg-space-8);
+  border-top: 1px solid var(--tg-border-subtle);
+  padding: 0 var(--tg-space-10);
+  color: var(--tg-text-body);
+  text-decoration: none;
+}
+
+.tg-survey-list-page__row:hover {
+  background: var(--tg-bg-raised);
+}
+
+.tg-survey-list-page__row--head {
+  min-height: 40px;
+  border-top: 0;
+  color: var(--tg-text-muted);
+  background: var(--tg-bg-raised);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+}
+
+.tg-survey-list-page__survey {
+  display: grid;
+  min-width: 0;
+}
+
+.tg-survey-list-page__survey strong,
+.tg-survey-list-page__survey small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tg-survey-list-page__survey strong {
+  color: var(--tg-text-strong);
+  font-weight: var(--tg-weight-semibold);
+}
+
+.tg-survey-list-page__survey small {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+@media (max-width: 780px) {
+  .tg-survey-list-page {
+    padding: var(--tg-space-10);
+  }
+
+  .tg-survey-list-page__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tg-survey-list-page__row {
+    grid-template-columns: 1fr;
+    align-items: start;
+    padding: var(--tg-space-8);
+  }
+
+  .tg-survey-list-page__row--head {
+    display: none;
+  }
+}

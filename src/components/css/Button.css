@@ -1,0 +1,70 @@
+.tg-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tg-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--tg-radius-sm);
+  padding: 0 var(--tg-space-8);
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-dense);
+  color: var(--tg-text-strong);
+  background: transparent;
+  transition:
+    background var(--tg-duration-fast) var(--tg-ease-standard),
+    border-color var(--tg-duration-fast) var(--tg-ease-standard),
+    color var(--tg-duration-fast) var(--tg-ease-standard);
+}
+
+.tg-button:hover:not(:disabled) {
+  background: var(--tg-bg-inset);
+}
+
+.tg-button:disabled {
+  opacity: 0.56;
+}
+
+.tg-button__icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.tg-button__label {
+  white-space: nowrap;
+}
+
+.tg-button--primary {
+  border-color: var(--tg-accent);
+  color: var(--tg-color-white);
+  background: var(--tg-accent);
+}
+
+.tg-button--primary:hover:not(:disabled) {
+  border-color: var(--tg-accent-hover);
+  background: var(--tg-accent-hover);
+}
+
+.tg-button--secondary {
+  border-color: var(--tg-border-strong);
+  background: var(--tg-bg-panel);
+}
+
+.tg-button--ghost {
+  color: var(--tg-text-muted);
+}
+
+.tg-button--danger {
+  border-color: var(--tg-danger);
+  color: var(--tg-color-white);
+  background: var(--tg-danger);
+}
+
+.tg-button--danger:hover:not(:disabled) {
+  background: var(--tg-danger);
+}

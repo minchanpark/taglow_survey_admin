@@ -2,9 +2,15 @@
   "name": "taglow_survey_admin",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@11.1.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "repository": {
     "type": "git",
@@ -13,7 +19,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/minchanpark/taglow_survey_admin/issues"
   },
@@ -21,12 +26,24 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
     "@tanstack/react-query": "^5.100.14",
+    "lucide-react": "^1.16.0",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "react-hook-form": "^7.76.1",
+    "react-router-dom": "^7.15.1",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
-    "typescript": "^6.0.3"
+    "@vitejs/plugin-react": "^6.0.2",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14",
+    "vitest": "^4.1.7"
   }
 }

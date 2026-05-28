@@ -1,0 +1,29 @@
+.tg-admin-placeholder-page {
+  display: grid;
+  max-width: var(--tg-page-max-width);
+  gap: var(--tg-space-12);
+  padding: var(--tg-space-16);
+}
+
+.tg-admin-placeholder-page header {
+  display: grid;
+  gap: var(--tg-space-2);
+}
+
+.tg-admin-placeholder-page h1,
+.tg-admin-placeholder-page p {
+  margin: 0;
+}
+
+.tg-admin-placeholder-page h1 {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-page-title);
+  font-weight: var(--tg-weight-bold);
+  line-height: var(--tg-line-page-title);
+}
+
+.tg-admin-placeholder-page p {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}

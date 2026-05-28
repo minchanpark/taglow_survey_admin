@@ -1,0 +1,13 @@
+.tg-admin-system-page {
+  display: grid;
+  min-height: 100vh;
+  align-content: center;
+  justify-items: center;
+  gap: var(--tg-space-8);
+  padding: var(--tg-space-12);
+  background: var(--tg-bg-app);
+}
+
+.tg-admin-system-page__link {
+  text-decoration: none;
+}

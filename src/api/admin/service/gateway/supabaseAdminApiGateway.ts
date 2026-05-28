@@ -3,6 +3,7 @@ import type { AdminApiGateway } from "./adminApiGateway";
 import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
+  RawAdminAuthUser,
   RawAdminMember,
   RawBorichResult,
   RawCreateAssetPayload,
@@ -28,7 +29,16 @@ type SupabaseResult<T> = PromiseLike<{ data: T | null; error: unknown }>;
 
 type SupabaseClientLike = {
   auth: {
+    getSession(): Promise<{
+      data: { session: { user: { id: string; email?: string } } | null };
+      error: unknown;
+    }>;
     getUser(): Promise<{ data: { user: { id: string; email?: string } | null }; error: unknown }>;
+    signInWithOAuth(args: {
+      provider: "google";
+      options: { redirectTo: string };
+    }): Promise<{ data: unknown; error: unknown }>;
+    signOut(): Promise<{ error: unknown }>;
   };
   from(table: string): any;
   rpc(fn: string, args?: Record<string, unknown>): SupabaseResult<unknown>;
@@ -44,6 +54,15 @@ const RPC = {
 
 export class SupabaseAdminApiGateway implements AdminApiGateway {
   constructor(private readonly supabase: SupabaseClientLike) {}
+
+  async getCurrentAuthUser(): Promise<RawAdminAuthUser | null> {
+    const { data, error } = await this.supabase.auth.getSession();
+    if (error) {
+      throw normalizeAdminApiError(error, "UNAUTHENTICATED");
+    }
+
+    return data.session?.user ? { id: data.session.user.id, email: data.session.user.email } : null;
+  }
 
   async getCurrentAdmin(): Promise<RawAdminMember | null> {
     const { data: userData, error: userError } = await this.supabase.auth.getUser();
@@ -68,6 +87,26 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     }
 
     return data as RawAdminMember | null;
+  }
+
+  async signInWithGoogle(args: { redirectTo: string }): Promise<void> {
+    const { error } = await this.supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: args.redirectTo,
+      },
+    });
+
+    if (error) {
+      throw normalizeAdminApiError(error, "UNAUTHENTICATED");
+    }
+  }
+
+  async signOut(): Promise<void> {
+    const { error } = await this.supabase.auth.signOut();
+    if (error) {
+      throw normalizeAdminApiError(error, "UNAUTHENTICATED");
+    }
   }
 
   listSurveys(): Promise<RawSurvey[]> {

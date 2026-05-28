@@ -1,0 +1,46 @@
+.tg-status-badge {
+  display: inline-flex;
+  min-width: 56px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-pill);
+  padding: 0 var(--tg-space-6);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+  white-space: nowrap;
+}
+
+.tg-status-badge--draft,
+.tg-status-badge--archived {
+  color: var(--tg-text-muted);
+  background: var(--tg-bg-inset);
+}
+
+.tg-status-badge--published,
+.tg-status-badge--success {
+  color: var(--tg-success);
+  background: var(--tg-success-soft);
+}
+
+.tg-status-badge--closed {
+  color: var(--tg-text-body);
+  background: var(--tg-bg-raised);
+}
+
+.tg-status-badge--warning {
+  color: var(--tg-warning);
+  background: var(--tg-warning-soft);
+}
+
+.tg-status-badge--danger {
+  color: var(--tg-danger);
+  background: var(--tg-danger-soft);
+}
+
+.tg-status-badge--info {
+  color: var(--tg-info);
+  background: var(--tg-info-soft);
+}
