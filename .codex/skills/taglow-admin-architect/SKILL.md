@@ -48,7 +48,7 @@ rg -n "구현 순서|완료 기준|프로젝트 구조|핵심 아키텍처|API B
 - Mappers convert raw rows/DTOs to domain models. Gateways return raw data only.
 - Preview input never creates `responses` or `answers`.
 - Every analysis result shows `N`, active filters, and low-sample warning when relevant.
-- Admin access is Google login, `@handong.ac.kr` domain guard, and active `admin_members` row.
+- Admin access is Google login and an active `admin_members` row. Do not restrict admin access by email domain.
 
 ## Subagent Handoff
 

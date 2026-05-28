@@ -21,7 +21,7 @@ Taglow Survey Admin is not a generic form builder. It is a survey analysis workb
 
 ```text
 admin auth
--> admin_members permission check
+-> active admin_members permission check
 -> survey/section/question builder
 -> participant preview
 -> publish URL/QR
@@ -55,7 +55,7 @@ Rules:
 - Controllers return domain models.
 - Stores keep client/UI state only, not server response copies.
 - Preview mode must never create `responses` or `answers`.
-- Admin access is backed by `admin_members`, not a frontend-only email list.
+- Admin access is backed by active `admin_members`, not an email domain guard or frontend-only email list.
 
 ## Core Data Model
 

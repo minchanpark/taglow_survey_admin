@@ -5,7 +5,6 @@ Owns pure utilities shared across app layers.
 ## Expected Utilities
 
 - `envConfig.ts`
-- `authDomain.ts`
 - `slug.ts`
 - `i18nText.ts`
 - `qrBuilder.ts`

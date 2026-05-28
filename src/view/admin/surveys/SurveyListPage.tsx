@@ -1,5 +1,6 @@
-import { Plus, RefreshCcw } from "lucide-react";
+import { PencilLine, Plus, RefreshCcw } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getSurveyPublicIdentifier } from "../../../api/admin/model";
 import { useSurveysQuery } from "../../../api/admin/query";
 import { Button, EmptyState, ErrorState, LoadingState, SurveyStatusBadge } from "../../../components";
 import "./css/SurveyListPage.css";
@@ -42,26 +43,42 @@ export function SurveyListPage() {
           <div className="tg-survey-list-page__row tg-survey-list-page__row--head" role="row">
             <span role="columnheader">설문</span>
             <span role="columnheader">상태</span>
+            <span role="columnheader">공개 ID</span>
             <span role="columnheader">버전</span>
             <span role="columnheader">수정일</span>
+            <span role="columnheader">작업</span>
           </div>
           {surveysQuery.data.map((survey) => (
-            <Link
+            <div
               key={survey.id}
-              to={`/admin/surveys/${survey.id}/dashboard`}
               className="tg-survey-list-page__row"
               role="row"
             >
               <span className="tg-survey-list-page__survey" role="cell">
-                <strong>{survey.title}</strong>
-                <small>{survey.description ?? "설명 없음"}</small>
+                <Link to={`/admin/surveys/${survey.id}/dashboard`} className="tg-survey-list-page__survey-link">
+                  <strong>{survey.title}</strong>
+                  <small>{survey.description ?? "설명 없음"}</small>
+                </Link>
               </span>
               <span role="cell">
                 <SurveyStatusBadge status={survey.status} />
               </span>
+              <span role="cell" className="tg-survey-list-page__public-id">
+                {getSurveyPublicIdentifier(survey) ?? "생성 전"}
+              </span>
               <span role="cell">v{survey.versionNumber}</span>
               <span role="cell">{formatDate(survey.updatedAt)}</span>
-            </Link>
+              <span role="cell" className="tg-survey-list-page__actions">
+                <Link
+                  to={`/admin/surveys/${survey.id}/builder`}
+                  className="tg-survey-list-page__edit-link"
+                  aria-label={`${survey.title} 수정`}
+                >
+                  <PencilLine size={15} aria-hidden="true" />
+                  <span>수정</span>
+                </Link>
+              </span>
+            </div>
           ))}
         </div>
       ) : null}

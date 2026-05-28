@@ -23,4 +23,5 @@ export type SurveyAnswer = Readonly<{
   severity?: number;
   valueJson: JsonRecord;
   createdAt: string;
+  updatedAt?: string;
 }>;

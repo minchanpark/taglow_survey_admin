@@ -1,22 +1,708 @@
-import { Eye } from "lucide-react";
-import { useParams } from "react-router-dom";
-import { EmptyState } from "../../../components";
+import { AlertTriangle, CheckCircle2, Eye, Monitor, MousePointer2, RefreshCcw, Smartphone } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import { usePreviewSurveyQuery } from "../../../api/admin/query";
+import type { JsonRecord, Locale, PreviewDevice, PreviewOptions, Question, SurveyAsset, SurveySection } from "../../../api/admin/model";
+import { Button, EmptyState, ErrorState, LoadingState, StatusBadge, SurveyStatusBadge } from "../../../components";
+import { useAdminPreviewStore } from "../../../store";
 import "./css/SurveyPreviewPage.css";
 
+type PreviewAnswer = string | number | string[] | RankingAnswer | ImageTagDraft[];
+type PreviewAnswers = Record<string, PreviewAnswer | undefined>;
+type RankingAnswer = Record<string, number | undefined>;
+type PreviewIssue = Readonly<{
+  id: string;
+  tone: "warning" | "danger";
+  label: string;
+  sectionId?: string;
+  questionId?: string;
+}>;
+type ChoiceOption = Readonly<{
+  value: string;
+  labelKo: string;
+  labelEn?: string;
+}>;
+type ImageTagDraft = Readonly<{
+  id: string;
+  xRatio: number;
+  yRatio: number;
+  tagType?: string;
+}>;
+
 export function SurveyPreviewPage() {
-  const { surveyId } = useParams();
+  const { surveyId = "" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [answers, setAnswers] = useState<PreviewAnswers>({});
+  const setStoreLocale = useAdminPreviewStore((state) => state.setLocale);
+  const setStoreDevice = useAdminPreviewStore((state) => state.setDevice);
+  const setStoreActiveSectionId = useAdminPreviewStore((state) => state.setActiveSectionId);
+
+  const locale = normalizeLocale(searchParams.get("locale"));
+  const device = normalizeDevice(searchParams.get("device"));
+  const sectionId = searchParams.get("section_id") || undefined;
+  const previewOptions = useMemo<PreviewOptions>(() => ({ locale, device, sectionId }), [device, locale, sectionId]);
+  const previewQuery = usePreviewSurveyQuery(surveyId, previewOptions);
+
+  useEffect(() => {
+    setStoreLocale(locale);
+    setStoreDevice(device);
+    setStoreActiveSectionId(sectionId);
+  }, [device, locale, sectionId, setStoreActiveSectionId, setStoreDevice, setStoreLocale]);
+
+  function updatePreviewOptions(nextOptions: Partial<PreviewOptions>) {
+    const next = new URLSearchParams(searchParams);
+
+    if (nextOptions.locale) next.set("locale", nextOptions.locale);
+    if (nextOptions.device) next.set("device", nextOptions.device);
+    if ("sectionId" in nextOptions) {
+      if (nextOptions.sectionId) next.set("section_id", nextOptions.sectionId);
+      else next.delete("section_id");
+    }
+
+    setSearchParams(next, { replace: true });
+  }
+
+  function resetSimulation() {
+    setAnswers({});
+  }
+
+  if (!surveyId) {
+    return (
+      <section className="tg-preview-page">
+        <ErrorState title="설문 ID가 없습니다." description="설문 목록에서 다시 진입해주세요." />
+      </section>
+    );
+  }
+
+  if (previewQuery.isPending) {
+    return (
+      <section className="tg-preview-page">
+        <LoadingState label="미리보기를 불러오는 중" />
+      </section>
+    );
+  }
+
+  if (previewQuery.isError) {
+    return (
+      <section className="tg-preview-page">
+        <ErrorState
+          title="미리보기를 불러오지 못했습니다."
+          description="설문 접근 권한 또는 Supabase 연결 상태를 확인해주세요."
+          actionLabel="다시 시도"
+          onAction={() => void previewQuery.refetch()}
+        />
+      </section>
+    );
+  }
+
+  const survey = previewQuery.data.survey;
+  const sortedSections = sortByOrder(previewQuery.data.sections);
+  const sortedQuestions = sortByOrder(previewQuery.data.questions);
+  const activeSections = sectionId ? sortedSections.filter((section) => section.id === sectionId) : sortedSections;
+  const issues = getPreviewIssues(sortedSections, sortedQuestions, previewQuery.data.assets, locale);
+  const visibleQuestions = sortedQuestions.filter((question) => isQuestionVisible(question, sortedQuestions, answers));
 
   return (
-    <section className="tg-preview-placeholder-page" aria-labelledby="survey-preview-title">
-      <header>
-        <p>설문 ID {surveyId}</p>
-        <h1 id="survey-preview-title">참여자 화면 미리보기</h1>
+    <section className="tg-preview-page" aria-labelledby="survey-preview-title">
+      <header className="tg-preview-page__header">
+        <div>
+          <p className="tg-preview-page__eyebrow">참여자 화면 미리보기</p>
+          <h1 id="survey-preview-title">{survey.title}</h1>
+        </div>
+        <div className="tg-preview-page__status">
+          <StatusBadge tone="info">preview</StatusBadge>
+          <SurveyStatusBadge status={survey.status} />
+        </div>
       </header>
-      <EmptyState
-        title="미리보기 렌더러는 Preview / Publish phase에서 구현합니다."
-        description="미리보기 입력은 실제 responses 또는 answers를 만들지 않는 구조로 연결합니다."
-        icon={<Eye size={18} aria-hidden="true" />}
-      />
+
+      <div className="tg-preview-toolbar" aria-label="미리보기 설정">
+        <div className="tg-preview-toolbar__group" role="group" aria-label="언어">
+          <button
+            type="button"
+            className={toggleClass(locale === "ko")}
+            aria-pressed={locale === "ko"}
+            onClick={() => updatePreviewOptions({ locale: "ko" })}
+          >
+            KO
+          </button>
+          <button
+            type="button"
+            className={toggleClass(locale === "en")}
+            aria-pressed={locale === "en"}
+            onClick={() => updatePreviewOptions({ locale: "en" })}
+          >
+            EN
+          </button>
+        </div>
+
+        <div className="tg-preview-toolbar__group" role="group" aria-label="기기">
+          <button
+            type="button"
+            className={toggleClass(device === "mobile")}
+            aria-pressed={device === "mobile"}
+            onClick={() => updatePreviewOptions({ device: "mobile" })}
+          >
+            <Smartphone size={15} aria-hidden="true" />
+            Mobile
+          </button>
+          <button
+            type="button"
+            className={toggleClass(device === "desktop")}
+            aria-pressed={device === "desktop"}
+            onClick={() => updatePreviewOptions({ device: "desktop" })}
+          >
+            <Monitor size={15} aria-hidden="true" />
+            Desktop
+          </button>
+        </div>
+
+        <label className="tg-preview-toolbar__select">
+          <span>섹션</span>
+          <select value={sectionId ?? ""} onChange={(event) => updatePreviewOptions({ sectionId: event.target.value || undefined })}>
+            <option value="">전체 섹션</option>
+            {sortedSections.map((section) => (
+              <option key={section.id} value={section.id}>
+                {localizedText(section.title, locale)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <Button variant="ghost" icon={<RefreshCcw size={15} aria-hidden="true" />} onClick={resetSimulation}>
+          초기화
+        </Button>
+      </div>
+
+      <div className="tg-preview-page__workspace">
+        <div className={`tg-preview-device tg-preview-device--${device}`} aria-label={`${device} 미리보기`}>
+          <div className="tg-preview-device__screen">
+            <article className="tg-participant-preview">
+              <header className="tg-participant-preview__hero">
+                <div className="tg-participant-preview__brand">
+                  <Eye size={16} aria-hidden="true" />
+                  <span>Taglow Survey</span>
+                </div>
+                <h2>{survey.title}</h2>
+                {survey.description ? <p>{survey.description}</p> : null}
+              </header>
+
+              {activeSections.length ? (
+                activeSections.map((section) => (
+                  <PreviewSection
+                    key={section.id}
+                    section={section}
+                    questions={visibleQuestions.filter((question) => question.sectionId === section.id)}
+                    assets={previewQuery.data.assets}
+                    locale={locale}
+                    answers={answers}
+                    onAnswerChange={(questionId, answer) => setAnswers((current) => ({ ...current, [questionId]: answer }))}
+                  />
+                ))
+              ) : (
+                <EmptyState title="미리볼 섹션이 없습니다." description="빌더에서 섹션을 추가하면 이곳에 표시됩니다." />
+              )}
+            </article>
+          </div>
+        </div>
+
+        <aside className="tg-preview-inspector" aria-label="미리보기 상태">
+          <div className="tg-preview-inspector__block">
+            <h2>검증</h2>
+            {issues.length ? (
+              <ul className="tg-preview-issue-list">
+                {issues.map((issue) => (
+                  <li key={issue.id} className={`tg-preview-issue tg-preview-issue--${issue.tone}`}>
+                    {issue.tone === "danger" ? <AlertTriangle size={15} aria-hidden="true" /> : <CheckCircle2 size={15} aria-hidden="true" />}
+                    <span>{issue.label}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="tg-preview-inspector__muted">현재 미리보기에서 감지된 경고가 없습니다.</p>
+            )}
+          </div>
+
+          <div className="tg-preview-inspector__block">
+            <h2>시뮬레이션</h2>
+            <dl className="tg-preview-answer-list">
+              <div>
+                <dt>입력된 질문</dt>
+                <dd>{Object.values(answers).filter(hasAnswer).length}</dd>
+              </div>
+              <div>
+                <dt>표시 섹션</dt>
+                <dd>{activeSections.length}</dd>
+              </div>
+              <div>
+                <dt>표시 질문</dt>
+                <dd>{activeSections.reduce((count, section) => count + visibleQuestions.filter((question) => question.sectionId === section.id).length, 0)}</dd>
+              </div>
+            </dl>
+          </div>
+        </aside>
+      </div>
     </section>
   );
+}
+
+function PreviewSection(props: {
+  section: SurveySection;
+  questions: Question[];
+  assets: SurveyAsset[];
+  locale: Locale;
+  answers: PreviewAnswers;
+  onAnswerChange: (questionId: string, answer: PreviewAnswer | undefined) => void;
+}) {
+  return (
+    <section className="tg-participant-section" aria-labelledby={`preview-section-${props.section.id}`}>
+      <div className="tg-participant-section__header">
+        <p>{props.section.sectionType}</p>
+        <h3 id={`preview-section-${props.section.id}`}>{localizedText(props.section.title, props.locale)}</h3>
+        {props.section.description ? <span>{localizedText(props.section.description, props.locale)}</span> : null}
+      </div>
+
+      {props.questions.length ? (
+        <div className="tg-preview-question-stack">
+          {props.questions.map((question) => (
+            <PreviewQuestion
+              key={question.id}
+              question={question}
+              assets={props.assets}
+              locale={props.locale}
+              answer={props.answers[question.id]}
+              onAnswerChange={(answer) => props.onAnswerChange(question.id, answer)}
+            />
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="이 섹션에는 표시할 질문이 없습니다." description="분기 조건 또는 섹션 구성을 확인해주세요." />
+      )}
+    </section>
+  );
+}
+
+function PreviewQuestion(props: {
+  question: Question;
+  assets: SurveyAsset[];
+  locale: Locale;
+  answer: PreviewAnswer | undefined;
+  onAnswerChange: (answer: PreviewAnswer | undefined) => void;
+}) {
+  const isAnswered = hasAnswer(props.answer);
+
+  return (
+    <article className="tg-preview-question">
+      <header className="tg-preview-question__header">
+        <div>
+          <p>{props.question.questionKey}</p>
+          <h4>{localizedText(props.question.title, props.locale)}</h4>
+          {props.question.description ? <span>{localizedText(props.question.description, props.locale)}</span> : null}
+        </div>
+        <div className="tg-preview-question__badges">
+          {props.question.isRequired ? <StatusBadge tone={isAnswered ? "success" : "warning"}>필수</StatusBadge> : null}
+          <StatusBadge tone="info">{props.question.questionType}</StatusBadge>
+        </div>
+      </header>
+
+      <QuestionControl {...props} />
+    </article>
+  );
+}
+
+function QuestionControl(props: {
+  question: Question;
+  assets: SurveyAsset[];
+  locale: Locale;
+  answer: PreviewAnswer | undefined;
+  onAnswerChange: (answer: PreviewAnswer | undefined) => void;
+}) {
+  if (props.question.questionType === "scale") {
+    return <ScaleControl {...props} />;
+  }
+
+  if (props.question.questionType === "single_choice" || props.question.questionType === "experience") {
+    return <SingleChoiceControl {...props} options={getChoiceOptions(props.question)} />;
+  }
+
+  if (props.question.questionType === "multi_select") {
+    return <MultiSelectControl {...props} options={getChoiceOptions(props.question)} />;
+  }
+
+  if (props.question.questionType === "ranking") {
+    return <RankingControl {...props} options={getChoiceOptions(props.question)} />;
+  }
+
+  if (props.question.questionType === "image_tag") {
+    return <ImageTagControl {...props} />;
+  }
+
+  if (props.question.questionType === "attention_check") {
+    return (
+      <label className="tg-preview-field">
+        <span>확인 입력</span>
+        <input
+          value={typeof props.answer === "string" ? props.answer : ""}
+          onChange={(event) => props.onAnswerChange(event.target.value || undefined)}
+        />
+      </label>
+    );
+  }
+
+  return (
+    <label className="tg-preview-field">
+      <span>답변</span>
+      <textarea
+        rows={4}
+        value={typeof props.answer === "string" ? props.answer : ""}
+        onChange={(event) => props.onAnswerChange(event.target.value || undefined)}
+      />
+    </label>
+  );
+}
+
+function ScaleControl(props: {
+  question: Question;
+  locale: Locale;
+  answer: PreviewAnswer | undefined;
+  onAnswerChange: (answer: PreviewAnswer | undefined) => void;
+}) {
+  const config = toRecord(props.question.config);
+  const min = getNumber(config.scaleMin) ?? 1;
+  const max = getNumber(config.scaleMax) ?? 5;
+  const labels = getStringArray(props.locale === "en" ? config.labelsEn : config.labelsKo);
+  const values = Array.from({ length: Math.max(1, max - min + 1) }, (_, index) => min + index);
+
+  return (
+    <div className="tg-preview-scale" role="radiogroup" aria-label={localizedText(props.question.title, props.locale)}>
+      {values.map((value, index) => (
+        <button
+          key={value}
+          type="button"
+          className={`tg-preview-scale__item ${props.answer === value ? "tg-preview-scale__item--active" : ""}`}
+          aria-pressed={props.answer === value}
+          onClick={() => props.onAnswerChange(value)}
+        >
+          <strong>{value}</strong>
+          {labels[index] ? <span>{labels[index]}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SingleChoiceControl(props: {
+  question: Question;
+  locale: Locale;
+  answer: PreviewAnswer | undefined;
+  options: ChoiceOption[];
+  onAnswerChange: (answer: PreviewAnswer | undefined) => void;
+}) {
+  const options = props.options.length ? props.options : getExperienceFallbackOptions();
+
+  return (
+    <div className="tg-preview-choice-list">
+      {options.map((option) => (
+        <label key={option.value} className="tg-preview-choice">
+          <input
+            type="radio"
+            name={`preview-${props.question.id}`}
+            checked={props.answer === option.value}
+            onChange={() => props.onAnswerChange(option.value)}
+          />
+          <span>{localizedOption(option, props.locale)}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function MultiSelectControl(props: {
+  question: Question;
+  locale: Locale;
+  answer: PreviewAnswer | undefined;
+  options: ChoiceOption[];
+  onAnswerChange: (answer: PreviewAnswer | undefined) => void;
+}) {
+  const selected = Array.isArray(props.answer) ? props.answer.filter((value): value is string => typeof value === "string") : [];
+  const config = toRecord(props.question.config);
+  const maxSelect = getNumber(config.maxSelect);
+
+  return (
+    <div className="tg-preview-choice-list">
+      {props.options.map((option) => {
+        const checked = selected.includes(option.value);
+        const disabled = Boolean(maxSelect && !checked && selected.length >= maxSelect);
+        return (
+          <label key={option.value} className="tg-preview-choice">
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={disabled}
+              onChange={(event) => {
+                const next = event.target.checked
+                  ? [...selected, option.value]
+                  : selected.filter((value) => value !== option.value);
+                props.onAnswerChange(next.length ? next : undefined);
+              }}
+            />
+            <span>{localizedOption(option, props.locale)}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function RankingControl(props: {
+  question: Question;
+  locale: Locale;
+  answer: PreviewAnswer | undefined;
+  options: ChoiceOption[];
+  onAnswerChange: (answer: PreviewAnswer | undefined) => void;
+}) {
+  const ranking = isRankingAnswer(props.answer) ? props.answer : {};
+  const ranks = Array.from({ length: props.options.length }, (_, index) => index + 1);
+
+  return (
+    <div className="tg-preview-ranking">
+      {props.options.map((option) => (
+        <label key={option.value} className="tg-preview-ranking__row">
+          <span>{localizedOption(option, props.locale)}</span>
+          <select
+            aria-label={`${localizedOption(option, props.locale)} 순위`}
+            value={ranking[option.value] ?? ""}
+            onChange={(event) => {
+              const nextValue = event.target.value ? Number(event.target.value) : undefined;
+              const next = { ...ranking, [option.value]: nextValue };
+              props.onAnswerChange(Object.values(next).some(Boolean) ? next : undefined);
+            }}
+          >
+            <option value="">-</option>
+            {ranks.map((rank) => (
+              <option key={rank} value={rank}>
+                {rank}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function ImageTagControl(props: {
+  question: Question;
+  assets: SurveyAsset[];
+  answer: PreviewAnswer | undefined;
+  onAnswerChange: (answer: PreviewAnswer | undefined) => void;
+}) {
+  const config = toRecord(props.question.config);
+  const assetId = getString(config.assetId) ?? getString(config.asset_id);
+  const asset = props.assets.find((item) => item.id === assetId);
+  const tags = isImageTagAnswer(props.answer) ? props.answer : [];
+  const maxTags = getNumber(config.maxTags) ?? 3;
+  const imageUrl = getAssetPreviewUrl(asset);
+
+  return (
+    <div className="tg-preview-image-tag">
+      <button
+        type="button"
+        className="tg-preview-image-tag__surface"
+        disabled={!assetId || tags.length >= maxTags}
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const xRatio = clamp((event.clientX - rect.left) / rect.width);
+          const yRatio = clamp((event.clientY - rect.top) / rect.height);
+          props.onAnswerChange([...tags, { id: crypto.randomUUID(), xRatio, yRatio }]);
+        }}
+      >
+        {imageUrl ? <img src={imageUrl} alt="" /> : <span className="tg-preview-image-tag__placeholder">{asset?.storagePath ?? "이미지 자산 없음"}</span>}
+        {tags.map((tag, index) => (
+          <span
+            key={tag.id}
+            className="tg-preview-image-tag__pin"
+            style={{ left: `${tag.xRatio * 100}%`, top: `${tag.yRatio * 100}%` }}
+          >
+            {index + 1}
+          </span>
+        ))}
+      </button>
+      <p>
+        <MousePointer2 size={14} aria-hidden="true" />
+        <span>{tags.length} / {maxTags}</span>
+      </p>
+    </div>
+  );
+}
+
+function getPreviewIssues(sections: SurveySection[], questions: Question[], assets: SurveyAsset[], locale: Locale): PreviewIssue[] {
+  const issues: PreviewIssue[] = [];
+  const questionKeys = new Set<string>();
+
+  if (!sections.length) {
+    issues.push({ id: "no-sections", tone: "danger", label: "섹션이 없습니다." });
+  }
+
+  for (const section of sections) {
+    const sectionQuestions = questions.filter((question) => question.sectionId === section.id);
+    if (!sectionQuestions.length) {
+      issues.push({ id: `section-empty-${section.id}`, tone: "danger", label: `${localizedText(section.title, locale)} 섹션에 질문이 없습니다.`, sectionId: section.id });
+    }
+  }
+
+  for (const question of questions) {
+    if (questionKeys.has(question.questionKey)) {
+      issues.push({ id: `duplicate-${question.id}`, tone: "danger", label: `중복 question key: ${question.questionKey}`, questionId: question.id });
+    }
+    questionKeys.add(question.questionKey);
+
+    if (!question.title.ko.trim()) {
+      issues.push({ id: `title-ko-${question.id}`, tone: "danger", label: "한국어 질문 제목이 없습니다.", questionId: question.id });
+    }
+
+    if (locale === "en" && !question.title.en) {
+      issues.push({ id: `title-en-${question.id}`, tone: "warning", label: `${question.questionKey} 영문 제목이 없습니다.`, questionId: question.id });
+    }
+
+    const config = toRecord(question.config);
+    const options = getChoiceOptions(question);
+    if ((question.questionType === "single_choice" || question.questionType === "multi_select" || question.questionType === "ranking") && !options.length) {
+      issues.push({ id: `options-${question.id}`, tone: "danger", label: `${question.questionKey} 선택지가 없습니다.`, questionId: question.id });
+    }
+
+    if (question.questionType === "scale" && (!getNumber(config.scaleMin) || !getNumber(config.scaleMax))) {
+      issues.push({ id: `scale-${question.id}`, tone: "danger", label: `${question.questionKey} 척도 범위가 올바르지 않습니다.`, questionId: question.id });
+    }
+
+    if (question.questionType === "image_tag") {
+      const assetId = getString(config.assetId) ?? getString(config.asset_id);
+      if (!assetId || !assets.some((asset) => asset.id === assetId)) {
+        issues.push({ id: `asset-${question.id}`, tone: "danger", label: `${question.questionKey} 이미지 자산 연결이 없습니다.`, questionId: question.id });
+      }
+    }
+
+    if (question.questionType === "attention_check" && !getString(config.expectedValue)) {
+      issues.push({ id: `attention-${question.id}`, tone: "danger", label: `${question.questionKey} expectedValue가 없습니다.`, questionId: question.id });
+    }
+  }
+
+  return issues;
+}
+
+function isQuestionVisible(question: Question, questions: Question[], answers: PreviewAnswers): boolean {
+  const condition = getVisibilityCondition(question);
+  if (!condition) return true;
+
+  const sourceKey = getString(condition.questionKey) ?? getString(condition.question_key) ?? getString(condition.sourceQuestionKey);
+  if (!sourceKey) return true;
+
+  const sourceQuestion = questions.find((item) => item.questionKey === sourceKey || item.id === sourceKey);
+  if (!sourceQuestion) return false;
+
+  const answer = answers[sourceQuestion.id];
+  const expected = condition.value ?? condition.equals ?? condition.expectedValue ?? condition.expected_value;
+  if (expected === undefined) return hasAnswer(answer);
+
+  if (Array.isArray(answer)) {
+    return answer.some((value) => String(value) === String(expected));
+  }
+
+  return String(answer) === String(expected);
+}
+
+function getVisibilityCondition(question: Question): JsonRecord | undefined {
+  const config = toRecord(question.config);
+  const value = config.visibleWhen ?? config.visible_when ?? config.condition ?? config.dependsOn ?? config.depends_on;
+  return isRecord(value) ? value : undefined;
+}
+
+function getChoiceOptions(question: Question): ChoiceOption[] {
+  const options = toRecord(question.config).options;
+  if (!Array.isArray(options)) return [];
+
+  return options.map((item, index) => {
+    const option = toRecord(item);
+    const value = getString(option.value) ?? `option_${index + 1}`;
+    return {
+      value,
+      labelKo: getString(option.labelKo) ?? getString(option.label_ko) ?? getString(option.label) ?? value,
+      labelEn: getString(option.labelEn) ?? getString(option.label_en),
+    };
+  });
+}
+
+function getExperienceFallbackOptions(): ChoiceOption[] {
+  return [
+    { value: "yes", labelKo: "예", labelEn: "Yes" },
+    { value: "no", labelKo: "아니오", labelEn: "No" },
+    { value: "unknown", labelKo: "잘 모르겠음", labelEn: "Not sure" },
+  ];
+}
+
+function localizedText(value: { ko: string; en?: string }, locale: Locale): string {
+  return locale === "en" ? value.en || value.ko : value.ko;
+}
+
+function localizedOption(value: ChoiceOption, locale: Locale): string {
+  return locale === "en" ? value.labelEn || value.labelKo : value.labelKo;
+}
+
+function getAssetPreviewUrl(asset: SurveyAsset | undefined): string | undefined {
+  if (!asset) return undefined;
+  return getString(asset.metadata.publicUrl) ?? getString(asset.metadata.public_url) ?? getString(asset.metadata.url);
+}
+
+function normalizeLocale(value: string | null): Locale {
+  return value === "en" ? "en" : "ko";
+}
+
+function normalizeDevice(value: string | null): PreviewDevice {
+  return value === "desktop" ? "desktop" : "mobile";
+}
+
+function toggleClass(active: boolean): string {
+  return ["tg-preview-toggle", active ? "tg-preview-toggle--active" : ""].filter(Boolean).join(" ");
+}
+
+function sortByOrder<TItem extends { orderIndex: number }>(items: readonly TItem[]): TItem[] {
+  return [...items].sort((a, b) => a.orderIndex - b.orderIndex);
+}
+
+function hasAnswer(answer: PreviewAnswer | undefined): boolean {
+  if (answer === undefined || answer === "") return false;
+  if (Array.isArray(answer)) return answer.length > 0;
+  if (isRankingAnswer(answer)) return Object.values(answer).some((value) => value !== undefined);
+  return true;
+}
+
+function isRankingAnswer(value: unknown): value is RankingAnswer {
+  return isRecord(value) && Object.values(value).every((item) => item === undefined || typeof item === "number");
+}
+
+function isImageTagAnswer(value: unknown): value is ImageTagDraft[] {
+  return Array.isArray(value) && value.every((item) => isRecord(item) && typeof item.xRatio === "number" && typeof item.yRatio === "number");
+}
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function toRecord(value: unknown): JsonRecord {
+  return isRecord(value) ? value : {};
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === "string" && value ? value : undefined;
+}
+
+function getNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function getStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function clamp(value: number): number {
+  return Math.min(1, Math.max(0, value));
 }

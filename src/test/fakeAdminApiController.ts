@@ -12,6 +12,10 @@ import type {
   HeatmapPoint,
   PreviewSurvey,
   PreviewSurveyCommand,
+  QuestionSetImportCommand,
+  QuestionSetImportPreview,
+  QuestionSetImportPreviewCommand,
+  QuestionSetImportResult,
   PublishValidationResult,
   Question,
   SectionSummary,
@@ -28,7 +32,7 @@ import type {
 export const fakeAdminMember: AdminMember = {
   id: "admin-member-1",
   userId: "user-1",
-  email: "admin@handong.ac.kr",
+  email: "admin@example.com",
   role: "owner",
   isActive: true,
   createdAt: "2026-05-28T00:00:00.000Z",
@@ -37,19 +41,16 @@ export const fakeAdminMember: AdminMember = {
 export const activeAdminSession: AdminSessionState = {
   isAuthenticated: true,
   email: fakeAdminMember.email,
-  isHandongEmail: true,
   admin: fakeAdminMember,
 };
 
 export const unauthenticatedSession: AdminSessionState = {
   isAuthenticated: false,
-  isHandongEmail: false,
 };
 
 export const nonMemberSession: AdminSessionState = {
   isAuthenticated: true,
-  email: "student@handong.ac.kr",
-  isHandongEmail: true,
+  email: "external.admin@example.com",
 };
 
 export const fakeSurvey: Survey = {
@@ -58,6 +59,7 @@ export const fakeSurvey: Survey = {
   description: "2026 봄학기",
   status: "draft",
   publicSlug: undefined,
+  publicCode: "8K2PQA",
   versionGroupId: "version-group-1",
   versionNumber: 1,
   parentSurveyId: undefined,
@@ -139,7 +141,7 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
       surveyId: "survey-1",
       sectionId: "section-1",
       questionKey: "question",
-      questionType: "text",
+      questionType: command.questionType ?? "text",
       title: command.title ?? { ko: "질문" },
       description: command.description,
       orderIndex: command.orderIndex ?? 0,
@@ -172,6 +174,25 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
       assets: [],
       previewMode: true,
       options: command.options,
+    }),
+    previewQuestionSetImport: async (command: QuestionSetImportPreviewCommand): Promise<QuestionSetImportPreview> => ({
+      templateId: command.templateId,
+      title: "25-2 생활관 정기 설문조사 질문 목록",
+      sections: [],
+      questions: [],
+      totalSectionCount: 8,
+      totalQuestionCount: 195,
+      importableSectionCount: 8,
+      importableQuestionCount: 195,
+      skippedQuestionCount: 0,
+    }),
+    importQuestionSet: async (command: QuestionSetImportCommand): Promise<QuestionSetImportResult> => ({
+      templateId: command.templateId,
+      sectionsCreated: 8,
+      questionsCreated: 195,
+      questionsSkipped: 0,
+      sectionKeys: [],
+      questionKeys: [],
     }),
     getFilterOptions: async () => emptyFilterOptions,
     getSectionSatisfactionSummary: async (): Promise<SectionSummary[]> => [],

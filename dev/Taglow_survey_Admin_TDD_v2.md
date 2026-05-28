@@ -6,7 +6,6 @@
 
 ```text
 Google 로그인
-→ @handong.ac.kr 도메인 검증
 → admin_members 기반 관리자 권한 확인
 → 설문 목록 조회
 → 새 설문 생성
@@ -233,7 +232,6 @@ src/
 │
 ├── utils/
 │   ├── envConfig.ts
-│   ├── authDomain.ts
 │   ├── slug.ts
 │   ├── i18nText.ts
 │   ├── qrBuilder.ts
@@ -313,17 +311,16 @@ src/
 
 ```text
 1. Supabase session 존재
-2. Google email이 @handong.ac.kr
-3. admin_members row 존재
-4. admin_members.is_active = true
+2. admin_members row 존재
+3. admin_members.is_active = true
 ```
 
 권한 실패 시:
 
 ```text
 - 비로그인: /admin/login
-- handong 계정 아님: /admin/access-denied
 - admin_members에 없음: /admin/access-denied
+- admin_members.is_active = false: /admin/access-denied
 ```
 
 ---
@@ -351,6 +348,46 @@ src/
 
 참여자 페이지는 주로 `surveys`, `survey_sections`, `questions`, `survey_assets`를 읽고, `responses`, `answers`를 생성한다.
 
+### 6.1.1 현재 Supabase 실제 스냅샷
+
+2026-05-28 기준 `taglow-survey` Supabase 프로젝트의 실제 DB는 다음 상태다. 이후 구현은 이 스냅샷을 우선 기준으로 삼는다.
+
+```text
+적용된 remote migrations:
+- 001_taglow_survey_core_schema
+- 002_taglow_survey_indexes
+- 003_taglow_survey_security_rpc_storage
+- 004_taglow_survey_function_hardening
+- 005_taglow_survey_private_rls_helpers
+- 006_revoke_exposed_rls_auto_enable
+- 007_align_section_type_values
+- 008_create_next_survey_version_rpc
+- 009_enforce_admin_editor_mutations
+```
+
+확인된 핵심 사항:
+
+```text
+- public 핵심 테이블 7개 모두 RLS enabled.
+- public schema 신규 테이블에는 event trigger ensure_rls가 RLS를 자동 enable.
+- RLS helper는 public 노출 함수보다 private security definer helper를 정책에서 사용한다.
+- mutation 정책은 owner/admin만 허용하는 private.is_admin_editor()를 사용하고 viewer는 조회/분석 전용이다.
+- Storage bucket은 survey-assets 1개이며 public=false.
+- survey_sections/questions/survey_assets는 published/closed/archived 설문에서 trigger로 구조 변경이 차단된다.
+- create_next_survey_version(p_survey_id)는 새 draft version을 만들고 sections/questions/assets metadata를 복제한다.
+```
+
+실제 DB와 앱 모델 사이의 주요 매핑 주의점:
+
+```text
+- 대부분의 row에는 updated_at이 존재한다.
+- surveys.created_by는 NOT NULL이며 insert 시 반드시 auth.uid()를 넣어야 한다.
+- responses.status는 in_progress / submitted / discarded를 허용한다.
+- survey_sections.section_type은 운영 섹션 값과 분석/UI 섹션 값을 모두 허용한다.
+- 분석 RPC 반환 컬럼은 DB 명칭(avg_score, avg_importance, avg_satisfaction, avg_gap)을 mapper에서 domain 명칭으로 변환한다.
+- get_text_answers RPC는 participant identity 대신 answer_id와 필터용 profile 필드만 반환한다.
+```
+
 ---
 
 ## 6.2 ERD
@@ -364,6 +401,7 @@ erDiagram
         text role
         boolean is_active
         timestamptz created_at
+        timestamptz updated_at
     }
 
     SURVEYS {
@@ -372,6 +410,7 @@ erDiagram
         text description
         text status
         text public_slug
+        text public_code
         uuid version_group_id
         int version_number
         uuid parent_survey_id FK
@@ -396,6 +435,7 @@ erDiagram
         text section_type
         jsonb settings
         timestamptz created_at
+        timestamptz updated_at
     }
 
     QUESTIONS {
@@ -415,6 +455,8 @@ erDiagram
         text space_key
         jsonb config
         jsonb validation
+        timestamptz created_at
+        timestamptz updated_at
     }
 
     SURVEY_ASSETS {
@@ -427,6 +469,7 @@ erDiagram
         text storage_path
         jsonb metadata
         timestamptz created_at
+        timestamptz updated_at
     }
 
     RESPONSES {
@@ -447,6 +490,8 @@ erDiagram
         jsonb raw_payload
         timestamptz started_at
         timestamptz submitted_at
+        timestamptz created_at
+        timestamptz updated_at
     }
 
     ANSWERS {
@@ -469,6 +514,7 @@ erDiagram
         smallint severity
         jsonb value_json
         timestamptz created_at
+        timestamptz updated_at
     }
 
     ADMIN_MEMBERS }o--|| SURVEYS : authorizes_creator
@@ -516,7 +562,8 @@ erDiagram
 
 ```text
 status: draft / published / closed / archived
-public_slug: 참여자 공개 URL
+public_slug: 사람이 읽을 수 있는 참여자 공개 URL 식별자
+public_code: slug가 없을 때 사용하는 랜덤 참여자 공개 URL 식별자
 version_group_id: 같은 설문 계열 묶음
 version_number: 설문 버전 번호
 parent_survey_id: 이전 버전 설문 id
@@ -608,17 +655,19 @@ single choice → choice_value
 
 ## 7. Supabase Migration 설계
 
-권장 migration 파일 구조:
+현재 remote 기준 migration 구조:
 
 ```text
 supabase/migrations/
-├── 001_core_schema.sql
-├── 002_indexes.sql
-├── 003_functions_and_triggers.sql
-├── 004_rls_policies.sql
-├── 005_storage_policies.sql
-├── 006_analysis_rpc.sql
-└── 007_seed_sample_survey.sql
+├── 001_taglow_survey_core_schema
+├── 002_taglow_survey_indexes
+├── 003_taglow_survey_security_rpc_storage
+├── 004_taglow_survey_function_hardening
+├── 005_taglow_survey_private_rls_helpers
+├── 006_revoke_exposed_rls_auto_enable
+├── 007_align_section_type_values
+├── 008_create_next_survey_version_rpc
+└── 009_enforce_admin_editor_mutations
 ```
 
 ### 7.1 `001_core_schema.sql`
@@ -649,6 +698,9 @@ on public.surveys (created_by, status, updated_at desc);
 create index idx_surveys_public_slug
 on public.surveys (public_slug)
 where public_slug is not null;
+
+create unique index idx_surveys_public_code
+on public.surveys (public_code);
 
 create index idx_sections_survey_order
 on public.survey_sections (survey_id, order_index);
@@ -702,8 +754,14 @@ on public.answers using gin (value_json);
 ```text
 - set_updated_at()
 - prevent_published_survey_structure_change()
-- is_handong_user()
-- is_admin_user()
+- private.current_auth_email()
+- private.is_admin_user()
+- private.is_admin_editor()
+- private.is_admin_owner()
+- private.is_handong_user()
+- public.is_handong_user() legacy helper
+- public.rls_auto_enable() event trigger function
+- public.create_next_survey_version(p_survey_id)
 ```
 
 관리자 페이지에서 `published`, `closed`, `archived` 상태의 설문 구조를 수정하지 못하도록 DB trigger를 둔다.
@@ -749,11 +807,16 @@ Participant:
 
 ### 8.3 Admin 권한 Helper
 
+현재 RLS 정책은 `private.is_admin_user()`를 사용한다. 이 함수는 security definer이고 `admin_members.user_id = auth.uid()`와 `is_active = true`를 확인한다.
+Mutation 정책은 `private.is_admin_editor()`를 사용하며 `role in ('owner', 'admin')`까지 확인한다. 따라서 `viewer`는 설문/섹션/질문/asset/storage object를 생성·수정·삭제할 수 없다.
+
 ```sql
-create or replace function public.is_admin_user()
+create or replace function private.is_admin_user()
 returns boolean
 language sql
 stable
+security definer
+set search_path to 'private', 'public'
 as $$
   select exists (
     select 1
@@ -766,11 +829,15 @@ $$;
 
 ### 8.4 Handong 도메인 Helper
 
+참여자 published 설문 읽기와 응답 생성 정책에는 `private.is_handong_user()`가 사용된다. 관리자 앱 접근은 Handong 도메인으로 제한하지 않고 active `admin_members`만 확인한다.
+
 ```sql
-create or replace function public.is_handong_user()
+create or replace function private.is_handong_user()
 returns boolean
 language sql
 stable
+security definer
+set search_path to 'private', 'public'
 as $$
   select lower(coalesce(auth.jwt() ->> 'email', '')) like '%@handong.ac.kr';
 $$;
@@ -780,18 +847,50 @@ $$;
 
 ```text
 surveys:
-- admin만 insert 가능
-- created_by = auth.uid()인 설문만 update/delete 가능
-- admin은 본인 설문 select 가능
+- owner/admin만 insert 가능
+- owner/admin이면서 created_by = auth.uid()인 설문만 update/delete 가능
+- active admin_members는 본인 설문 select 가능
 - handong 참여자는 published 설문만 select 가능
 
 survey_sections/questions/survey_assets:
-- admin은 본인 설문의 구조만 manage 가능
+- owner/admin은 본인 설문의 구조만 manage 가능
 - 참여자는 published 설문의 구조만 select 가능
 
 responses/answers:
 - admin은 본인 설문의 응답만 select 가능
 - participant는 자기 응답만 insert/select 가능
+```
+
+실제 RLS 정책 요약:
+
+```text
+admin_members:
+- 본인 membership 또는 owner가 select 가능
+- owner만 admin_members 전체 manage 가능
+
+surveys:
+- active admin은 created_by = auth.uid() 조건으로 select
+- owner/admin은 created_by = auth.uid() 조건으로 insert/update
+- draft 설문만 delete 가능
+- Handong 사용자는 published 설문만 select
+
+survey_sections/questions/survey_assets:
+- owner/admin은 본인이 만든 설문의 구조만 manage
+- Handong 사용자는 published 설문의 구조/asset metadata만 select
+
+responses:
+- active admin은 본인이 만든 설문의 response만 select
+- Handong participant는 participant_user_id = auth.uid()이고 participant_email = auth email일 때 insert
+- participant는 자기 response만 select
+
+answers:
+- active admin은 본인이 만든 설문의 answer만 select
+- Handong participant는 자기 response에 대한 answer만 insert
+- participant는 자기 answer만 select
+
+storage.objects:
+- survey-assets bucket object는 owner/admin이 manage
+- Handong 사용자는 published survey_assets row와 연결된 object만 select
 ```
 
 ---
@@ -851,6 +950,7 @@ export type Survey = Readonly<{
   description?: string;
   status: SurveyStatus;
   publicSlug?: string;
+  publicCode?: string;
   versionGroupId: string;
   versionNumber: number;
   parentSurveyId?: string;
@@ -872,6 +972,8 @@ export type SurveySection = Readonly<{
   orderIndex: number;
   sectionType: SectionType;
   settings: Record<string, unknown>;
+  createdAt?: string;
+  updatedAt?: string;
 }>;
 
 export type Question = Readonly<{
@@ -889,6 +991,8 @@ export type Question = Readonly<{
   spaceKey?: string;
   config: QuestionConfig;
   validation: QuestionValidation;
+  createdAt?: string;
+  updatedAt?: string;
 }>;
 
 export type SurveyAsset = Readonly<{
@@ -900,6 +1004,35 @@ export type SurveyAsset = Readonly<{
   storageBucket: string;
   storagePath: string;
   metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt?: string;
+}>;
+```
+
+분석 domain model은 RPC raw 컬럼명을 그대로 노출하지 않는다.
+
+```ts
+export type HeatmapPoint = Readonly<{
+  id?: string;
+  assetId?: string;
+  xRatio: number;
+  yRatio: number;
+  tagType?: string;
+  severity?: number;
+  textValue?: string;
+  responseProfile?: Record<string, unknown>;
+}>;
+
+export type TextAnswer = Readonly<{
+  id: string;
+  responseId?: string;
+  sectionId?: string;
+  questionId?: string;
+  topicKey?: string;
+  spaceKey?: string;
+  textValue: string;
+  valueJson: Record<string, unknown>;
+  profile?: Record<string, unknown>;
   createdAt: string;
 }>;
 ```
@@ -1175,6 +1308,7 @@ questions
 /admin/surveys/:surveyId/preview?locale=en
 /admin/surveys/:surveyId/preview?device=mobile
 /admin/surveys/:surveyId/preview?section_id={section_id}
+/survey/{public_slug_or_public_code}
 ```
 
 원칙:
@@ -1195,6 +1329,7 @@ questions
 ```text
 - survey title 존재
 - public_slug 중복 없음
+- public_code 존재 및 중복 없음
 - 최소 1개 섹션 존재
 - 각 섹션에 최소 1개 질문 존재
 - 모든 질문 question_key unique
@@ -1256,6 +1391,11 @@ RPC: get_section_satisfaction_summary(p_survey_id, p_filters)
 answers.answer_type = 'scale'
 answers.metric_type = 'satisfaction'
 responses.status = 'submitted'
+DB 반환:
+- section_id
+- section_title
+- avg_score
+- n
 ```
 
 ### 18.3 Borich Summary
@@ -1265,6 +1405,13 @@ RPC: get_borich_summary(p_survey_id, p_filters)
 사용 화면: BorichCard
 기준:
 같은 response_id + topic_key 안의 importance/satisfaction 쌍을 pivot
+DB 반환:
+- topic_key
+- avg_importance
+- avg_satisfaction
+- avg_gap
+- borich_score
+- n
 ```
 
 ### 18.4 Heatmap Points
@@ -1274,20 +1421,42 @@ RPC: get_heatmap_points(p_survey_id, p_filters)
 사용 화면: HeatmapCard
 기준:
 answers.answer_type = 'image_tag'
-asset_id / x_ratio / y_ratio / tag_type / severity / text_value 반환
+DB 반환:
+- answer_id
+- asset_id
+- x_ratio
+- y_ratio
+- tag_type
+- severity
+- text_value
+- dormitory
+- room_type
+- rc
 ```
 
 ### 18.5 Text Answers
 
 ```text
-Gateway query: listTextAnswers(args)
+RPC: get_text_answers(p_survey_id, p_filters)
 사용 화면: TextAnswerTable
 기준:
 answers.answer_type = 'text'
+DB 반환:
+- answer_id
+- section_id
+- question_id
+- topic_key
+- space_key
+- text_value
+- value_json
+- dormitory
+- room_type
+- rc
+- department
+- created_at
 필터:
 - section_id
 - topic_key
-- space_key
 - dormitory
 - room_type
 - rc
@@ -1304,7 +1473,6 @@ answers.answer_type = 'text'
 
 ```text
 - Google 로그인 버튼
-- @handong.ac.kr 안내
 - 로그인 실패/권한 없음 상태 표시
 ```
 

@@ -5,12 +5,12 @@ Owns admin login and access-denied UI.
 ## Responsibilities
 
 - Google login entry screen.
-- Domain and admin member denial messaging.
+- Admin member denial messaging.
 - Recovery path back to login or account switch.
 
 ## Rules
 
-- Auth policy is: Supabase session, `@handong.ac.kr`, active `admin_members` row.
+- Auth policy is: Supabase session and active `admin_members` row. Do not restrict admin access by email domain.
 - Keep actual guard enforcement in `src/app/routeGuards.tsx` or an API/runtime abstraction.
 - Do not expose raw auth provider errors directly to users.
 - Do not add workspace membership UI until post-v2 scope is requested.

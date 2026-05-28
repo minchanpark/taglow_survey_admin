@@ -7,6 +7,7 @@ export type RawAdminMember = Readonly<{
   role: string;
   is_active: boolean;
   created_at: string;
+  updated_at?: string;
 }>;
 
 export type RawAdminAuthUser = Readonly<{
@@ -20,6 +21,7 @@ export type RawSurvey = Readonly<{
   description: string | null;
   status: string;
   public_slug: string | null;
+  public_code?: string | null;
   version_group_id: string;
   version_number: number;
   parent_survey_id: string | null;
@@ -44,6 +46,7 @@ export type RawSection = Readonly<{
   section_type: string;
   settings: JsonRecord | null;
   created_at?: string;
+  updated_at?: string;
 }>;
 
 export type RawQuestion = Readonly<{
@@ -63,6 +66,8 @@ export type RawQuestion = Readonly<{
   space_key: string | null;
   config: JsonRecord | null;
   validation: JsonRecord | null;
+  created_at?: string;
+  updated_at?: string;
 }>;
 
 export type RawSurveyAsset = Readonly<{
@@ -75,10 +80,14 @@ export type RawSurveyAsset = Readonly<{
   storage_path: string;
   metadata: JsonRecord | null;
   created_at: string;
+  updated_at?: string;
 }>;
 
 export type RawCreateSurveyPayload = Partial<Pick<RawSurvey, "description" | "settings">> & Pick<RawSurvey, "title">;
-export type RawUpdateSurveyPayload = Partial<Pick<RawSurvey, "title" | "description" | "status" | "public_slug" | "settings">>;
+export type RawInsertSurveyPayload = RawCreateSurveyPayload & Pick<RawSurvey, "created_by">;
+export type RawUpdateSurveyPayload = Partial<
+  Pick<RawSurvey, "title" | "description" | "status" | "public_slug" | "public_code" | "settings" | "published_at" | "closed_at">
+>;
 
 export type RawCreateSectionPayload = Pick<
   RawSection,
@@ -86,7 +95,7 @@ export type RawCreateSectionPayload = Pick<
 > &
   Partial<Pick<RawSection, "title_en" | "description_ko" | "description_en" | "section_type" | "settings">>;
 export type RawUpdateSectionPayload = Partial<
-  Pick<RawSection, "title_ko" | "title_en" | "description_ko" | "description_en" | "order_index" | "section_type" | "settings">
+  Pick<RawSection, "section_key" | "title_ko" | "title_en" | "description_ko" | "description_en" | "order_index" | "section_type" | "settings">
 >;
 
 export type RawCreateQuestionPayload = Pick<
@@ -102,7 +111,19 @@ export type RawCreateQuestionPayload = Pick<
 export type RawUpdateQuestionPayload = Partial<
   Pick<
     RawQuestion,
-    "title_ko" | "title_en" | "description_ko" | "description_en" | "order_index" | "is_required" | "metric_type" | "topic_key" | "space_key" | "config" | "validation"
+    | "question_type"
+    | "question_key"
+    | "title_ko"
+    | "title_en"
+    | "description_ko"
+    | "description_en"
+    | "order_index"
+    | "is_required"
+    | "metric_type"
+    | "topic_key"
+    | "space_key"
+    | "config"
+    | "validation"
   >
 >;
 
@@ -131,37 +152,51 @@ export type TextAnswerQueryArgs = AnalysisQueryArgs;
 export type RawSectionSummary = Readonly<{
   section_id: string;
   section_title: string | null;
-  average_score: number | null;
+  avg_score?: number | null;
+  average_score?: number | null;
   n: number;
 }>;
 
 export type RawBorichResult = Readonly<{
   topic_key: string;
-  average_importance: number | null;
-  average_satisfaction: number | null;
-  gap: number | null;
+  avg_importance?: number | null;
+  avg_satisfaction?: number | null;
+  avg_gap?: number | null;
+  average_importance?: number | null;
+  average_satisfaction?: number | null;
+  gap?: number | null;
   borich_score: number | null;
   n: number;
 }>;
 
 export type RawHeatmapPoint = Readonly<{
-  asset_id: string;
-  x_ratio: number;
-  y_ratio: number;
+  answer_id?: string;
+  asset_id: string | null;
+  x_ratio: number | null;
+  y_ratio: number | null;
   tag_type: string | null;
   severity: number | null;
   text_value: string | null;
+  dormitory?: string | null;
+  room_type?: string | null;
+  rc?: string | null;
   response_profile?: JsonRecord | null;
 }>;
 
 export type RawTextAnswer = Readonly<{
-  id: string;
-  response_id: string;
+  id?: string;
+  answer_id?: string;
+  response_id?: string;
   section_id: string | null;
   question_id: string | null;
   topic_key: string | null;
   space_key: string | null;
   text_value: string | null;
+  value_json?: JsonRecord | null;
+  dormitory?: string | null;
+  room_type?: string | null;
+  rc?: string | null;
+  department?: string | null;
   profile?: JsonRecord | null;
   created_at: string;
 }>;

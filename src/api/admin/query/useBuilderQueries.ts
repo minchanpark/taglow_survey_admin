@@ -1,10 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useAdminApiController } from "../controller/adminApiControllerProvider";
 import type {
   CreateQuestionCommand,
   CreateSectionCommand,
+  QuestionSetImportCommand,
+  QuestionSetTemplateId,
+  Question,
   ReorderQuestionsCommand,
   ReorderSectionsCommand,
+  SurveyDetail,
+  SurveySection,
   UpdateQuestionCommand,
   UpdateSectionCommand,
 } from "../model";
@@ -22,12 +27,40 @@ export function useAssetsQuery(surveyId: string) {
   return useSurveyDetailSliceQuery(surveyId, "assets");
 }
 
+export function useQuestionSetImportPreviewQuery(surveyId: string, templateId: QuestionSetTemplateId, enabled: boolean) {
+  const controller = useAdminApiController();
+  return useQuery({
+    queryKey: adminQueryKeys.questionSetImportPreview(surveyId, templateId),
+    queryFn: () => controller.previewQuestionSetImport({ surveyId, templateId }),
+    enabled: Boolean(surveyId) && enabled,
+  });
+}
+
+export function useImportQuestionSetMutation() {
+  const controller = useAdminApiController();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (command: QuestionSetImportCommand) => controller.importQuestionSet(command),
+    onSuccess: (_result, command) => {
+      invalidateBuilder(queryClient, command.surveyId);
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.questionSetImportPreview(command.surveyId, command.templateId) });
+    },
+  });
+}
+
 export function useCreateSectionMutation() {
   const controller = useAdminApiController();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (command: CreateSectionCommand) => controller.createSection(command),
-    onSuccess: (section) => invalidateBuilder(queryClient, section.surveyId),
+    onSuccess: (section) => {
+      setSurveyDetail(queryClient, section.surveyId, (detail) => ({
+        ...detail,
+        sections: upsertById(detail.sections, section),
+      }));
+      setListQuery(queryClient, adminQueryKeys.sections(section.surveyId), (sections: SurveySection[]) => upsertById(sections, section));
+      invalidateBuilder(queryClient, section.surveyId);
+    },
   });
 }
 
@@ -36,7 +69,14 @@ export function useUpdateSectionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (command: UpdateSectionCommand & { surveyId: string }) => controller.updateSection(command),
-    onSuccess: (_section, command) => invalidateBuilder(queryClient, command.surveyId),
+    onSuccess: (section, command) => {
+      setSurveyDetail(queryClient, command.surveyId, (detail) => ({
+        ...detail,
+        sections: upsertById(detail.sections, section),
+      }));
+      setListQuery(queryClient, adminQueryKeys.sections(command.surveyId), (sections: SurveySection[]) => upsertById(sections, section));
+      invalidateBuilder(queryClient, command.surveyId);
+    },
   });
 }
 
@@ -54,7 +94,20 @@ export function useDeleteSectionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (command: { surveyId: string; sectionId: string }) => controller.deleteSection(command.sectionId),
-    onSuccess: (_result, command) => invalidateBuilder(queryClient, command.surveyId),
+    onSuccess: (_result, command) => {
+      setSurveyDetail(queryClient, command.surveyId, (detail) => ({
+        ...detail,
+        sections: detail.sections.filter((section) => section.id !== command.sectionId),
+        questions: detail.questions.filter((question) => question.sectionId !== command.sectionId),
+      }));
+      setListQuery(queryClient, adminQueryKeys.sections(command.surveyId), (sections: SurveySection[]) =>
+        sections.filter((section) => section.id !== command.sectionId),
+      );
+      setListQuery(queryClient, adminQueryKeys.questions(command.surveyId), (questions: Question[]) =>
+        questions.filter((question) => question.sectionId !== command.sectionId),
+      );
+      invalidateBuilder(queryClient, command.surveyId);
+    },
   });
 }
 
@@ -63,7 +116,14 @@ export function useCreateQuestionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (command: CreateQuestionCommand) => controller.createQuestion(command),
-    onSuccess: (question) => invalidateBuilder(queryClient, question.surveyId),
+    onSuccess: (question) => {
+      setSurveyDetail(queryClient, question.surveyId, (detail) => ({
+        ...detail,
+        questions: upsertById(detail.questions, question),
+      }));
+      setListQuery(queryClient, adminQueryKeys.questions(question.surveyId), (questions: Question[]) => upsertById(questions, question));
+      invalidateBuilder(queryClient, question.surveyId);
+    },
   });
 }
 
@@ -72,7 +132,14 @@ export function useUpdateQuestionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (command: UpdateQuestionCommand & { surveyId: string }) => controller.updateQuestion(command),
-    onSuccess: (_question, command) => invalidateBuilder(queryClient, command.surveyId),
+    onSuccess: (question, command) => {
+      setSurveyDetail(queryClient, command.surveyId, (detail) => ({
+        ...detail,
+        questions: upsertById(detail.questions, question),
+      }));
+      setListQuery(queryClient, adminQueryKeys.questions(command.surveyId), (questions: Question[]) => upsertById(questions, question));
+      invalidateBuilder(queryClient, command.surveyId);
+    },
   });
 }
 
@@ -90,7 +157,16 @@ export function useDeleteQuestionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (command: { surveyId: string; questionId: string }) => controller.deleteQuestion(command.questionId),
-    onSuccess: (_result, command) => invalidateBuilder(queryClient, command.surveyId),
+    onSuccess: (_result, command) => {
+      setSurveyDetail(queryClient, command.surveyId, (detail) => ({
+        ...detail,
+        questions: detail.questions.filter((question) => question.id !== command.questionId),
+      }));
+      setListQuery(queryClient, adminQueryKeys.questions(command.surveyId), (questions: Question[]) =>
+        questions.filter((question) => question.id !== command.questionId),
+      );
+      invalidateBuilder(queryClient, command.surveyId);
+    },
   });
 }
 
@@ -119,4 +195,19 @@ function invalidateBuilder(queryClient: ReturnType<typeof useQueryClient>, surve
   void queryClient.invalidateQueries({ queryKey: adminQueryKeys.questions(surveyId) });
   void queryClient.invalidateQueries({ queryKey: adminQueryKeys.assets(surveyId) });
   void queryClient.invalidateQueries({ queryKey: adminQueryKeys.previewRoot(surveyId) });
+}
+
+function setSurveyDetail(queryClient: QueryClient, surveyId: string, updater: (detail: SurveyDetail) => SurveyDetail) {
+  queryClient.setQueryData<SurveyDetail>(adminQueryKeys.survey(surveyId), (detail) => (detail ? updater(detail) : detail));
+}
+
+function setListQuery<TItem>(queryClient: QueryClient, queryKey: readonly unknown[], updater: (items: TItem[]) => TItem[]) {
+  queryClient.setQueryData<TItem[]>(queryKey, (items) => (items ? updater(items) : items));
+}
+
+function upsertById<TItem extends { id: string; orderIndex?: number }>(items: readonly TItem[], item: TItem): TItem[] {
+  const next = items.some((current) => current.id === item.id)
+    ? items.map((current) => (current.id === item.id ? item : current))
+    : [...items, item];
+  return [...next].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
 }

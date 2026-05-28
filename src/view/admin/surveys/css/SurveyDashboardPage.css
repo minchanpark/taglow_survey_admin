@@ -30,10 +30,77 @@
   line-height: var(--tg-line-caption);
 }
 
+.tg-survey-dashboard-page__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--tg-space-4);
+}
+
+.tg-survey-dashboard-page__action {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tg-space-3);
+  border: 1px solid var(--tg-border-strong);
+  border-radius: var(--tg-radius-sm);
+  padding: 0 var(--tg-space-6);
+  color: var(--tg-text-strong);
+  background: var(--tg-bg-panel);
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-dense);
+  text-decoration: none;
+}
+
+.tg-survey-dashboard-page__action:hover {
+  background: var(--tg-bg-inset);
+}
+
+.tg-survey-dashboard-page__action--primary {
+  border-color: var(--tg-accent);
+  color: var(--tg-color-white);
+  background: var(--tg-accent);
+}
+
+.tg-survey-dashboard-page__action--primary:hover {
+  background: var(--tg-accent-hover);
+}
+
 .tg-survey-dashboard-page__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--tg-space-8);
+}
+
+.tg-survey-dashboard-page__public-url {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tg-space-6);
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  padding: var(--tg-space-6) var(--tg-space-8);
+  background: var(--tg-bg-panel);
+}
+
+.tg-survey-dashboard-page__public-url span {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-survey-dashboard-page__public-url a {
+  overflow-wrap: anywhere;
+  color: var(--tg-text-strong);
+  font-family: var(--tg-font-mono);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+  text-decoration: none;
 }
 
 .tg-survey-dashboard-page__metric {
@@ -65,5 +132,9 @@
 
   .tg-survey-dashboard-page__grid {
     grid-template-columns: 1fr;
+  }
+
+  .tg-survey-dashboard-page__header-actions {
+    justify-content: flex-start;
   }
 }

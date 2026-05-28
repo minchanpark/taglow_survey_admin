@@ -40,7 +40,7 @@ Important schema choices:
 
 ## RLS/Auth Rules
 
-- App guard: Google OAuth session, `@handong.ac.kr`, active `admin_members` row.
+- App guard: Google OAuth session and active `admin_members` row. Admin access is not restricted by email domain.
 - RLS helper functions include `is_handong_user()` and `is_admin_user()`.
 - Role model: owner/admin/viewer plus participant policies.
 - Published/closed/archived survey structure is protected by DB trigger; make a next version instead of editing locked structure.

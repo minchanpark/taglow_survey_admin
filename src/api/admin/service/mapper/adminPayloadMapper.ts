@@ -40,6 +40,7 @@ export class AdminPayloadMapper {
       role: normalizeAdminRole(row.role),
       isActive: row.is_active,
       createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 
@@ -50,6 +51,7 @@ export class AdminPayloadMapper {
       description: row.description ?? undefined,
       status: normalizeSurveyStatus(row.status),
       publicSlug: row.public_slug ?? undefined,
+      publicCode: row.public_code ?? undefined,
       versionGroupId: row.version_group_id,
       versionNumber: row.version_number,
       parentSurveyId: row.parent_survey_id ?? undefined,
@@ -73,6 +75,8 @@ export class AdminPayloadMapper {
       orderIndex: row.order_index,
       sectionType: normalizeSectionType(row.section_type),
       settings: normalizeRecord(row.settings),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 
@@ -92,6 +96,8 @@ export class AdminPayloadMapper {
       spaceKey: row.space_key ?? undefined,
       config: normalizeRecord(row.config),
       validation: normalizeRecord(row.validation),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 
@@ -106,6 +112,7 @@ export class AdminPayloadMapper {
       storagePath: row.storage_path,
       metadata: normalizeRecord(row.metadata),
       createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 
@@ -125,7 +132,7 @@ export class AdminPayloadMapper {
     return {
       sectionId: row.section_id,
       sectionTitle: row.section_title ?? "Untitled section",
-      averageScore: row.average_score,
+      averageScore: row.avg_score ?? row.average_score ?? null,
       n: row.n,
     };
   }
@@ -133,9 +140,9 @@ export class AdminPayloadMapper {
   toBorichResult(row: RawBorichResult): BorichResult {
     return {
       topicKey: row.topic_key,
-      averageImportance: row.average_importance,
-      averageSatisfaction: row.average_satisfaction,
-      gap: row.gap,
+      averageImportance: row.avg_importance ?? row.average_importance ?? null,
+      averageSatisfaction: row.avg_satisfaction ?? row.average_satisfaction ?? null,
+      gap: row.avg_gap ?? row.gap ?? null,
       borichScore: row.borich_score,
       n: row.n,
     };
@@ -143,26 +150,37 @@ export class AdminPayloadMapper {
 
   toHeatmapPoint(row: RawHeatmapPoint): HeatmapPoint {
     return {
-      assetId: row.asset_id,
-      xRatio: row.x_ratio,
-      yRatio: row.y_ratio,
+      id: row.answer_id,
+      assetId: row.asset_id ?? undefined,
+      xRatio: Number(row.x_ratio ?? 0),
+      yRatio: Number(row.y_ratio ?? 0),
       tagType: row.tag_type ?? undefined,
       severity: row.severity ?? undefined,
       textValue: row.text_value ?? undefined,
-      responseProfile: row.response_profile ?? undefined,
+      responseProfile: row.response_profile ?? compactRecord({
+        dormitory: row.dormitory,
+        roomType: row.room_type,
+        rc: row.rc,
+      }),
     };
   }
 
   toTextAnswer(row: RawTextAnswer): TextAnswer {
     return {
-      id: row.id,
+      id: row.id ?? row.answer_id ?? "",
       responseId: row.response_id,
       sectionId: row.section_id ?? undefined,
       questionId: row.question_id ?? undefined,
       topicKey: row.topic_key ?? undefined,
       spaceKey: row.space_key ?? undefined,
       textValue: row.text_value ?? "",
-      profile: row.profile ?? undefined,
+      valueJson: normalizeRecord(row.value_json),
+      profile: row.profile ?? compactRecord({
+        dormitory: row.dormitory,
+        roomType: row.room_type,
+        rc: row.rc,
+        department: row.department,
+      }),
       createdAt: row.created_at,
     };
   }
@@ -170,6 +188,11 @@ export class AdminPayloadMapper {
 
 function normalizeRecord(value: JsonRecord | null | undefined): JsonRecord {
   return value ?? {};
+}
+
+function compactRecord(value: Record<string, string | number | boolean | null | undefined>): JsonRecord | undefined {
+  const entries = Object.entries(value).filter(([, item]) => item !== null && item !== undefined && item !== "");
+  return entries.length ? (Object.fromEntries(entries) as JsonRecord) : undefined;
 }
 
 function normalizeStringArray(value: string[] | null | undefined): string[] {
@@ -187,7 +210,20 @@ function normalizeSurveyStatus(value: string): SurveyStatus {
 }
 
 function normalizeSectionType(value: string): SectionType {
-  const allowed: SectionType[] = ["general", "profile", "satisfaction", "space_tagging", "free_text", "submitter"];
+  const allowed: SectionType[] = [
+    "intro",
+    "general",
+    "profile",
+    "facility",
+    "laundry",
+    "global_lounge",
+    "identity",
+    "completion",
+    "satisfaction",
+    "space_tagging",
+    "free_text",
+    "submitter",
+  ];
   return allowed.includes(value as SectionType) ? (value as SectionType) : "general";
 }
 

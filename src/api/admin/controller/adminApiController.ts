@@ -12,6 +12,10 @@ import type {
   HeatmapPoint,
   PreviewSurvey,
   PreviewSurveyCommand,
+  QuestionSetImportCommand,
+  QuestionSetImportPreview,
+  QuestionSetImportPreviewCommand,
+  QuestionSetImportResult,
   PublishValidationResult,
   Question,
   ReorderQuestionsCommand,
@@ -59,6 +63,9 @@ export interface AdminApiController {
   createNextVersion(surveyId: string): Promise<Survey>;
 
   getPreviewSurvey(command: PreviewSurveyCommand): Promise<PreviewSurvey>;
+
+  previewQuestionSetImport(command: QuestionSetImportPreviewCommand): Promise<QuestionSetImportPreview>;
+  importQuestionSet(command: QuestionSetImportCommand): Promise<QuestionSetImportResult>;
 
   getFilterOptions(surveyId: string): Promise<FilterOptions>;
   getSectionSatisfactionSummary(command: AnalysisFilterCommand): Promise<SectionSummary[]>;

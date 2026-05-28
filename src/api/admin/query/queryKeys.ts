@@ -8,6 +8,8 @@ export const adminQueryKeys = {
   sections: (surveyId: string) => ["admin", "survey", surveyId, "sections"] as const,
   questions: (surveyId: string) => ["admin", "survey", surveyId, "questions"] as const,
   assets: (surveyId: string) => ["admin", "survey", surveyId, "assets"] as const,
+  questionSetImportPreview: (surveyId: string, templateId: string) =>
+    ["admin", "survey", surveyId, "questionSetImportPreview", templateId] as const,
   previewRoot: (surveyId: string) => ["admin", "survey", surveyId, "preview"] as const,
   preview: (surveyId: string, options: PreviewOptions) => ["admin", "survey", surveyId, "preview", options] as const,
   filterOptions: (surveyId: string) => ["admin", "survey", surveyId, "filterOptions"] as const,

@@ -1,0 +1,182 @@
+.tg-new-survey-page {
+  display: grid;
+  max-width: 920px;
+  gap: var(--tg-space-12);
+  padding: var(--tg-space-16);
+}
+
+.tg-new-survey-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--tg-space-8);
+}
+
+.tg-new-survey-page__header h1,
+.tg-new-survey-page__header p {
+  margin: 0;
+}
+
+.tg-new-survey-page__header h1 {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-page-title);
+  font-weight: var(--tg-weight-bold);
+  line-height: var(--tg-line-page-title);
+}
+
+.tg-new-survey-page__header p {
+  color: var(--tg-text-muted);
+}
+
+.tg-new-survey-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tg-space-3);
+  margin-bottom: var(--tg-space-4);
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+  text-decoration: none;
+}
+
+.tg-new-survey-page__back:hover {
+  color: var(--tg-text-strong);
+}
+
+.tg-new-survey-page__form {
+  display: grid;
+  gap: var(--tg-space-10);
+}
+
+.tg-new-survey-page__section {
+  display: grid;
+  gap: var(--tg-space-8);
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-md);
+  padding: var(--tg-space-12);
+  background: var(--tg-bg-panel);
+}
+
+.tg-new-survey-page__section:disabled {
+  opacity: 0.72;
+}
+
+.tg-new-survey-page__section legend {
+  padding: 0 var(--tg-space-3);
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-card-title);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-card-title);
+}
+
+.tg-new-survey-page__field {
+  display: grid;
+  gap: var(--tg-space-4);
+}
+
+.tg-new-survey-page__field span {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-new-survey-page__field input,
+.tg-new-survey-page__field textarea {
+  width: 100%;
+  border: 1px solid var(--tg-border-strong);
+  border-radius: var(--tg-radius-sm);
+  color: var(--tg-text-strong);
+  background: var(--tg-bg-panel);
+}
+
+.tg-new-survey-page__field input {
+  height: 40px;
+  padding: 0 var(--tg-space-6);
+}
+
+.tg-new-survey-page__field textarea {
+  resize: vertical;
+  min-height: 104px;
+  padding: var(--tg-space-6);
+}
+
+.tg-new-survey-page__field input::placeholder,
+.tg-new-survey-page__field textarea::placeholder {
+  color: var(--tg-text-faint);
+}
+
+.tg-new-survey-page__field input[aria-invalid="true"],
+.tg-new-survey-page__field textarea[aria-invalid="true"] {
+  border-color: var(--tg-danger);
+}
+
+.tg-new-survey-page__error {
+  color: var(--tg-danger);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-new-survey-page__check {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: var(--tg-space-6);
+  align-items: flex-start;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-md);
+  padding: var(--tg-space-8);
+  background: var(--tg-bg-raised);
+}
+
+.tg-new-survey-page__check input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--tg-accent);
+}
+
+.tg-new-survey-page__check span {
+  display: grid;
+  gap: var(--tg-space-2);
+}
+
+.tg-new-survey-page__check strong {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-body);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-body);
+}
+
+.tg-new-survey-page__check small {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-new-survey-page__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--tg-space-6);
+}
+
+.tg-new-survey-page__actions a {
+  text-decoration: none;
+}
+
+.tg-new-survey-page__spinner {
+  animation: tg-spin var(--tg-duration-slow) linear infinite;
+}
+
+@media (max-width: 780px) {
+  .tg-new-survey-page {
+    padding: var(--tg-space-10);
+  }
+
+  .tg-new-survey-page__header,
+  .tg-new-survey-page__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

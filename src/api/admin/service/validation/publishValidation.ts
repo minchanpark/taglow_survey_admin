@@ -1,4 +1,4 @@
-import type { PublishValidationIssue, PublishValidationResult, SurveyDetail } from "../../model";
+import { getSurveyPublicIdentifier, type PublishValidationIssue, type PublishValidationResult, type SurveyDetail } from "../../model";
 import { validateQuestionConfig } from "./questionConfigSchema";
 
 export function validatePublishSurveyDetail(detail: SurveyDetail): PublishValidationResult {
@@ -6,6 +6,14 @@ export function validatePublishSurveyDetail(detail: SurveyDetail): PublishValida
 
   if (!detail.survey.title.trim()) {
     issues.push({ severity: "error", code: "SURVEY_TITLE_REQUIRED", message: "Survey title is required." });
+  }
+
+  if (!getSurveyPublicIdentifier(detail.survey)) {
+    issues.push({
+      severity: "error",
+      code: "SURVEY_PUBLIC_IDENTIFIER_REQUIRED",
+      message: "Public slug or public code is required.",
+    });
   }
 
   if (detail.sections.length === 0) {

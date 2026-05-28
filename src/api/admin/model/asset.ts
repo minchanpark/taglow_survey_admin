@@ -12,4 +12,5 @@ export type SurveyAsset = Readonly<{
   storagePath: string;
   metadata: JsonRecord;
   createdAt: string;
+  updatedAt?: string;
 }>;

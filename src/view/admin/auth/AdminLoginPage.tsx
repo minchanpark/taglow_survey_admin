@@ -29,7 +29,7 @@ export function AdminLoginPage() {
     );
   }
 
-  if (sessionQuery.data?.isAuthenticated && sessionQuery.data.isHandongEmail && sessionQuery.data.admin?.isActive) {
+  if (sessionQuery.data?.isAuthenticated && sessionQuery.data.admin?.isActive) {
     return <Navigate to="/admin/surveys" replace />;
   }
 
@@ -42,7 +42,7 @@ export function AdminLoginPage() {
         <div className="tg-admin-login__copy">
           <p className="tg-admin-login__eyebrow">Taglow Survey Admin</p>
           <h1 id="admin-login-title">관리자 로그인</h1>
-          <p>한동대학교 Google 계정과 등록된 관리자 권한을 확인합니다.</p>
+          <p>Google 계정 로그인 후 등록된 관리자 권한을 확인합니다.</p>
         </div>
         <Button
           variant="primary"

@@ -9,7 +9,7 @@ Owns admin system pages that are not tied to one survey feature.
 
 ## Rules
 
-- Access denied must cover non-Handong accounts and missing/inactive `admin_members`.
+- Access denied must cover missing/inactive `admin_members`. Do not restrict admin access by email domain.
 - Do not reveal whether a specific email is registered beyond the necessary denial message.
 - Not-found UI should offer a route back to `/admin/surveys`.
 - Keep page-level CSS in `src/view/admin/system/css`.

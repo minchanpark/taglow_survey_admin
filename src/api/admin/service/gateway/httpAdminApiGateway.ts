@@ -78,6 +78,11 @@ export class HttpAdminApiGateway implements AdminApiGateway {
     return this.request<RawSection>(`/api/admin/surveys/${payload.survey_id}/sections`, { method: "POST", body: payload });
   }
 
+  createSections(payloads: RawCreateSectionPayload[]): Promise<RawSection[]> {
+    if (!payloads.length) return Promise.resolve([]);
+    return this.request<RawSection[]>(`/api/admin/surveys/${payloads[0]?.survey_id}/sections/bulk`, { method: "POST", body: { sections: payloads } });
+  }
+
   updateSection(args: { sectionId: string; payload: RawUpdateSectionPayload }): Promise<RawSection> {
     return this.request<RawSection>(`/api/admin/sections/${args.sectionId}`, { method: "PATCH", body: args.payload });
   }
@@ -92,6 +97,11 @@ export class HttpAdminApiGateway implements AdminApiGateway {
 
   createQuestion(payload: RawCreateQuestionPayload): Promise<RawQuestion> {
     return this.request<RawQuestion>(`/api/admin/surveys/${payload.survey_id}/questions`, { method: "POST", body: payload });
+  }
+
+  createQuestions(payloads: RawCreateQuestionPayload[]): Promise<RawQuestion[]> {
+    if (!payloads.length) return Promise.resolve([]);
+    return this.request<RawQuestion[]>(`/api/admin/surveys/${payloads[0]?.survey_id}/questions/bulk`, { method: "POST", body: { questions: payloads } });
   }
 
   updateQuestion(args: { questionId: string; payload: RawUpdateQuestionPayload }): Promise<RawQuestion> {

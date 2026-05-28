@@ -49,7 +49,8 @@ export type BorichResult = Readonly<{
 }>;
 
 export type HeatmapPoint = Readonly<{
-  assetId: string;
+  id?: string;
+  assetId?: string;
   xRatio: number;
   yRatio: number;
   tagType?: string;
@@ -60,12 +61,13 @@ export type HeatmapPoint = Readonly<{
 
 export type TextAnswer = Readonly<{
   id: string;
-  responseId: string;
+  responseId?: string;
   sectionId?: string;
   questionId?: string;
   topicKey?: string;
   spaceKey?: string;
   textValue: string;
+  valueJson: JsonRecord;
   profile?: JsonRecord;
   createdAt: string;
 }>;

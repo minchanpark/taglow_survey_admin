@@ -12,6 +12,7 @@ import type {
   RawCreateSurveyPayload,
   RawFilterOptions,
   RawHeatmapPoint,
+  RawInsertSurveyPayload,
   RawQuestion,
   RawSection,
   RawSectionSummary,
@@ -50,6 +51,7 @@ const RPC = {
   sectionSatisfactionSummary: "get_section_satisfaction_summary",
   borichSummary: "get_borich_summary",
   heatmapPoints: "get_heatmap_points",
+  textAnswers: "get_text_answers",
 } as const;
 
 export class SupabaseAdminApiGateway implements AdminApiGateway {
@@ -119,8 +121,17 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     return this.one<RawSurvey>(this.supabase.from("surveys").select("*").eq("id", surveyId).single(), "SURVEY_NOT_FOUND");
   }
 
-  createSurvey(payload: RawCreateSurveyPayload): Promise<RawSurvey> {
-    return this.one<RawSurvey>(this.supabase.from("surveys").insert(payload).select("*").single());
+  async createSurvey(payload: RawCreateSurveyPayload): Promise<RawSurvey> {
+    const user = await this.getCurrentAuthUser();
+    if (!user) {
+      throw new AdminApiError("UNAUTHENTICATED", "Login is required to create a survey.");
+    }
+
+    const insertPayload: RawInsertSurveyPayload = {
+      ...payload,
+      created_by: user.id,
+    };
+    return this.one<RawSurvey>(this.supabase.from("surveys").insert(insertPayload).select("*").single());
   }
 
   updateSurvey(args: { surveyId: string; payload: RawUpdateSurveyPayload }): Promise<RawSurvey> {
@@ -144,6 +155,11 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     return this.one<RawSection>(this.supabase.from("survey_sections").insert(payload).select("*").single());
   }
 
+  createSections(payloads: RawCreateSectionPayload[]): Promise<RawSection[]> {
+    if (!payloads.length) return Promise.resolve([]);
+    return this.many<RawSection>(this.supabase.from("survey_sections").insert(payloads).select("*"));
+  }
+
   updateSection(args: { sectionId: string; payload: RawUpdateSectionPayload }): Promise<RawSection> {
     return this.one<RawSection>(
       this.supabase.from("survey_sections").update(args.payload).eq("id", args.sectionId).select("*").single(),
@@ -162,6 +178,11 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
 
   createQuestion(payload: RawCreateQuestionPayload): Promise<RawQuestion> {
     return this.one<RawQuestion>(this.supabase.from("questions").insert(payload).select("*").single());
+  }
+
+  createQuestions(payloads: RawCreateQuestionPayload[]): Promise<RawQuestion[]> {
+    if (!payloads.length) return Promise.resolve([]);
+    return this.many<RawQuestion>(this.supabase.from("questions").insert(payloads).select("*"));
   }
 
   updateQuestion(args: { questionId: string; payload: RawUpdateQuestionPayload }): Promise<RawQuestion> {
@@ -247,22 +268,13 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
   }
 
   async listTextAnswers(args: TextAnswerQueryArgs): Promise<RawTextAnswer[]> {
-    let query = this.supabase
-      .from("answers")
-      .select("id,response_id,section_id,question_id,topic_key,space_key,text_value,created_at,responses!inner(dormitory,room_type,rc,gender,semester_group,department,dorm_experience)")
-      .eq("survey_id", args.surveyId)
-      .eq("answer_type", "text");
-
-    const filters = args.filters;
-    if (filters.sectionId) query = query.eq("section_id", filters.sectionId);
-    if (filters.topicKey) query = query.eq("topic_key", filters.topicKey);
-    if (filters.spaceKey) query = query.eq("space_key", filters.spaceKey);
-    if (filters.dormitory) query = query.eq("responses.dormitory", filters.dormitory);
-    if (filters.roomType) query = query.eq("responses.room_type", filters.roomType);
-    if (filters.rc) query = query.eq("responses.rc", filters.rc);
-    if (filters.keyword) query = query.ilike("text_value", `%${filters.keyword}%`);
-
-    return this.many<RawTextAnswer>(query.order("created_at", { ascending: false }));
+    return this.many<RawTextAnswer>(
+      this.supabase.rpc(RPC.textAnswers, {
+        p_survey_id: args.surveyId,
+        p_filters: args.filters,
+      }),
+      "RPC_FAILED",
+    );
   }
 
   private async one<T>(query: SupabaseResult<unknown>, fallbackCode: "SURVEY_NOT_FOUND" | "RPC_FAILED" | "UNKNOWN" = "UNKNOWN"): Promise<T> {

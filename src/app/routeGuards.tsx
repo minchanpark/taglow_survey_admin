@@ -27,7 +27,7 @@ export function RequireAdminShell() {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
   }
 
-  if (!session.isHandongEmail || !session.admin?.isActive) {
+  if (!session.admin?.isActive) {
     return <Navigate to="/admin/access-denied" replace />;
   }
 

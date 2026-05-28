@@ -9,10 +9,12 @@ import { AdminNotFoundPage } from "../view/admin/system/AdminNotFoundPage";
 import { NewSurveyPage } from "../view/admin/surveys/NewSurveyPage";
 import { SurveyDashboardPage } from "../view/admin/surveys/SurveyDashboardPage";
 import { SurveyListPage } from "../view/admin/surveys/SurveyListPage";
+import { ParticipantSurveyPage } from "../view/participant/survey/ParticipantSurveyPage";
 import { RequireAdminShell } from "./routeGuards";
 
 const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/admin/surveys" replace /> },
+  { path: "/survey/:publicIdentifier", element: <ParticipantSurveyPage /> },
   { path: "/admin/login", element: <AdminLoginPage /> },
   { path: "/admin/access-denied", element: <AdminAccessDeniedPage /> },
   {

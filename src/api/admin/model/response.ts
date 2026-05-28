@@ -1,6 +1,6 @@
 import type { JsonRecord, Locale } from "./common";
 
-export type ResponseStatus = "submitted" | "discarded";
+export type ResponseStatus = "in_progress" | "submitted" | "discarded";
 
 export type SurveyResponse = Readonly<{
   id: string;
@@ -19,5 +19,7 @@ export type SurveyResponse = Readonly<{
   profileJson: JsonRecord;
   rawPayload: JsonRecord;
   startedAt?: string;
-  submittedAt: string;
+  submittedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }>;

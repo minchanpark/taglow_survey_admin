@@ -1,8 +1,14 @@
 import type { JsonRecord, LocalizedText } from "./common";
 
 export type SectionType =
+  | "intro"
   | "general"
   | "profile"
+  | "facility"
+  | "laundry"
+  | "global_lounge"
+  | "identity"
+  | "completion"
   | "satisfaction"
   | "space_tagging"
   | "free_text"
@@ -17,4 +23,6 @@ export type SurveySection = Readonly<{
   orderIndex: number;
   sectionType: SectionType;
   settings: JsonRecord;
+  createdAt?: string;
+  updatedAt?: string;
 }>;

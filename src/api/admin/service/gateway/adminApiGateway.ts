@@ -37,11 +37,13 @@ export interface AdminApiGateway {
 
   listSections(surveyId: string): Promise<RawSection[]>;
   createSection(payload: RawCreateSectionPayload): Promise<RawSection>;
+  createSections(payloads: RawCreateSectionPayload[]): Promise<RawSection[]>;
   updateSection(args: { sectionId: string; payload: RawUpdateSectionPayload }): Promise<RawSection>;
   deleteSection(sectionId: string): Promise<void>;
 
   listQuestions(surveyId: string): Promise<RawQuestion[]>;
   createQuestion(payload: RawCreateQuestionPayload): Promise<RawQuestion>;
+  createQuestions(payloads: RawCreateQuestionPayload[]): Promise<RawQuestion[]>;
   updateQuestion(args: { questionId: string; payload: RawUpdateQuestionPayload }): Promise<RawQuestion>;
   deleteQuestion(questionId: string): Promise<void>;
 

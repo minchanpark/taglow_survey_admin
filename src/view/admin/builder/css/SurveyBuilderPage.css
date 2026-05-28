@@ -1,29 +1,533 @@
-.tg-admin-placeholder-page {
+.tg-builder-page {
   display: grid;
   max-width: var(--tg-page-max-width);
   gap: var(--tg-space-12);
   padding: var(--tg-space-16);
 }
 
-.tg-admin-placeholder-page header {
-  display: grid;
-  gap: var(--tg-space-2);
+.tg-builder-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--tg-space-8);
 }
 
-.tg-admin-placeholder-page h1,
-.tg-admin-placeholder-page p {
+.tg-builder-page__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--tg-space-6);
+}
+
+.tg-builder-page__header h1,
+.tg-builder-page__eyebrow {
   margin: 0;
 }
 
-.tg-admin-placeholder-page h1 {
+.tg-builder-page__header h1 {
   color: var(--tg-text-strong);
   font-size: var(--tg-font-size-page-title);
   font-weight: var(--tg-weight-bold);
   line-height: var(--tg-line-page-title);
 }
 
-.tg-admin-placeholder-page p {
+.tg-builder-page__eyebrow {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-page__workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(280px, 0.9fr) minmax(360px, 1.2fr);
+  gap: var(--tg-space-8);
+  align-items: start;
+}
+
+.tg-builder-panel {
+  display: grid;
+  min-width: 0;
+  gap: var(--tg-space-8);
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-md);
+  padding: var(--tg-space-10);
+  background: var(--tg-bg-panel);
+}
+
+.tg-builder-panel--editor {
+  position: sticky;
+  top: var(--tg-space-8);
+}
+
+.tg-builder-panel__title-row {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tg-space-6);
+}
+
+.tg-builder-panel__title-row h2,
+.tg-builder-panel__title-row span,
+.tg-builder-edit h3,
+.tg-builder-hint,
+.tg-builder-selected-section {
+  margin: 0;
+}
+
+.tg-builder-panel__title-row h2,
+.tg-builder-edit h3 {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-card-title);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-card-title);
+}
+
+.tg-builder-panel__title-row > span,
+.tg-builder-hint,
+.tg-builder-selected-section {
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-caption);
   line-height: var(--tg-line-caption);
+}
+
+.tg-builder-create,
+.tg-builder-edit {
+  display: grid;
+  gap: var(--tg-space-6);
+}
+
+.tg-builder-create {
+  border-bottom: 1px solid var(--tg-border-subtle);
+  padding-bottom: var(--tg-space-8);
+}
+
+.tg-builder-edit {
+  border-top: 1px solid var(--tg-border-subtle);
+  padding-top: var(--tg-space-8);
+}
+
+.tg-builder-field {
+  display: grid;
+  gap: var(--tg-space-3);
+  min-width: 0;
+}
+
+.tg-builder-field span {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-field input,
+.tg-builder-field textarea,
+.tg-builder-field select,
+.tg-builder-inline input,
+.tg-builder-inline select {
+  width: 100%;
+  border: 1px solid var(--tg-border-strong);
+  border-radius: var(--tg-radius-sm);
+  color: var(--tg-text-strong);
+  background: var(--tg-bg-panel);
+}
+
+.tg-builder-field input,
+.tg-builder-field select,
+.tg-builder-inline input,
+.tg-builder-inline select {
+  height: 36px;
+  padding: 0 var(--tg-space-6);
+}
+
+.tg-builder-field textarea {
+  resize: vertical;
+  min-height: 72px;
+  padding: var(--tg-space-6);
+}
+
+.tg-builder-field input::placeholder,
+.tg-builder-inline input::placeholder {
+  color: var(--tg-text-faint);
+}
+
+.tg-builder-field small,
+.tg-builder-create > small {
+  color: var(--tg-danger);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-inline,
+.tg-builder-two-col {
+  display: grid;
+  gap: var(--tg-space-4);
+}
+
+.tg-builder-inline {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.8fr);
+}
+
+.tg-builder-two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tg-builder-list {
+  display: grid;
+  gap: var(--tg-space-3);
+}
+
+.tg-builder-question-group {
+  display: grid;
+  gap: var(--tg-space-3);
+}
+
+.tg-builder-question-group__title {
+  margin: var(--tg-space-3) 0 0;
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-list__item {
+  display: grid;
+  gap: var(--tg-space-2);
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-md);
+  padding: var(--tg-space-4);
+  background: var(--tg-bg-panel);
+  color: inherit;
+  text-align: left;
+}
+
+.tg-builder-list__item:hover {
+  background: var(--tg-bg-raised);
+}
+
+.tg-builder-list__item--active {
+  border-color: var(--tg-accent);
+  background: var(--tg-accent-soft);
+}
+
+.tg-builder-list__item-main {
+  display: grid;
+  gap: var(--tg-space-2);
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  padding: var(--tg-space-2);
+  text-align: left;
+  background: transparent;
+}
+
+.tg-builder-list__item strong {
+  overflow: hidden;
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-dense);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tg-builder-list__item span {
+  overflow: hidden;
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tg-builder-list__item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tg-space-4);
+  border-top: 1px solid var(--tg-border-subtle);
+  padding-top: var(--tg-space-4);
+}
+
+.tg-builder-icon-button {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  color: var(--tg-text-muted);
+  background: var(--tg-bg-panel);
+}
+
+.tg-builder-icon-button:hover:not(:disabled) {
+  color: var(--tg-text-strong);
+  background: var(--tg-bg-inset);
+}
+
+.tg-builder-icon-button:disabled {
+  opacity: 0.48;
+}
+
+.tg-builder-advanced {
+  display: grid;
+  gap: var(--tg-space-5);
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  padding: var(--tg-space-5) var(--tg-space-6);
+  background: var(--tg-bg-raised);
+}
+
+.tg-builder-advanced summary {
+  color: var(--tg-text-muted);
+  cursor: pointer;
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-advanced[open] {
+  gap: var(--tg-space-6);
+}
+
+.tg-builder-advanced[open] summary {
+  margin-bottom: var(--tg-space-6);
+  color: var(--tg-text-strong);
+}
+
+.tg-builder-config-panel {
+  display: grid;
+  gap: var(--tg-space-6);
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  padding: var(--tg-space-8);
+  background: var(--tg-bg-raised);
+}
+
+.tg-builder-config-panel--quiet {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-builder-check {
+  display: flex;
+  align-items: center;
+  gap: var(--tg-space-4);
+  min-height: 36px;
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-builder-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--tg-accent);
+}
+
+.tg-builder-code {
+  font-family: var(--tg-font-mono);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--tg-space-4);
+}
+
+.tg-builder-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tg-space-4);
+  border: 1px solid var(--tg-danger);
+  border-radius: var(--tg-radius-md);
+  padding: var(--tg-space-6);
+  color: var(--tg-danger);
+  background: var(--tg-danger-soft);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-builder-alert--success {
+  border-color: var(--tg-success);
+  color: var(--tg-success);
+  background: var(--tg-success-soft);
+}
+
+.tg-builder-alert span {
+  display: grid;
+  gap: var(--tg-space-2);
+  min-width: 0;
+}
+
+.tg-builder-alert small {
+  overflow-wrap: anywhere;
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-modal-backdrop {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--tg-space-12);
+  background: rgba(13, 14, 18, 0.42);
+}
+
+.tg-builder-modal {
+  display: grid;
+  width: min(920px, 100%);
+  max-height: min(720px, calc(100vh - var(--tg-space-24)));
+  overflow: auto;
+  gap: var(--tg-space-10);
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-md);
+  padding: var(--tg-space-12);
+  background: var(--tg-bg-panel);
+  box-shadow: var(--tg-shadow-sm);
+}
+
+.tg-builder-modal__header,
+.tg-builder-modal__actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--tg-space-8);
+}
+
+.tg-builder-modal__header h2,
+.tg-builder-modal__header p {
+  margin: 0;
+}
+
+.tg-builder-modal__header h2 {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-section-title);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-section-title);
+}
+
+.tg-builder-modal__header p {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-modal__actions {
+  justify-content: flex-end;
+}
+
+.tg-builder-import-preview {
+  display: grid;
+  gap: var(--tg-space-10);
+}
+
+.tg-builder-import-preview__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--tg-space-6);
+}
+
+.tg-builder-import-preview__metric {
+  display: grid;
+  gap: var(--tg-space-2);
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  padding: var(--tg-space-8);
+  background: var(--tg-bg-raised);
+}
+
+.tg-builder-import-preview__metric span,
+.tg-builder-import-preview__body li span {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-builder-import-preview__metric strong,
+.tg-builder-import-preview__body li strong {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-builder-import-preview__body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--tg-space-8);
+}
+
+.tg-builder-import-preview__body h3 {
+  margin: 0 0 var(--tg-space-5);
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-card-title);
+  line-height: var(--tg-line-card-title);
+}
+
+.tg-builder-import-preview__body ul {
+  display: grid;
+  gap: var(--tg-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tg-builder-import-preview__body li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tg-space-8);
+  border-bottom: 1px solid var(--tg-border-subtle);
+  padding-bottom: var(--tg-space-4);
+}
+
+@media (max-width: 1180px) {
+  .tg-builder-page__workspace {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tg-builder-panel--editor {
+    position: static;
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 780px) {
+  .tg-builder-page {
+    padding: var(--tg-space-10);
+  }
+
+  .tg-builder-page__header {
+    flex-direction: column;
+  }
+
+  .tg-builder-page__header-actions,
+  .tg-builder-modal__header,
+  .tg-builder-modal__actions {
+    justify-content: flex-start;
+  }
+
+  .tg-builder-page__workspace,
+  .tg-builder-inline,
+  .tg-builder-two-col,
+  .tg-builder-import-preview__metrics,
+  .tg-builder-import-preview__body {
+    grid-template-columns: 1fr;
+  }
+
+  .tg-builder-modal-backdrop {
+    align-items: stretch;
+    padding: var(--tg-space-6);
+  }
 }

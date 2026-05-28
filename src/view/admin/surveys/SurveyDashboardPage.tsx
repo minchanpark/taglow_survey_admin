@@ -1,4 +1,6 @@
-import { useParams } from "react-router-dom";
+import { Eye, PencilLine, Settings } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { getSurveyPublicPath } from "../../../api/admin/model";
 import { useSurveyDetailQuery } from "../../../api/admin/query";
 import { EmptyState, ErrorState, LoadingState, SurveyStatusBadge } from "../../../components";
 import "./css/SurveyDashboardPage.css";
@@ -6,6 +8,7 @@ import "./css/SurveyDashboardPage.css";
 export function SurveyDashboardPage() {
   const { surveyId = "" } = useParams();
   const surveyQuery = useSurveyDetailQuery(surveyId);
+  const publicPath = surveyQuery.data ? getSurveyPublicPath(surveyQuery.data.survey) : undefined;
 
   return (
     <section className="tg-survey-dashboard-page" aria-labelledby="survey-dashboard-title">
@@ -20,8 +23,33 @@ export function SurveyDashboardPage() {
               <p className="tg-survey-dashboard-page__eyebrow">설문 대시보드</p>
               <h1 id="survey-dashboard-title">{surveyQuery.data.survey.title}</h1>
             </div>
-            <SurveyStatusBadge status={surveyQuery.data.survey.status} />
+            <div className="tg-survey-dashboard-page__header-actions">
+              <SurveyStatusBadge status={surveyQuery.data.survey.status} />
+              <Link
+                to={`/admin/surveys/${surveyId}/builder`}
+                className="tg-survey-dashboard-page__action tg-survey-dashboard-page__action--primary"
+              >
+                <PencilLine size={15} aria-hidden="true" />
+                <span>빌더에서 수정</span>
+              </Link>
+              <Link to={`/admin/surveys/${surveyId}/preview`} className="tg-survey-dashboard-page__action">
+                <Eye size={15} aria-hidden="true" />
+                <span>미리보기</span>
+              </Link>
+              <Link to={`/admin/surveys/${surveyId}/settings`} className="tg-survey-dashboard-page__action">
+                <Settings size={15} aria-hidden="true" />
+                <span>설정</span>
+              </Link>
+            </div>
           </header>
+          {publicPath ? (
+            <div className="tg-survey-dashboard-page__public-url">
+              <span>참여자 경로</span>
+              <Link to={publicPath} target="_blank" rel="noreferrer">
+                {publicPath}
+              </Link>
+            </div>
+          ) : null}
           <div className="tg-survey-dashboard-page__grid">
             <Metric title="섹션" value={surveyQuery.data.sections.length} />
             <Metric title="질문" value={surveyQuery.data.questions.length} />

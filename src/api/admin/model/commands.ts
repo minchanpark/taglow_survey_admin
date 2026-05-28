@@ -17,6 +17,7 @@ export type UpdateSurveyCommand = Readonly<{
   description?: string;
   status?: SurveyStatus;
   publicSlug?: string;
+  publicCode?: string;
   settings?: SurveySettings;
 }>;
 
@@ -32,6 +33,7 @@ export type CreateSectionCommand = Readonly<{
 
 export type UpdateSectionCommand = Readonly<{
   sectionId: string;
+  sectionKey?: string;
   title?: LocalizedText;
   description?: LocalizedText;
   orderIndex?: number;
@@ -62,6 +64,8 @@ export type CreateQuestionCommand = Readonly<{
 
 export type UpdateQuestionCommand = Readonly<{
   questionId: string;
+  questionKey?: string;
+  questionType?: QuestionType;
   title?: LocalizedText;
   description?: LocalizedText;
   orderIndex?: number;

@@ -10,14 +10,16 @@ import {
 } from "../test/fakeAdminApiController";
 import { renderWithProviders } from "../test/renderWithProviders";
 
-function renderGuard(session = activeAdminSession) {
+function renderGuard(session = activeAdminSession, initialEntry = "/admin/surveys") {
   return renderWithProviders(
-    <MemoryRouter initialEntries={["/admin/surveys"]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/admin/login" element={<div>login route</div>} />
         <Route path="/admin/access-denied" element={<div>denied route</div>} />
         <Route path="/admin" element={<RequireAdminShell />}>
           <Route path="surveys" element={<div>survey route</div>} />
+          <Route path="surveys/:surveyId/dashboard" element={<div>survey dashboard route</div>} />
+          <Route path="surveys/:surveyId/builder" element={<div>survey builder route</div>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -36,7 +38,7 @@ describe("RequireAdminShell", () => {
     expect(await screen.findByText("login route")).toBeInTheDocument();
   });
 
-  it("redirects non-member handong users to access denied", async () => {
+  it("redirects users without an active admin member row to access denied", async () => {
     renderGuard(nonMemberSession);
 
     expect(await screen.findByText("denied route")).toBeInTheDocument();
@@ -46,6 +48,13 @@ describe("RequireAdminShell", () => {
     renderGuard(activeAdminSession);
 
     expect(await screen.findByText("survey route")).toBeInTheDocument();
-    expect(screen.getByText("admin@handong.ac.kr")).toBeInTheDocument();
+    expect(screen.getByText("admin@example.com")).toBeInTheDocument();
+  });
+
+  it("enables selected-survey navigation when a survey id is in the route", async () => {
+    renderGuard(activeAdminSession, "/admin/surveys/survey-1/dashboard");
+
+    expect(await screen.findByText("survey dashboard route")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /빌더/ })).toHaveAttribute("href", "/admin/surveys/survey-1/builder");
   });
 });

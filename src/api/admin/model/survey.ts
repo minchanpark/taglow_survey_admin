@@ -13,6 +13,7 @@ export type Survey = Readonly<{
   description?: string;
   status: SurveyStatus;
   publicSlug?: string;
+  publicCode?: string;
   versionGroupId: string;
   versionNumber: number;
   parentSurveyId?: string;
@@ -31,3 +32,12 @@ export type SurveyDetail = Readonly<{
   questions: Question[];
   assets: SurveyAsset[];
 }>;
+
+export function getSurveyPublicIdentifier(survey: Pick<Survey, "publicSlug" | "publicCode">): string | undefined {
+  return survey.publicSlug ?? survey.publicCode;
+}
+
+export function getSurveyPublicPath(survey: Pick<Survey, "publicSlug" | "publicCode">): string | undefined {
+  const identifier = getSurveyPublicIdentifier(survey);
+  return identifier ? `/survey/${encodeURIComponent(identifier)}` : undefined;
+}

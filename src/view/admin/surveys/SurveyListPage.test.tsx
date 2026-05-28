@@ -30,5 +30,9 @@ describe("SurveyListPage", () => {
 
     expect(await screen.findByText("생활관 만족도 조사")).toBeInTheDocument();
     expect(screen.getByText("초안")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "생활관 만족도 조사 수정" })).toHaveAttribute(
+      "href",
+      "/admin/surveys/survey-1/builder",
+    );
   });
 });

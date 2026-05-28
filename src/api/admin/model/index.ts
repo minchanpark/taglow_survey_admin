@@ -7,6 +7,7 @@ export * from "./commands";
 export * from "./common";
 export * from "./preview";
 export * from "./question";
+export * from "./questionSet";
 export * from "./response";
 export * from "./section";
 export * from "./survey";

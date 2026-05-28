@@ -1,13 +1,20 @@
 import type { AdminApiGateway } from "../service/gateway/adminApiGateway";
 import type { AdminStorageGateway } from "../service/gateway/adminStorageGateway";
-import type { RawCreateQuestionPayload, RawCreateSectionPayload, RawUpdateQuestionPayload, RawUpdateSectionPayload } from "../service/gateway/rawTypes";
+import type {
+  RawCreateQuestionPayload,
+  RawCreateSectionPayload,
+  RawQuestion,
+  RawSection,
+  RawUpdateQuestionPayload,
+  RawUpdateSectionPayload,
+} from "../service/gateway/rawTypes";
 import { AdminPayloadMapper } from "../service/mapper/adminPayloadMapper";
+import { getQuestionSetTemplate } from "../service/questionSet";
 import { assertCreateSectionCommand, assertUpdateSectionCommand } from "../service/validation/sectionSchema";
 import { assertCreateSurveyCommand, assertUpdateSurveyCommand } from "../service/validation/surveySchema";
 import { assertUploadSurveyImageCommand } from "../service/validation/assetSchema";
 import { toAnalysisFilterPayload } from "../service/validation/filterSchema";
 import { validatePublishSurveyDetail } from "../service/validation/publishValidation";
-import { isHandongEmail } from "../../../utils/authDomain";
 import type {
   AdminMember,
   AdminSessionState,
@@ -20,8 +27,17 @@ import type {
   FilterOptions,
   HeatmapFilterCommand,
   HeatmapPoint,
+  JsonRecord,
   PreviewSurvey,
   PreviewSurveyCommand,
+  QuestionSetImportCommand,
+  QuestionSetImportPreview,
+  QuestionSetImportPreviewCommand,
+  QuestionSetImportResult,
+  QuestionSetQuestionPreview,
+  QuestionSetTemplate,
+  QuestionSetTemplateQuestion,
+  QuestionSetTemplateSection,
   PublishValidationResult,
   Question,
   ReorderQuestionsCommand,
@@ -52,24 +68,13 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     if (!user) {
       return {
         isAuthenticated: false,
-        isHandongEmail: false,
       };
     }
 
     const email = user.email?.toLowerCase();
-    const hasHandongDomain = isHandongEmail(email);
-    if (!hasHandongDomain) {
-      return {
-        isAuthenticated: true,
-        email,
-        isHandongEmail: false,
-      };
-    }
-
     return {
       isAuthenticated: true,
       email,
-      isHandongEmail: true,
       admin: (await this.getCurrentAdmin()) ?? undefined,
     };
   }
@@ -122,13 +127,14 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     assertUpdateSurveyCommand(command);
     const row = await this.gateway.updateSurvey({
       surveyId: command.surveyId,
-      payload: {
+      payload: compactPayload({
         title: command.title,
-        description: command.description,
+        description: hasOwn(command, "description") ? nullableText(command.description) : undefined,
         status: command.status,
-        public_slug: command.publicSlug,
+        public_slug: hasOwn(command, "publicSlug") ? nullableText(command.publicSlug) : undefined,
+        public_code: hasOwn(command, "publicCode") ? normalizePublicCode(command.publicCode) : undefined,
         settings: command.settings,
-      },
+      }),
     });
     return this.mapper.toSurvey(row);
   }
@@ -241,6 +247,67 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     };
   }
 
+  async previewQuestionSetImport(command: QuestionSetImportPreviewCommand): Promise<QuestionSetImportPreview> {
+    const template = getQuestionSetTemplate(command.templateId);
+    const [sections, questions] = await Promise.all([
+      this.gateway.listSections(command.surveyId),
+      this.gateway.listQuestions(command.surveyId),
+    ]);
+    return buildQuestionSetImportPreview(template, sections, questions);
+  }
+
+  async importQuestionSet(command: QuestionSetImportCommand): Promise<QuestionSetImportResult> {
+    if (command.conflictMode !== "append_skip_existing_keys") {
+      throw new Error(`Unsupported question set conflict mode: ${command.conflictMode}`);
+    }
+
+    const template = getQuestionSetTemplate(command.templateId);
+    const [existingSections, existingQuestions] = await Promise.all([
+      this.gateway.listSections(command.surveyId),
+      this.gateway.listQuestions(command.surveyId),
+    ]);
+    const existingSectionByKey = new Map(existingSections.map((section) => [section.section_key, section]));
+    const existingQuestionKeys = new Set(existingQuestions.map((question) => question.question_key));
+    const nextSectionOrderIndex = Math.max(-1, ...existingSections.map((section) => section.order_index)) + 1;
+
+    const missingSections = template.sections.filter((section) => !existingSectionByKey.has(section.sectionKey));
+    const sectionPayloads = missingSections.map((section, index) =>
+      toCreateSectionPayloadFromTemplate(command.surveyId, section, nextSectionOrderIndex + index),
+    );
+    const createdSections = await this.gateway.createSections(sectionPayloads);
+    const sectionByKey = new Map<string, RawSection>([...existingSectionByKey, ...createdSections.map((section) => [section.section_key, section] as const)]);
+    const nextQuestionOrderIndexBySection = createNextQuestionOrderMap(existingQuestions);
+    let skippedQuestions = 0;
+
+    const questionPayloads: RawCreateQuestionPayload[] = [];
+    for (const section of template.sections) {
+      const rawSection = sectionByKey.get(section.sectionKey);
+      if (!rawSection) continue;
+
+      const nextOrder = nextQuestionOrderIndexBySection.get(rawSection.id) ?? 0;
+      let offset = 0;
+      for (const question of section.questions) {
+        if (existingQuestionKeys.has(question.questionKey)) {
+          skippedQuestions += 1;
+          continue;
+        }
+        questionPayloads.push(toCreateQuestionPayloadFromTemplate(command.surveyId, rawSection.id, question, nextOrder + offset));
+        existingQuestionKeys.add(question.questionKey);
+        offset += 1;
+      }
+    }
+
+    const createdQuestions = await this.gateway.createQuestions(questionPayloads);
+    return {
+      templateId: command.templateId,
+      sectionsCreated: createdSections.length,
+      questionsCreated: createdQuestions.length,
+      questionsSkipped: skippedQuestions,
+      sectionKeys: createdSections.map((section) => section.section_key),
+      questionKeys: createdQuestions.map((question) => question.question_key),
+    };
+  }
+
   async getFilterOptions(surveyId: string): Promise<FilterOptions> {
     return this.mapper.toFilterOptions(await this.gateway.getFilterOptions(surveyId));
   }
@@ -293,15 +360,16 @@ function toCreateSectionPayload(command: CreateSectionCommand): RawCreateSection
 }
 
 function toUpdateSectionPayload(command: UpdateSectionCommand): RawUpdateSectionPayload {
-  return {
+  return compactPayload({
+    section_key: command.sectionKey,
     title_ko: command.title?.ko,
-    title_en: command.title?.en,
-    description_ko: command.description?.ko,
-    description_en: command.description?.en,
+    title_en: command.title ? command.title.en ?? null : undefined,
+    description_ko: hasOwn(command, "description") ? nullableText(command.description?.ko) : undefined,
+    description_en: hasOwn(command, "description") ? nullableText(command.description?.en) : undefined,
     order_index: command.orderIndex,
     section_type: command.sectionType,
     settings: command.settings,
-  };
+  });
 }
 
 function toCreateQuestionPayload(command: CreateQuestionCommand): RawCreateQuestionPayload {
@@ -325,17 +393,140 @@ function toCreateQuestionPayload(command: CreateQuestionCommand): RawCreateQuest
 }
 
 function toUpdateQuestionPayload(command: UpdateQuestionCommand): RawUpdateQuestionPayload {
-  return {
+  return compactPayload({
+    question_key: command.questionKey,
+    question_type: command.questionType,
     title_ko: command.title?.ko,
-    title_en: command.title?.en,
-    description_ko: command.description?.ko,
-    description_en: command.description?.en,
+    title_en: command.title ? command.title.en ?? null : undefined,
+    description_ko: hasOwn(command, "description") ? nullableText(command.description?.ko) : undefined,
+    description_en: hasOwn(command, "description") ? nullableText(command.description?.en) : undefined,
     order_index: command.orderIndex,
     is_required: command.isRequired,
     metric_type: command.metricType,
-    topic_key: command.topicKey,
-    space_key: command.spaceKey,
+    topic_key: hasOwn(command, "topicKey") ? nullableText(command.topicKey) : undefined,
+    space_key: hasOwn(command, "spaceKey") ? nullableText(command.spaceKey) : undefined,
     config: command.config,
     validation: command.validation,
+  });
+}
+
+function nullableText(value: string | null | undefined): string | null {
+  return value?.trim() ? value : null;
+}
+
+function normalizePublicCode(value: string | null | undefined): string | undefined {
+  const normalized = value?.trim().toUpperCase();
+  return normalized || undefined;
+}
+
+function hasOwn<TObject extends object>(object: TObject, key: keyof TObject): boolean {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
+function compactPayload<TPayload extends Record<string, unknown>>(payload: TPayload): TPayload {
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined)) as TPayload;
+}
+
+function buildQuestionSetImportPreview(
+  template: QuestionSetTemplate,
+  sections: RawSection[],
+  questions: RawQuestion[],
+): QuestionSetImportPreview {
+  const existingSectionKeys = new Set(sections.map((section) => section.section_key));
+  const existingQuestionKeys = new Set(questions.map((question) => question.question_key));
+  const sectionPreviews = template.sections.map((section, orderIndex) => ({
+    sectionKey: section.sectionKey,
+    title: section.title,
+    sectionType: section.sectionType,
+    orderIndex,
+    questionCount: section.questions.length,
+    isExisting: existingSectionKeys.has(section.sectionKey),
+  }));
+  const questionPreviews = template.sections.flatMap((section) =>
+    section.questions.map<QuestionSetQuestionPreview>((question) => ({
+      sourceNumber: question.sourceNumber,
+      sectionKey: section.sectionKey,
+      questionKey: question.questionKey,
+      title: question.title,
+      questionType: question.questionType,
+      metricType: question.metricType,
+      topicKey: question.topicKey,
+      spaceKey: question.spaceKey,
+      config: question.config,
+      isRequired: question.isRequired,
+      displayGroup: question.displayGroup,
+      isExisting: existingQuestionKeys.has(question.questionKey),
+    })),
+  );
+
+  return {
+    templateId: template.templateId,
+    title: template.title,
+    sections: sectionPreviews,
+    questions: questionPreviews,
+    totalSectionCount: sectionPreviews.length,
+    totalQuestionCount: questionPreviews.length,
+    importableSectionCount: sectionPreviews.filter((section) => !section.isExisting).length,
+    importableQuestionCount: questionPreviews.filter((question) => !question.isExisting).length,
+    skippedQuestionCount: questionPreviews.filter((question) => question.isExisting).length,
   };
+}
+
+function toCreateSectionPayloadFromTemplate(
+  surveyId: string,
+  section: QuestionSetTemplateSection,
+  orderIndex: number,
+): RawCreateSectionPayload {
+  return {
+    survey_id: surveyId,
+    section_key: section.sectionKey,
+    title_ko: section.title.ko,
+    title_en: section.title.en ?? null,
+    order_index: orderIndex,
+    section_type: section.sectionType,
+    settings: section.settings ?? {},
+  };
+}
+
+function toCreateQuestionPayloadFromTemplate(
+  surveyId: string,
+  sectionId: string,
+  question: QuestionSetTemplateQuestion,
+  orderIndex: number,
+): RawCreateQuestionPayload {
+  return {
+    survey_id: surveyId,
+    section_id: sectionId,
+    question_key: question.questionKey,
+    question_type: question.questionType,
+    title_ko: question.title.ko,
+    title_en: question.title.en ?? null,
+    order_index: orderIndex,
+    is_required: question.isRequired,
+    metric_type: question.metricType,
+    topic_key: question.topicKey ?? null,
+    space_key: question.spaceKey ?? null,
+    config: withQuestionImportMetadata(question),
+    validation: question.validation ?? {},
+  };
+}
+
+function createNextQuestionOrderMap(questions: RawQuestion[]): Map<string, number> {
+  const orderBySection = new Map<string, number>();
+  for (const question of questions) {
+    orderBySection.set(question.section_id, Math.max(orderBySection.get(question.section_id) ?? 0, question.order_index + 1));
+  }
+  return orderBySection;
+}
+
+function withQuestionImportMetadata(question: QuestionSetTemplateQuestion): JsonRecord {
+  const config: JsonRecord = {
+    ...(question.config as JsonRecord),
+    importSource: "dorm_regular_25_2",
+    sourceNumber: question.sourceNumber,
+  };
+  if (question.displayGroup) {
+    config.displayGroup = question.displayGroup;
+  }
+  return config;
 }

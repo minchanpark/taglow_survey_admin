@@ -12,7 +12,7 @@ Owns application wiring only:
 
 - Compose providers: router, query client, admin API runtime provider, auth/session provider if needed.
 - Define route objects for the TDD admin paths.
-- Implement route guards for session, `@handong.ac.kr`, active `admin_members` access, and survey access.
+- Implement route guards for session, active `admin_members` access, and survey access.
 - Keep shell-level loading and error boundaries here.
 
 ## Rules
@@ -32,6 +32,7 @@ Owns application wiring only:
 /admin/surveys/:surveyId/preview
 /admin/surveys/:surveyId/analysis
 /admin/surveys/:surveyId/settings
+/survey/:publicIdentifier
 *
 ```
 

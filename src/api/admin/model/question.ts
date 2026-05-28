@@ -74,4 +74,6 @@ export type Question = Readonly<{
   spaceKey?: string;
   config: QuestionConfig;
   validation: QuestionValidation;
+  createdAt?: string;
+  updatedAt?: string;
 }>;

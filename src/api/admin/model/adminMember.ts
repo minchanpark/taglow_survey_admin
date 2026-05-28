@@ -7,4 +7,5 @@ export type AdminMember = Readonly<{
   role: AdminRole;
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
 }>;
