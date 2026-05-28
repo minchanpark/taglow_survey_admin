@@ -1,10 +1,10 @@
 ---
-name: taglow-admin:newdawn-release
+name: taglow-admin-newdawn-release
 description: "Team-Newdawn/tallow_survey_admin에서 dev -> main Pull Request를 만들고, 사용자가 명시적으로 요청한 경우에만 merge하여 GitHub Actions 배포를 트리거할 때 사용. main 직접 push 없이 PR 기반 릴리즈를 운영한다."
 user-invocable: true
 ---
 
-# taglow-admin:newdawn-release
+# taglow-admin-newdawn-release
 
 이 스킬은 배포 저장소 `Team-Newdawn/tallow_survey_admin`에서 `dev -> main` Pull Request를 열고, 필요 시 merge해서 서버 GitHub Actions 배포를 시작할 때 사용한다.
 

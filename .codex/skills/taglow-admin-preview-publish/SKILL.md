@@ -1,10 +1,10 @@
 ---
-name: taglow-admin:preview-publish
+name: taglow-admin-preview-publish
 description: "Taglow Survey Admin의 참여자 화면 미리보기, 분기 시뮬레이션, 게시 전 검증, 공개 URL/QR, publish/close flow를 구현하거나 검수할 때 사용."
 user-invocable: true
 ---
 
-# taglow-admin:preview-publish
+# taglow-admin-preview-publish
 
 미리보기는 질문 목록이 아니라 실제 참여자 경험의 검수 장치다. draft 설문도 볼 수 있어야 하며, preview 입력은 절대 실제 응답으로 저장하지 않는다.
 

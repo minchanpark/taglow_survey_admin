@@ -1,10 +1,10 @@
 ---
-name: taglow-admin:supabase
+name: taglow-admin-supabase
 description: "Taglow Survey Admin의 Supabase schema, RLS, Storage, Auth guard, SQL/RPC 분석 쿼리, 인덱스, 데이터 마이그레이션을 설계하거나 구현할 때 사용."
 user-invocable: true
 ---
 
-# taglow-admin:supabase
+# taglow-admin-supabase
 
 Supabase는 현재 백엔드지만, 앱 계층은 나중에 HTTP API로 교체 가능해야 한다. DB와 SDK 세부사항은 gateway와 migration에 가둔다.
 

@@ -1,10 +1,10 @@
 ---
-name: taglow-admin:test-qa
+name: taglow-admin-test-qa
 description: "Taglow Survey Admin 테스트 전략, Vitest/React Testing Library/Playwright 검증, import boundary checks, 기능별 완료 기준, read-only QA 리뷰를 수행할 때 사용."
 user-invocable: true
 ---
 
-# taglow-admin:test-qa
+# taglow-admin-test-qa
 
 테스트는 PRD/TDD 완료 기준을 깨지 않도록 하는 안전망이다. 위험도와 계층에 맞춰 좁고 강한 테스트를 추가한다.
 
