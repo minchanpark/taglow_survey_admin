@@ -12,6 +12,7 @@ import type {
   RawCreateSurveyPayload,
   RawFilterOptions,
   RawHeatmapPoint,
+  RawImageTagAnswer,
   RawQuestion,
   RawSection,
   RawSectionSummary,
@@ -162,6 +163,13 @@ export class HttpAdminApiGateway implements AdminApiGateway {
 
   getHeatmapPoints(args: HeatmapQueryArgs): Promise<RawHeatmapPoint[]> {
     return this.request<RawHeatmapPoint[]>(`/api/admin/surveys/${args.surveyId}/analysis/heatmap`, { method: "POST", body: args.filters });
+  }
+
+  listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawImageTagAnswer[]> {
+    return this.request<RawImageTagAnswer[]>(`/api/admin/surveys/${args.surveyId}/analysis/image-tag-answers`, {
+      method: "POST",
+      body: args.filters,
+    });
   }
 
   listTextAnswers(args: TextAnswerQueryArgs): Promise<RawTextAnswer[]> {

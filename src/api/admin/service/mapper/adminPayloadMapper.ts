@@ -5,6 +5,7 @@ import {
   type BorichResult,
   type FilterOptions,
   type HeatmapPoint,
+  type ImageTagAnswer,
   type JsonRecord,
   type MetricType,
   type Question,
@@ -23,6 +24,7 @@ import type {
   RawBorichResult,
   RawFilterOptions,
   RawHeatmapPoint,
+  RawImageTagAnswer,
   RawQuestion,
   RawSection,
   RawSectionSummary,
@@ -165,6 +167,42 @@ export class AdminPayloadMapper {
     };
   }
 
+  toImageTagAnswer(row: RawImageTagAnswer): ImageTagAnswer {
+    const questionType = row.question_type === "participant_image_tag" ? "participant_image_tag" : "image_tag";
+    const source = questionType === "participant_image_tag" ? "participant_upload" : "survey_asset";
+    return {
+      id: row.id ?? row.answer_id ?? "",
+      responseId: row.response_id,
+      sectionId: row.section_id ?? undefined,
+      sectionTitle: row.section_title ?? undefined,
+      questionId: row.question_id ?? undefined,
+      questionTitle: row.question_title ?? "제목 없는 태깅 질문",
+      questionType,
+      kind: questionType === "participant_image_tag" ? "participant_upload" : "admin_image",
+      assetId: row.asset_id ?? undefined,
+      image: compactImage({
+        assetId: row.asset_id,
+        storageBucket: row.image_storage_bucket,
+        storagePath: row.image_storage_path,
+        signedUrl: row.image_signed_url,
+        source,
+      }),
+      xRatio: clampRatio(row.x_ratio),
+      yRatio: clampRatio(row.y_ratio),
+      tagType: row.tag_type ?? undefined,
+      severity: row.severity ?? undefined,
+      textValue: row.text_value ?? undefined,
+      valueJson: normalizeRecord(row.value_json),
+      responseProfile: row.response_profile ?? compactRecord({
+        dormitory: row.dormitory,
+        roomType: row.room_type,
+        rc: row.rc,
+        department: row.department,
+      }),
+      createdAt: row.created_at,
+    };
+  }
+
   toTextAnswer(row: RawTextAnswer): TextAnswer {
     return {
       id: row.id ?? row.answer_id ?? "",
@@ -184,6 +222,29 @@ export class AdminPayloadMapper {
       createdAt: row.created_at,
     };
   }
+}
+
+function compactImage(value: {
+  assetId?: string | null;
+  storageBucket?: string | null;
+  storagePath?: string | null;
+  signedUrl?: string | null;
+  source: "survey_asset" | "participant_upload";
+}): ImageTagAnswer["image"] {
+  if (!value.assetId && !value.storageBucket && !value.storagePath && !value.signedUrl) return undefined;
+  return {
+    assetId: value.assetId ?? undefined,
+    storageBucket: value.storageBucket ?? undefined,
+    storagePath: value.storagePath ?? undefined,
+    signedUrl: value.signedUrl ?? undefined,
+    source: value.source,
+  };
+}
+
+function clampRatio(value: number | null | undefined): number {
+  const ratio = Number(value ?? 0);
+  if (!Number.isFinite(ratio)) return 0;
+  return Math.min(1, Math.max(0, ratio));
 }
 
 function normalizeRecord(value: JsonRecord | null | undefined): JsonRecord {

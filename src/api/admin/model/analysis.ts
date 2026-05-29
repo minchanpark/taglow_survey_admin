@@ -1,4 +1,5 @@
 import type { JsonRecord } from "./common";
+import type { QuestionType } from "./question";
 
 export type AnalysisFilters = Readonly<{
   gender?: string;
@@ -69,5 +70,36 @@ export type TextAnswer = Readonly<{
   textValue: string;
   valueJson: JsonRecord;
   profile?: JsonRecord;
+  createdAt: string;
+}>;
+
+export type ImageTagAnswerImage = Readonly<{
+  assetId?: string;
+  storageBucket?: string;
+  storagePath?: string;
+  signedUrl?: string;
+  source: "survey_asset" | "participant_upload";
+}>;
+
+export type ImageTagAnswerKind = "admin_image" | "participant_upload";
+
+export type ImageTagAnswer = Readonly<{
+  id: string;
+  responseId?: string;
+  sectionId?: string;
+  sectionTitle?: string;
+  questionId?: string;
+  questionTitle: string;
+  questionType: Extract<QuestionType, "image_tag" | "participant_image_tag">;
+  kind: ImageTagAnswerKind;
+  assetId?: string;
+  image?: ImageTagAnswerImage;
+  xRatio: number;
+  yRatio: number;
+  tagType?: string;
+  severity?: number;
+  textValue?: string;
+  valueJson: JsonRecord;
+  responseProfile?: JsonRecord;
   createdAt: string;
 }>;

@@ -183,6 +183,34 @@ export type RawHeatmapPoint = Readonly<{
   response_profile?: JsonRecord | null;
 }>;
 
+export type RawImageTagAnswer = Readonly<{
+  answer_id?: string;
+  id?: string;
+  response_id?: string;
+  section_id: string | null;
+  section_title: string | null;
+  question_id: string | null;
+  question_title: string | null;
+  question_type: string | null;
+  asset_id: string | null;
+  answer_type: string;
+  x_ratio: number | null;
+  y_ratio: number | null;
+  tag_type: string | null;
+  severity: number | null;
+  text_value: string | null;
+  value_json?: JsonRecord | null;
+  image_storage_bucket?: string | null;
+  image_storage_path?: string | null;
+  image_signed_url?: string | null;
+  dormitory?: string | null;
+  room_type?: string | null;
+  rc?: string | null;
+  department?: string | null;
+  response_profile?: JsonRecord | null;
+  created_at: string;
+}>;
+
 export type RawTextAnswer = Readonly<{
   id?: string;
   answer_id?: string;

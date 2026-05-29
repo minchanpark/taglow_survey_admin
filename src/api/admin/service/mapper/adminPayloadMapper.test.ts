@@ -98,6 +98,66 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
     });
   });
 
+  it("maps image tag answer rows for participant uploaded photos", () => {
+    expect(
+      mapper.toImageTagAnswer({
+        answer_id: "answer-upload-1",
+        response_id: "response-1",
+        section_id: "section-1",
+        section_title: "생활관 시설",
+        question_id: "question-upload",
+        question_title: "직접 사진을 올려 표시해주세요.",
+        question_type: "participant_image_tag",
+        asset_id: null,
+        answer_type: "participant_image_tag",
+        x_ratio: 0.31,
+        y_ratio: 0.72,
+        tag_type: "수리 요청",
+        severity: 3,
+        text_value: "창틀이 흔들립니다.",
+        value_json: { image: { storagePath: "participant-uploads/survey-1/user-1/question-upload/image.png" } },
+        image_storage_bucket: "survey-assets",
+        image_storage_path: "participant-uploads/survey-1/user-1/question-upload/image.png",
+        image_signed_url: "https://example.com/image.png",
+        dormitory: "A동",
+        room_type: "2인실",
+        rc: "장기려",
+        department: "전산전자공학부",
+        created_at: "2026-05-28T00:00:00.000Z",
+      }),
+    ).toEqual({
+      id: "answer-upload-1",
+      responseId: "response-1",
+      sectionId: "section-1",
+      sectionTitle: "생활관 시설",
+      questionId: "question-upload",
+      questionTitle: "직접 사진을 올려 표시해주세요.",
+      questionType: "participant_image_tag",
+      kind: "participant_upload",
+      assetId: undefined,
+      image: {
+        assetId: undefined,
+        storageBucket: "survey-assets",
+        storagePath: "participant-uploads/survey-1/user-1/question-upload/image.png",
+        signedUrl: "https://example.com/image.png",
+        source: "participant_upload",
+      },
+      xRatio: 0.31,
+      yRatio: 0.72,
+      tagType: "수리 요청",
+      severity: 3,
+      textValue: "창틀이 흔들립니다.",
+      valueJson: { image: { storagePath: "participant-uploads/survey-1/user-1/question-upload/image.png" } },
+      responseProfile: {
+        dormitory: "A동",
+        roomType: "2인실",
+        rc: "장기려",
+        department: "전산전자공학부",
+      },
+      createdAt: "2026-05-28T00:00:00.000Z",
+    });
+  });
+
   it("maps text answer RPC rows without leaking participant identifiers", () => {
     expect(
       mapper.toTextAnswer({
