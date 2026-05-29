@@ -10,6 +10,7 @@ import type {
   RawCreateSurveyPayload,
   RawFilterOptions,
   RawHeatmapPoint,
+  RawImageTagAnswer,
   RawQuestion,
   RawSection,
   RawSectionSummary,
@@ -62,5 +63,6 @@ export interface AdminApiGateway {
   getSectionSatisfactionSummary(args: AnalysisQueryArgs): Promise<RawSectionSummary[]>;
   getBorichSummary(args: AnalysisQueryArgs): Promise<RawBorichResult[]>;
   getHeatmapPoints(args: HeatmapQueryArgs): Promise<RawHeatmapPoint[]>;
+  listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawImageTagAnswer[]>;
   listTextAnswers(args: TextAnswerQueryArgs): Promise<RawTextAnswer[]>;
 }

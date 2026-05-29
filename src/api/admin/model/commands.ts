@@ -110,3 +110,8 @@ export type TextAnswerFilterCommand = Readonly<{
   surveyId: string;
   filters: TextAnswerFilters;
 }>;
+
+export type ImageTagAnswerFilterCommand = Readonly<{
+  surveyId: string;
+  filters: HeatmapFilters;
+}>;

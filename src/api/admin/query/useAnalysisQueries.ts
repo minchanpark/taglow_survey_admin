@@ -39,6 +39,15 @@ export function useHeatmapPointsQuery(surveyId: string, filters: HeatmapFilters)
   });
 }
 
+export function useImageTagAnswersQuery(surveyId: string, filters: HeatmapFilters) {
+  const controller = useAdminApiController();
+  return useQuery({
+    queryKey: adminQueryKeys.imageTagAnswers(surveyId, filters),
+    queryFn: () => controller.listImageTagAnswers({ surveyId, filters }),
+    enabled: Boolean(surveyId),
+  });
+}
+
 export function useTextAnswersQuery(surveyId: string, filters: TextAnswerFilters) {
   const controller = useAdminApiController();
   return useQuery({

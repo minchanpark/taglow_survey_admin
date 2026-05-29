@@ -1,5 +1,6 @@
 import { AdminApiError, normalizeAdminApiError } from "./apiErrors";
 import type { AdminApiGateway } from "./adminApiGateway";
+import type { JsonRecord } from "../../model";
 import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
@@ -12,6 +13,7 @@ import type {
   RawCreateSurveyPayload,
   RawFilterOptions,
   RawHeatmapPoint,
+  RawImageTagAnswer,
   RawInsertSurveyPayload,
   RawQuestion,
   RawSection,
@@ -62,7 +64,10 @@ const RPC = {
 const deletableSurveyStatuses = ["draft", "closed", "archived"] as const;
 
 export class SupabaseAdminApiGateway implements AdminApiGateway {
-  constructor(private readonly supabase: SupabaseClientLike) {}
+  constructor(
+    private readonly supabase: SupabaseClientLike,
+    private readonly storageBucket = "survey-assets",
+  ) {}
 
   async getCurrentAuthUser(): Promise<RawAdminAuthUser | null> {
     const { data, error } = await this.supabase.auth.getSession();
@@ -296,6 +301,71 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     );
   }
 
+  async listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawImageTagAnswer[]> {
+    const filters = args.filters;
+    let query = this.supabase
+      .from("answers")
+      .select(
+        `
+          id,
+          response_id,
+          section_id,
+          question_id,
+          asset_id,
+          answer_type,
+          x_ratio,
+          y_ratio,
+          tag_type,
+          severity,
+          text_value,
+          value_json,
+          created_at,
+          responses!answers_response_same_survey_fk!inner(
+            status,
+            gender,
+            semester_group,
+            department,
+            rc,
+            dormitory,
+            room_type,
+            dorm_experience
+          ),
+          questions(
+            question_type,
+            title_ko
+          ),
+          survey_assets(
+            storage_bucket,
+            storage_path,
+            metadata
+          ),
+          survey_sections(
+            title_ko
+          )
+        `,
+      )
+      .eq("survey_id", args.surveyId)
+      .in("answer_type", ["image_tag", "participant_image_tag"])
+      .eq("responses.status", "submitted")
+      .order("created_at", { ascending: false });
+
+    query = applyMaybeEq(query, "responses.gender", filters.gender);
+    query = applyMaybeEq(query, "responses.semester_group", filters.semester_group);
+    query = applyMaybeEq(query, "responses.department", filters.department);
+    query = applyMaybeEq(query, "responses.rc", filters.rc);
+    query = applyMaybeEq(query, "responses.dormitory", filters.dormitory);
+    query = applyMaybeEq(query, "responses.room_type", filters.room_type);
+    query = applyMaybeEq(query, "responses.dorm_experience", filters.dorm_experience);
+    query = applyMaybeEq(query, "section_id", filters.section_id);
+    query = applyMaybeEq(query, "topic_key", filters.topic_key);
+    query = applyMaybeEq(query, "space_key", filters.space_key);
+    query = applyMaybeEq(query, "asset_id", filters.asset_id);
+    query = applyMaybeEq(query, "tag_type", filters.tag_type);
+
+    const rows = await this.many<Record<string, unknown>>(query, "RPC_FAILED");
+    return Promise.all(rows.map((row) => this.toRawImageTagAnswer(row)));
+  }
+
   async listTextAnswers(args: TextAnswerQueryArgs): Promise<RawTextAnswer[]> {
     return this.many<RawTextAnswer>(
       this.supabase.rpc(RPC.textAnswers, {
@@ -342,4 +412,189 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
       return row;
     }
   }
+
+  private async toRawImageTagAnswer(row: Record<string, unknown>): Promise<RawImageTagAnswer> {
+    const response = getRelationRecord(row.responses);
+    const question = getRelationRecord(row.questions);
+    const asset = getRelationRecord(row.survey_assets);
+    const section = getRelationRecord(row.survey_sections);
+    const valueJson = isJsonRecord(row.value_json) ? row.value_json : {};
+    const rawImage = getStoredImage(row.value_json, this.storageBucket) ?? getStoredImage(asset, this.storageBucket);
+    const signedUrl = rawImage?.storageBucket && rawImage.storagePath
+      ? await this.createSignedUrl(rawImage.storageBucket, rawImage.storagePath) ?? rawImage.signedUrl
+      : rawImage?.signedUrl;
+
+    return {
+      answer_id: getString(row.id),
+      id: getString(row.id),
+      response_id: getString(row.response_id),
+      section_id: getString(row.section_id) ?? null,
+      section_title: getString(section?.title_ko) ?? null,
+      question_id: getString(row.question_id) ?? null,
+      question_title: getString(question?.title_ko) ?? null,
+      question_type: getString(question?.question_type) ?? null,
+      asset_id: getString(row.asset_id) ?? null,
+      answer_type: getString(row.answer_type) ?? "image_tag",
+      x_ratio: getNumber(row.x_ratio),
+      y_ratio: getNumber(row.y_ratio),
+      tag_type: getString(row.tag_type) ?? null,
+      severity: getNumber(row.severity),
+      text_value: getString(row.text_value) ?? null,
+      value_json: valueJson,
+      image_storage_bucket: rawImage?.storageBucket ?? null,
+      image_storage_path: rawImage?.storagePath ?? null,
+      image_signed_url: signedUrl ?? null,
+      dormitory: getString(response?.dormitory) ?? null,
+      room_type: getString(response?.room_type) ?? null,
+      rc: getString(response?.rc) ?? null,
+      department: getString(response?.department) ?? null,
+      response_profile: compactRecord({
+        gender: getString(response?.gender),
+        semesterGroup: getString(response?.semester_group),
+        department: getString(response?.department),
+        rc: getString(response?.rc),
+        dormitory: getString(response?.dormitory),
+        roomType: getString(response?.room_type),
+        dormExperience: getString(response?.dorm_experience),
+      }),
+      created_at: getString(row.created_at) ?? "",
+    };
+  }
+
+  private async createSignedUrl(bucket: string, path: string): Promise<string | undefined> {
+    const storage = this.supabase.storage;
+    if (!storage) return undefined;
+
+    try {
+      const { data, error } = await storage.from(bucket).createSignedUrl(path, 60 * 60);
+      if (error || !data?.signedUrl) return undefined;
+      return data.signedUrl;
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+function applyMaybeEq(query: any, column: string, value: unknown): any {
+  return typeof value === "string" && value.trim() ? query.eq(column, value) : query;
+}
+
+function getRelationRecord(value: unknown): Record<string, unknown> | undefined {
+  if (Array.isArray(value)) return isRecord(value[0]) ? value[0] : undefined;
+  return isRecord(value) ? value : undefined;
+}
+
+function getStoredImage(
+  value: unknown,
+  fallbackBucket: string,
+): { storageBucket?: string; storagePath?: string; signedUrl?: string } | undefined {
+  const image = findImageRecord(value);
+  if (!image) return undefined;
+
+  const metadata = getRelationRecord(image.metadata);
+  const storagePath =
+    getString(image.storagePath) ??
+    getString(image.storage_path) ??
+    getString(image.imageStoragePath) ??
+    getString(image.image_storage_path) ??
+    getString(image.filePath) ??
+    getString(image.file_path) ??
+    getString(image.path);
+  const signedUrl =
+    getString(image.signedUrl) ??
+    getString(image.signed_url) ??
+    getString(image.imageUrl) ??
+    getString(image.image_url) ??
+    getString(image.publicUrl) ??
+    getString(image.public_url) ??
+    getString(image.url) ??
+    getString(metadata?.signedUrl) ??
+    getString(metadata?.publicUrl) ??
+    getString(metadata?.public_url);
+
+  if (!storagePath && !signedUrl) return undefined;
+
+  return {
+    storageBucket:
+      getString(image.storageBucket) ??
+      getString(image.storage_bucket) ??
+      getString(image.imageStorageBucket) ??
+      getString(image.image_storage_bucket) ??
+      getString(image.bucketId) ??
+      getString(image.bucket_id) ??
+      getString(image.bucket) ??
+      (storagePath ? fallbackBucket : undefined),
+    storagePath,
+    signedUrl,
+  };
+}
+
+function findImageRecord(value: unknown, seen = new Set<unknown>()): Record<string, unknown> | undefined {
+  if (!value || seen.has(value)) return undefined;
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findImageRecord(item, seen);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  if (!isRecord(value)) return undefined;
+  if (hasImageFields(value)) return value;
+
+  const preferredKeys = ["image", "uploadedImage", "uploaded_image", "photo", "file", "asset"];
+  for (const key of preferredKeys) {
+    const found = findImageRecord(value[key], seen);
+    if (found) return found;
+  }
+
+  for (const item of Object.values(value)) {
+    const found = findImageRecord(item, seen);
+    if (found) return found;
+  }
+
+  return undefined;
+}
+
+function hasImageFields(value: Record<string, unknown>): boolean {
+  return [
+    value.storagePath,
+    value.storage_path,
+    value.imageStoragePath,
+    value.image_storage_path,
+    value.filePath,
+    value.file_path,
+    value.signedUrl,
+    value.signed_url,
+    value.imageUrl,
+    value.image_url,
+    value.publicUrl,
+    value.public_url,
+    value.url,
+    value.path,
+  ].some((item) => typeof item === "string" && item.trim().length > 0);
+}
+
+function compactRecord(value: Record<string, string | number | boolean | null | undefined>): Record<string, string | number | boolean> | undefined {
+  const entries = Object.entries(value).filter(([, item]) => item !== null && item !== undefined && item !== "");
+  return entries.length ? Object.fromEntries(entries) as Record<string, string | number | boolean> : undefined;
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function getNumber(value: unknown): number | null {
+  const numberValue = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return isRecord(value);
 }

@@ -19,6 +19,8 @@ export const adminQueryKeys = {
     ["admin", "survey", surveyId, "analysis", "borich", filters] as const,
   heatmap: (surveyId: string, filters: HeatmapFilters) =>
     ["admin", "survey", surveyId, "analysis", "heatmap", filters] as const,
+  imageTagAnswers: (surveyId: string, filters: HeatmapFilters) =>
+    ["admin", "survey", surveyId, "analysis", "imageTagAnswers", filters] as const,
   textAnswers: (surveyId: string, filters: TextAnswerFilters) =>
     ["admin", "survey", surveyId, "analysis", "textAnswers", filters] as const,
 };

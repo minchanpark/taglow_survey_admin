@@ -10,6 +10,8 @@ import type {
   FilterOptions,
   HeatmapFilterCommand,
   HeatmapPoint,
+  ImageTagAnswer,
+  ImageTagAnswerFilterCommand,
   PreviewSurvey,
   PreviewSurveyCommand,
   QuestionSetImportCommand,
@@ -73,5 +75,6 @@ export interface AdminApiController {
   getSectionSatisfactionSummary(command: AnalysisFilterCommand): Promise<SectionSummary[]>;
   getBorichSummary(command: AnalysisFilterCommand): Promise<BorichResult[]>;
   getHeatmapPoints(command: HeatmapFilterCommand): Promise<HeatmapPoint[]>;
+  listImageTagAnswers(command: ImageTagAnswerFilterCommand): Promise<ImageTagAnswer[]>;
   listTextAnswers(command: TextAnswerFilterCommand): Promise<TextAnswer[]>;
 }

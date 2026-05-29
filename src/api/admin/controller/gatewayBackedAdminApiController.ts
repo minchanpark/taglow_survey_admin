@@ -27,6 +27,8 @@ import type {
   FilterOptions,
   HeatmapFilterCommand,
   HeatmapPoint,
+  ImageTagAnswer,
+  ImageTagAnswerFilterCommand,
   JsonRecord,
   PreviewSurvey,
   PreviewSurveyCommand,
@@ -342,6 +344,14 @@ export class GatewayBackedAdminApiController implements AdminApiController {
       filters: toAnalysisFilterPayload(command.filters),
     });
     return rows.map((row) => this.mapper.toHeatmapPoint(row));
+  }
+
+  async listImageTagAnswers(command: ImageTagAnswerFilterCommand): Promise<ImageTagAnswer[]> {
+    const rows = await this.gateway.listImageTagAnswers({
+      surveyId: command.surveyId,
+      filters: toAnalysisFilterPayload(command.filters),
+    });
+    return rows.map((row) => this.mapper.toImageTagAnswer(row));
   }
 
   async listTextAnswers(command: TextAnswerFilterCommand): Promise<TextAnswer[]> {

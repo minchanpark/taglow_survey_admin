@@ -10,6 +10,7 @@ import type {
   CreateSurveyCommand,
   FilterOptions,
   HeatmapPoint,
+  ImageTagAnswer,
   PreviewSurvey,
   PreviewSurveyCommand,
   QuestionSetImportCommand,
@@ -200,6 +201,7 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
     getSectionSatisfactionSummary: async (): Promise<SectionSummary[]> => [],
     getBorichSummary: async (): Promise<BorichResult[]> => [],
     getHeatmapPoints: async (): Promise<HeatmapPoint[]> => [],
+    listImageTagAnswers: async (): Promise<ImageTagAnswer[]> => [],
     listTextAnswers: async (): Promise<TextAnswer[]> => [],
   };
 

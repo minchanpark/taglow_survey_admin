@@ -1,29 +1,80 @@
-.tg-analysis-placeholder-page {
+.tg-analysis-page {
   display: grid;
   max-width: var(--tg-page-max-width);
   gap: var(--tg-space-12);
   padding: var(--tg-space-16);
 }
 
-.tg-analysis-placeholder-page header {
-  display: grid;
-  gap: var(--tg-space-2);
+.tg-analysis-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--tg-space-10);
 }
 
-.tg-analysis-placeholder-page h1,
-.tg-analysis-placeholder-page p {
+.tg-analysis-page__header h1,
+.tg-analysis-page__header p {
   margin: 0;
 }
 
-.tg-analysis-placeholder-page h1 {
+.tg-analysis-page__header h1 {
   color: var(--tg-text-strong);
   font-size: var(--tg-font-size-page-title);
   font-weight: var(--tg-weight-bold);
   line-height: var(--tg-line-page-title);
 }
 
-.tg-analysis-placeholder-page p {
+.tg-analysis-page__header p {
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-caption);
   line-height: var(--tg-line-caption);
+}
+
+.tg-analysis-page__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+  gap: var(--tg-space-6);
+}
+
+.tg-analysis-page__metric {
+  display: grid;
+  gap: var(--tg-space-2);
+  min-width: 96px;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-md);
+  padding: var(--tg-space-6);
+  background: var(--tg-bg-panel);
+}
+
+.tg-analysis-page__metric span {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-analysis-page__metric strong {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-section-title);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-section-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.tg-analysis-page__sections {
+  display: grid;
+  gap: var(--tg-space-12);
+}
+
+@media (max-width: 780px) {
+  .tg-analysis-page {
+    padding: var(--tg-space-10);
+  }
+
+  .tg-analysis-page__header {
+    flex-direction: column;
+  }
+
+  .tg-analysis-page__metrics {
+    grid-template-columns: 1fr;
+  }
 }

@@ -22,7 +22,7 @@ export function createAdminApiRuntime(env: EnvConfig): AdminApiController {
   }
 
   const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey);
-  const gateway = new SupabaseAdminApiGateway(supabase);
+  const gateway = new SupabaseAdminApiGateway(supabase, env.storageBucket);
   const storageGateway = new SupabaseAdminStorageGateway({
     supabase,
     bucket: env.storageBucket,
