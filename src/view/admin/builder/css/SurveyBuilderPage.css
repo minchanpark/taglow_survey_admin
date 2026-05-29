@@ -109,6 +109,11 @@
   padding-top: var(--tg-space-8);
 }
 
+.tg-builder-edit--flat {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .tg-builder-field {
   display: grid;
   gap: var(--tg-space-3);
@@ -246,9 +251,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--tg-space-4);
   border-top: 1px solid var(--tg-border-subtle);
   padding-top: var(--tg-space-4);
+}
+
+.tg-builder-list__item-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--tg-space-3);
+}
+
+.tg-builder-list__add-below {
+  min-height: 30px;
+  padding: 0 var(--tg-space-5);
+  font-size: var(--tg-font-size-caption);
 }
 
 .tg-builder-icon-button {

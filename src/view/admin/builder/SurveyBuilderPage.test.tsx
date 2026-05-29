@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminApiController } from "../../../api/admin/controller";
 import type {
   CreateQuestionCommand,
@@ -12,6 +12,7 @@ import type {
   UpdateQuestionCommand,
   UpdateSectionCommand,
 } from "../../../api/admin/model";
+import { useAdminBuilderStore } from "../../../store";
 import { createFakeAdminApiController, fakeSurvey } from "../../../test/fakeAdminApiController";
 import { renderWithProviders } from "../../../test/renderWithProviders";
 import { SurveyBuilderPage } from "./SurveyBuilderPage";
@@ -109,6 +110,10 @@ function renderBuilder(
 }
 
 describe("SurveyBuilderPage", () => {
+  beforeEach(() => {
+    useAdminBuilderStore.getState().resetBuilderSelection();
+  });
+
   it("creates sections through the admin API boundary", async () => {
     const user = userEvent.setup();
     const createSection = vi.fn<AdminApiController["createSection"]>(async (command: CreateSectionCommand) => ({
@@ -149,12 +154,20 @@ describe("SurveyBuilderPage", () => {
       metricType: command.metricType ?? "none",
       config: command.config ?? {},
     }));
-    renderBuilder({ createQuestion });
+    const reorderQuestions = vi.fn<AdminApiController["reorderQuestions"]>(async (command) =>
+      command.questionIds.map((questionId, index) => ({
+        ...(questionId === "question-2" ? { ...question, id: "question-2", title: { ko: "책상 상태에 만족하시나요?" } } : question),
+        orderIndex: index,
+      })),
+    );
+    renderBuilder({ createQuestion, reorderQuestions });
 
     await screen.findByRole("heading", { name: "생활관 만족도 조사" });
-    await user.type(screen.getByLabelText("새 질문"), "책상 상태에 만족하시나요?");
-    await user.type(screen.getByLabelText("질문 키"), "desk_satisfaction");
-    await user.click(screen.getByRole("button", { name: "질문 추가" }));
+    await user.click(screen.getByRole("button", { name: "침대 상태에 만족하시나요? 아래에 새 질문 추가" }));
+    const createEditor = screen.getByRole("complementary", { name: "질문 추가" });
+    await user.type(within(createEditor).getByLabelText("새 질문"), "책상 상태에 만족하시나요?");
+    await user.type(within(createEditor).getByLabelText("질문 키"), "desk_satisfaction");
+    await user.click(within(createEditor).getByRole("button", { name: "질문 추가" }));
 
     await waitFor(() => {
       expect(createQuestion).toHaveBeenCalledWith({
@@ -173,6 +186,65 @@ describe("SurveyBuilderPage", () => {
         },
         validation: {},
       });
+    });
+    await waitFor(() => {
+      expect(reorderQuestions).toHaveBeenCalledWith({
+        surveyId: "survey-1",
+        sectionId: "section-1",
+        questionIds: ["question-1", "question-2"],
+      });
+    });
+  });
+
+  it("keeps the question editor closed until a question node is selected", async () => {
+    const user = userEvent.setup();
+    renderBuilder();
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+
+    expect(screen.queryByRole("complementary", { name: "질문 편집" })).not.toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "질문 작업" })).toHaveTextContent("선택된 질문이 없습니다.");
+
+    await user.click(screen.getByRole("button", { name: "침대 상태에 만족하시나요? 질문 선택" }));
+
+    expect(screen.getByRole("complementary", { name: "질문 편집" })).toBeInTheDocument();
+  });
+
+  it("reorders questions from the arrow controls", async () => {
+    const user = userEvent.setup();
+    let currentQuestions = [question, imageTagQuestion];
+    const reorderQuestions = vi.fn<AdminApiController["reorderQuestions"]>(async (command) => {
+      currentQuestions = command.questionIds.map((questionId, index) => ({
+        ...currentQuestions.find((item) => item.id === questionId)!,
+        orderIndex: index,
+      }));
+      return currentQuestions;
+    });
+    renderBuilder({
+      getSurveyDetail: async () => ({
+        survey: fakeSurvey,
+        sections: [section],
+        questions: currentQuestions,
+        assets: [],
+      }),
+      reorderQuestions,
+    });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    const questionList = screen.getByRole("list", { name: "질문 목록" });
+    await user.click(within(questionList).getByRole("button", { name: "불편한 위치를 표시해주세요. 위로 이동" }));
+
+    await waitFor(() => {
+      expect(reorderQuestions).toHaveBeenCalledWith({
+        surveyId: "survey-1",
+        sectionId: "section-1",
+        questionIds: ["question-image", "question-1"],
+      });
+    });
+    await waitFor(() => {
+      const questionNodes = within(questionList).getAllByRole("button", { name: /질문 선택$/ });
+      expect(questionNodes[0]).toHaveTextContent("불편한 위치를 표시해주세요.");
+      expect(questionNodes[1]).toHaveTextContent("침대 상태에 만족하시나요?");
     });
   });
 
@@ -228,9 +300,10 @@ describe("SurveyBuilderPage", () => {
     await user.click(screen.getByRole("button", { name: "식당에 질문 추가" }));
     expect(screen.getByText("현재 섹션: 식당")).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("새 질문"), "식당 이용 경험이 있나요?");
-    await user.type(screen.getByLabelText("질문 키"), "cafeteria_experience");
-    await user.click(screen.getByRole("button", { name: "질문 추가" }));
+    const createEditor = screen.getByRole("complementary", { name: "질문 추가" });
+    await user.type(within(createEditor).getByLabelText("새 질문"), "식당 이용 경험이 있나요?");
+    await user.type(within(createEditor).getByLabelText("질문 키"), "cafeteria_experience");
+    await user.click(within(createEditor).getByRole("button", { name: "질문 추가" }));
 
     await waitFor(() => {
       expect(createQuestion).toHaveBeenCalledWith(
@@ -263,7 +336,7 @@ describe("SurveyBuilderPage", () => {
     renderBuilder({ updateQuestion });
 
     await screen.findByRole("heading", { name: "생활관 만족도 조사" });
-    await user.click(screen.getByRole("button", { name: /침대 상태에 만족하시나요?/ }));
+    await user.click(screen.getByRole("button", { name: "침대 상태에 만족하시나요? 질문 선택" }));
     const editor = screen.getByRole("complementary", { name: "질문 편집" });
 
     await user.selectOptions(within(editor).getByLabelText("질문 유형"), "single_choice");
@@ -333,7 +406,7 @@ describe("SurveyBuilderPage", () => {
     renderBuilder({ uploadSurveyImage, updateQuestion }, { questions: [imageTagQuestion] });
 
     await screen.findByRole("heading", { name: "생활관 만족도 조사" });
-    await user.click(screen.getByRole("button", { name: /불편한 위치를 표시해주세요/ }));
+    await user.click(screen.getByRole("button", { name: "불편한 위치를 표시해주세요. 질문 선택" }));
     const editor = screen.getByRole("complementary", { name: "질문 편집" });
     const file = new File(["image"], "facility.png", { type: "image/png" });
 

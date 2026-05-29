@@ -148,7 +148,25 @@ export function useReorderQuestionsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (command: ReorderQuestionsCommand) => controller.reorderQuestions(command),
-    onSuccess: (_questions, command) => invalidateBuilder(queryClient, command.surveyId),
+    onMutate: (command) => {
+      applyQuestionOrder(queryClient, command);
+    },
+    onSuccess: (questions, command) => {
+      applyQuestionOrder(queryClient, command);
+      if (questions.length) {
+        setSurveyDetail(queryClient, command.surveyId, (detail) => ({
+          ...detail,
+          questions: mergeQuestions(detail.questions, questions),
+        }));
+        setListQuery(queryClient, adminQueryKeys.questions(command.surveyId), (items: Question[]) =>
+          mergeQuestions(items, questions),
+        );
+      }
+      invalidateBuilder(queryClient, command.surveyId);
+    },
+    onError: (_error, command) => {
+      invalidateBuilder(queryClient, command.surveyId);
+    },
   });
 }
 
@@ -210,4 +228,40 @@ function upsertById<TItem extends { id: string; orderIndex?: number }>(items: re
     ? items.map((current) => (current.id === item.id ? item : current))
     : [...items, item];
   return [...next].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+}
+
+function applyQuestionOrder(queryClient: QueryClient, command: ReorderQuestionsCommand) {
+  const orderById = new Map(command.questionIds.map((questionId, index) => [questionId, index]));
+  const reorder = (questions: Question[]) =>
+    sortQuestionsWithinSections(
+      questions.map((question) =>
+        question.sectionId === command.sectionId && orderById.has(question.id)
+          ? { ...question, orderIndex: orderById.get(question.id) ?? question.orderIndex }
+          : question,
+      ),
+    );
+
+  setSurveyDetail(queryClient, command.surveyId, (detail) => ({
+    ...detail,
+    questions: reorder(detail.questions),
+  }));
+  setListQuery(queryClient, adminQueryKeys.questions(command.surveyId), reorder);
+}
+
+function mergeQuestions(items: readonly Question[], questions: readonly Question[]): Question[] {
+  const updatedById = new Map(questions.map((question) => [question.id, question]));
+  const existingIds = new Set(items.map((item) => item.id));
+  return sortQuestionsWithinSections(
+    [
+      ...items.map((item) => {
+        const updated = updatedById.get(item.id);
+        return updated ?? item;
+      }),
+      ...questions.filter((question) => !existingIds.has(question.id)),
+    ],
+  );
+}
+
+function sortQuestionsWithinSections(questions: readonly Question[]): Question[] {
+  return [...questions].sort((a, b) => (a.sectionId === b.sectionId ? a.orderIndex - b.orderIndex : 0));
 }

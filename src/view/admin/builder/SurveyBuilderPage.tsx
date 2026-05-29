@@ -137,9 +137,12 @@ export function SurveyBuilderPage() {
   const {
     selectedSectionId,
     selectedQuestionId,
+    questionCreatePlacement,
     setSelectedSurveyId,
     setSelectedSectionId,
     setSelectedQuestionId,
+    startQuestionCreate,
+    clearQuestionCreate,
   } = useAdminBuilderStore();
 
   const sections = useMemo(
@@ -178,7 +181,7 @@ export function SurveyBuilderPage() {
       return;
     }
     if (selectedQuestionId && !sectionQuestions.some((question) => question.id === selectedQuestionId)) {
-      setSelectedQuestionId(sectionQuestions[0]?.id);
+      setSelectedQuestionId(undefined);
     }
   }, [sectionQuestions, selectedQuestionId, setSelectedQuestionId]);
 
@@ -244,8 +247,7 @@ export function SurveyBuilderPage() {
           isStructureLocked={isStructureLocked}
           onSelectSection={(sectionId) => setSelectedSectionId(sectionId)}
           onStartQuestion={(sectionId) => {
-            setSelectedSectionId(sectionId);
-            setSelectedQuestionId(undefined);
+            startQuestionCreate(sectionId);
           }}
         />
         <QuestionPanel
@@ -255,12 +257,18 @@ export function SurveyBuilderPage() {
           selectedQuestion={selectedQuestion}
           isStructureLocked={isStructureLocked}
           onSelectQuestion={(questionId) => setSelectedQuestionId(questionId)}
+          onStartQuestion={(sectionId, afterQuestionId) => startQuestionCreate(sectionId, afterQuestionId)}
         />
         <QuestionEditor
           surveyId={surveyId}
+          selectedSection={selectedSection}
+          questions={sectionQuestions}
           question={selectedQuestion}
+          createPlacement={questionCreatePlacement?.sectionId === selectedSection?.id ? questionCreatePlacement : undefined}
           assets={detailQuery.data.assets}
           isStructureLocked={isStructureLocked}
+          onCancelCreate={clearQuestionCreate}
+          onQuestionCreated={(questionId) => setSelectedQuestionId(questionId)}
         />
       </div>
 
@@ -521,15 +529,10 @@ function QuestionPanel(props: {
   selectedQuestion?: Question;
   isStructureLocked: boolean;
   onSelectQuestion: (questionId: string) => void;
+  onStartQuestion: (sectionId: string, afterQuestionId?: string) => void;
 }) {
   const createQuestionMutation = useCreateQuestionMutation();
   const reorderQuestionsMutation = useReorderQuestionsMutation();
-  const setSelectedQuestionId = useAdminBuilderStore((state) => state.setSelectedQuestionId);
-  const createForm = useForm<CreateQuestionForm>({
-    resolver: zodResolver(createQuestionSchema),
-    defaultValues: { titleKo: "", questionKey: "", questionType: "scale" },
-  });
-  const watchedType = createForm.watch("questionType");
   const isBusy = props.isStructureLocked || createQuestionMutation.isPending || reorderQuestionsMutation.isPending;
 
   if (!props.selectedSection) {
@@ -551,70 +554,6 @@ function QuestionPanel(props: {
       </div>
       <p className="tg-builder-selected-section">현재 섹션: {selectedSection.title.ko}</p>
 
-      <form
-        className="tg-builder-create"
-        onSubmit={createForm.handleSubmit((values) => {
-          const metricType = defaultMetricType(values.questionType);
-          createQuestionMutation.mutate(
-            {
-              surveyId: props.surveyId,
-              sectionId: selectedSection.id,
-              questionKey: values.questionKey || createStableKey(values.titleKo, "question"),
-              questionType: values.questionType,
-              title: { ko: values.titleKo },
-              orderIndex: props.questions.length,
-              isRequired: true,
-              metricType,
-              config: defaultQuestionConfig(values.questionType),
-              validation: {},
-            },
-            {
-              onSuccess: (question) => {
-                createForm.reset({ titleKo: "", questionKey: "", questionType: "scale" });
-                setSelectedQuestionId(question.id);
-              },
-            },
-          );
-        })}
-      >
-        <label className="tg-builder-field">
-          <span>새 질문</span>
-          <input aria-label="새 질문" placeholder="예: 침대 상태에 만족하시나요?" {...createForm.register("titleKo")} disabled={isBusy} />
-          {createForm.formState.errors.titleKo ? <small>{createForm.formState.errors.titleKo.message}</small> : null}
-        </label>
-        <label className="tg-builder-field">
-          <span>질문 유형</span>
-          <select aria-label="질문 유형" {...createForm.register("questionType")} disabled={isBusy}>
-            {questionTypes.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <details className="tg-builder-advanced">
-          <summary>고급 설정</summary>
-          <label className="tg-builder-field">
-            <span>질문 키</span>
-            <input aria-label="질문 키" placeholder="자동 생성" {...createForm.register("questionKey")} disabled={isBusy} />
-          </label>
-          {createForm.formState.errors.questionKey ? <small>{createForm.formState.errors.questionKey.message}</small> : null}
-        </details>
-        <p className="tg-builder-hint">기본 설정: {getQuestionTypeLabel(watchedType)}</p>
-        <Button
-          type="submit"
-          variant="secondary"
-          icon={<FilePlus2 size={16} aria-hidden="true" />}
-          disabled={isBusy}
-        >
-          질문 추가
-        </Button>
-        {createQuestionMutation.isError ? (
-          <InlineAlert message="질문을 추가하지 못했습니다." detail={getErrorDetail(createQuestionMutation.error)} />
-        ) : null}
-        {createQuestionMutation.isSuccess ? <InlineNotice message="질문이 추가되었습니다." /> : null}
-      </form>
-
       <div className="tg-builder-list" role="list" aria-label="질문 목록">
         {props.questions.length ? (
           groupedQuestions.map((group) => (
@@ -624,6 +563,7 @@ function QuestionPanel(props: {
                 <div
                   key={question.id}
                   className={`tg-builder-list__item ${question.id === props.selectedQuestion?.id ? "tg-builder-list__item--active" : ""}`}
+                  role="listitem"
                 >
                   <button
                     type="button"
@@ -635,31 +575,48 @@ function QuestionPanel(props: {
                     <span>{getQuestionTypeLabel(question.questionType)} · {getMetricTypeLabel(question.metricType)}</span>
                   </button>
                   <div className="tg-builder-list__item-meta">
-                    <IconButton
-                      label="위로 이동"
-                      disabled={isBusy || props.questions.indexOf(question) === 0}
-                      onClick={() => moveQuestion(question.id, -1)}
-                      icon={<ArrowUp size={15} aria-hidden="true" />}
-                    />
-                    <IconButton
-                      label="아래로 이동"
-                      disabled={isBusy || props.questions.indexOf(question) === props.questions.length - 1}
-                      onClick={() => moveQuestion(question.id, 1)}
-                      icon={<ArrowDown size={15} aria-hidden="true" />}
-                    />
-                    <IconButton
-                      label="질문 복제"
+                    <div className="tg-builder-list__item-tools">
+                      <IconButton
+                        label={`${question.title.ko} 위로 이동`}
+                        disabled={isBusy || props.questions.indexOf(question) === 0}
+                        onClick={() => moveQuestion(question.id, -1)}
+                        icon={<ArrowUp size={15} aria-hidden="true" />}
+                      />
+                      <IconButton
+                        label={`${question.title.ko} 아래로 이동`}
+                        disabled={isBusy || props.questions.indexOf(question) === props.questions.length - 1}
+                        onClick={() => moveQuestion(question.id, 1)}
+                        icon={<ArrowDown size={15} aria-hidden="true" />}
+                      />
+                      <IconButton
+                        label={`${question.title.ko} 질문 복제`}
+                        disabled={isBusy}
+                        onClick={() => duplicateQuestion(question)}
+                        icon={<Copy size={15} aria-hidden="true" />}
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      className="tg-builder-list__add-below"
+                      icon={<FilePlus2 size={16} aria-hidden="true" />}
+                      aria-label={`${question.title.ko} 아래에 새 질문 추가`}
                       disabled={isBusy}
-                      onClick={() => duplicateQuestion(question)}
-                      icon={<Copy size={15} aria-hidden="true" />}
-                    />
+                      onClick={() => props.onStartQuestion(selectedSection.id, question.id)}
+                    >
+                      아래에 새 질문 추가
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
           ))
         ) : (
-          <EmptyState title="질문이 없습니다." description="선택한 섹션에 질문을 추가해주세요." />
+          <EmptyState
+            title="질문이 없습니다."
+            description="선택한 섹션에 첫 질문을 추가해주세요."
+            actionLabel="첫 질문 추가"
+            onAction={props.isStructureLocked ? undefined : () => props.onStartQuestion(selectedSection.id)}
+          />
         )}
       </div>
     </aside>
@@ -691,7 +648,22 @@ function QuestionPanel(props: {
   }
 }
 
-function QuestionEditor(props: { surveyId: string; question?: Question; assets: SurveyAsset[]; isStructureLocked: boolean }) {
+type QuestionCreatePlacement = Readonly<{
+  sectionId: string;
+  afterQuestionId?: string;
+}>;
+
+function QuestionEditor(props: {
+  surveyId: string;
+  selectedSection?: SurveySection;
+  questions: Question[];
+  question?: Question;
+  createPlacement?: QuestionCreatePlacement;
+  assets: SurveyAsset[];
+  isStructureLocked: boolean;
+  onCancelCreate: () => void;
+  onQuestionCreated: (questionId: string) => void;
+}) {
   const updateQuestionMutation = useUpdateQuestionMutation();
   const deleteQuestionMutation = useDeleteQuestionMutation();
   const editForm = useForm<EditQuestionForm>({
@@ -706,10 +678,24 @@ function QuestionEditor(props: { surveyId: string; question?: Question; assets: 
     editForm.reset(questionToEditForm(props.question));
   }, [editForm, props.question]);
 
+  if (props.createPlacement) {
+    return (
+      <QuestionCreateEditor
+        surveyId={props.surveyId}
+        selectedSection={props.selectedSection}
+        questions={props.questions}
+        createPlacement={props.createPlacement}
+        isStructureLocked={props.isStructureLocked}
+        onCancel={props.onCancelCreate}
+        onQuestionCreated={props.onQuestionCreated}
+      />
+    );
+  }
+
   if (!props.question) {
     return (
-      <aside className="tg-builder-panel tg-builder-panel--editor" aria-label="질문 편집">
-        <EmptyState title="선택된 질문이 없습니다." description="질문을 추가하거나 목록에서 선택해주세요." />
+      <aside className="tg-builder-panel tg-builder-panel--editor" aria-label="질문 작업">
+        <EmptyState title="선택된 질문이 없습니다." description="질문 노드를 선택하거나 새 질문 추가를 눌러주세요." />
       </aside>
     );
   }
@@ -855,6 +841,137 @@ function QuestionEditor(props: { surveyId: string; question?: Question; assets: 
             }}
           >
             삭제
+          </Button>
+        </div>
+      </form>
+    </aside>
+  );
+}
+
+function QuestionCreateEditor(props: {
+  surveyId: string;
+  selectedSection?: SurveySection;
+  questions: Question[];
+  createPlacement: QuestionCreatePlacement;
+  isStructureLocked: boolean;
+  onCancel: () => void;
+  onQuestionCreated: (questionId: string) => void;
+}) {
+  const createQuestionMutation = useCreateQuestionMutation();
+  const reorderQuestionsMutation = useReorderQuestionsMutation();
+  const createForm = useForm<CreateQuestionForm>({
+    resolver: zodResolver(createQuestionSchema),
+    defaultValues: { titleKo: "", questionKey: "", questionType: "scale" },
+  });
+  const watchedType = createForm.watch("questionType");
+  const selectedSection = props.selectedSection;
+  const afterQuestion = props.questions.find((question) => question.id === props.createPlacement.afterQuestionId);
+  const isBusy = props.isStructureLocked || createQuestionMutation.isPending || reorderQuestionsMutation.isPending;
+
+  useEffect(() => {
+    createForm.reset({ titleKo: "", questionKey: "", questionType: "scale" });
+  }, [createForm, props.createPlacement.afterQuestionId, props.createPlacement.sectionId]);
+
+  if (!selectedSection) {
+    return (
+      <aside className="tg-builder-panel tg-builder-panel--editor" aria-label="질문 추가">
+        <EmptyState title="선택된 섹션이 없습니다." description="질문을 추가할 섹션을 먼저 선택해주세요." />
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="tg-builder-panel tg-builder-panel--editor" aria-label="질문 추가">
+      <div className="tg-builder-panel__title-row">
+        <h2>질문 추가</h2>
+        <Button variant="ghost" icon={<X size={16} aria-hidden="true" />} onClick={props.onCancel} disabled={isBusy}>
+          닫기
+        </Button>
+      </div>
+      <p className="tg-builder-hint">
+        {afterQuestion ? `${afterQuestion.title.ko} 아래에 추가됩니다.` : `${selectedSection.title.ko} 끝에 추가됩니다.`}
+      </p>
+
+      <form
+        className="tg-builder-edit tg-builder-edit--flat"
+        onSubmit={createForm.handleSubmit((values) => {
+          const metricType = defaultMetricType(values.questionType);
+          const targetIndex = getQuestionInsertionIndex(props.questions, props.createPlacement.afterQuestionId);
+          createQuestionMutation.mutate(
+            {
+              surveyId: props.surveyId,
+              sectionId: selectedSection.id,
+              questionKey: values.questionKey || createStableKey(values.titleKo, "question"),
+              questionType: values.questionType,
+              title: { ko: values.titleKo },
+              orderIndex: props.questions.length,
+              isRequired: true,
+              metricType,
+              config: defaultQuestionConfig(values.questionType),
+              validation: {},
+            },
+            {
+              onSuccess: (question) => {
+                const nextQuestionIds = insertIdAt(
+                  props.questions.map((item) => item.id),
+                  question.id,
+                  targetIndex,
+                );
+                if (nextQuestionIds.length > 1) {
+                  reorderQuestionsMutation.mutate({
+                    surveyId: props.surveyId,
+                    sectionId: selectedSection.id,
+                    questionIds: nextQuestionIds,
+                  });
+                }
+                createForm.reset({ titleKo: "", questionKey: "", questionType: "scale" });
+                props.onQuestionCreated(question.id);
+              },
+            },
+          );
+        })}
+      >
+        <label className="tg-builder-field">
+          <span>새 질문</span>
+          <input aria-label="새 질문" placeholder="예: 침대 상태에 만족하시나요?" {...createForm.register("titleKo")} disabled={isBusy} />
+          {createForm.formState.errors.titleKo ? <small>{createForm.formState.errors.titleKo.message}</small> : null}
+        </label>
+        <label className="tg-builder-field">
+          <span>질문 유형</span>
+          <select aria-label="질문 유형" {...createForm.register("questionType")} disabled={isBusy}>
+            {questionTypes.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <details className="tg-builder-advanced">
+          <summary>고급 설정</summary>
+          <label className="tg-builder-field">
+            <span>질문 키</span>
+            <input aria-label="질문 키" placeholder="자동 생성" {...createForm.register("questionKey")} disabled={isBusy} />
+          </label>
+          {createForm.formState.errors.questionKey ? <small>{createForm.formState.errors.questionKey.message}</small> : null}
+        </details>
+        <p className="tg-builder-hint">기본 설정: {getQuestionTypeLabel(watchedType)}</p>
+        {createQuestionMutation.isError ? (
+          <InlineAlert message="질문을 추가하지 못했습니다." detail={getErrorDetail(createQuestionMutation.error)} />
+        ) : null}
+        {reorderQuestionsMutation.isError ? (
+          <InlineAlert message="질문 위치를 저장하지 못했습니다." detail={getErrorDetail(reorderQuestionsMutation.error)} />
+        ) : null}
+        <div className="tg-builder-actions">
+          <Button type="button" variant="secondary" onClick={props.onCancel} disabled={isBusy}>
+            취소
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            icon={createQuestionMutation.isPending ? <Loader2 size={16} aria-hidden="true" /> : <FilePlus2 size={16} aria-hidden="true" />}
+            disabled={isBusy}
+          >
+            질문 추가
           </Button>
         </div>
       </form>
@@ -1151,7 +1268,14 @@ function IconButton(props: {
   onClick: MouseEventHandler<HTMLButtonElement>;
 }) {
   return (
-    <button type="button" className="tg-builder-icon-button" aria-label={props.label} disabled={props.disabled} onClick={props.onClick}>
+    <button
+      type="button"
+      className="tg-builder-icon-button"
+      aria-label={props.label}
+      title={props.label}
+      disabled={props.disabled}
+      onClick={props.onClick}
+    >
       {props.icon}
     </button>
   );
@@ -1302,6 +1426,18 @@ function moveId(ids: string[], id: string, direction: -1 | 1): string[] | undefi
   if (index < 0 || nextIndex < 0 || nextIndex >= ids.length) return undefined;
   const next = [...ids];
   [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+  return next;
+}
+
+function getQuestionInsertionIndex(questions: Question[], afterQuestionId?: string): number {
+  if (!afterQuestionId) return questions.length;
+  const afterIndex = questions.findIndex((question) => question.id === afterQuestionId);
+  return afterIndex >= 0 ? afterIndex + 1 : questions.length;
+}
+
+function insertIdAt(ids: string[], id: string, index: number): string[] {
+  const next = ids.filter((currentId) => currentId !== id);
+  next.splice(Math.min(Math.max(index, 0), next.length), 0, id);
   return next;
 }
 
