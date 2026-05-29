@@ -185,6 +185,72 @@ describe("SurveyPreviewPage", () => {
     expect(getPreviewSurvey).toHaveBeenCalledTimes(1);
   });
 
+  it("simulates choice-first text answers locally", async () => {
+    const user = userEvent.setup();
+    const choiceTextQuestion: Question = {
+      ...questions[2],
+      id: "question-choice-text",
+      questionKey: "choice_text_feedback",
+      title: { ko: "분류 후 의견을 적어주세요." },
+      config: {
+        textMode: "choice_then_text",
+        options: [
+          { value: "complaint", labelKo: "불편" },
+          { value: "praise", labelKo: "칭찬" },
+        ],
+      },
+    };
+    renderPreview({
+      getPreviewSurvey: async (command: PreviewSurveyCommand) => ({
+        survey: fakeSurvey,
+        sections: [sections[0]],
+        questions: [{ ...choiceTextQuestion, sectionId: "section-1" }],
+        assets: [],
+        previewMode: true,
+        options: command.options,
+      }),
+    });
+
+    await screen.findByRole("heading", { name: "시설" });
+    await user.click(screen.getByLabelText("불편"));
+    await user.type(screen.getByLabelText("상세 답변"), "분류된 의견입니다.");
+
+    expect(screen.getByLabelText("불편")).toBeChecked();
+    expect(screen.getByLabelText("상세 답변")).toHaveValue("분류된 의견입니다.");
+    expect(screen.getByText("선택후 주관식")).toBeInTheDocument();
+  });
+
+  it("simulates short text answers locally", async () => {
+    const user = userEvent.setup();
+    const shortTextQuestion: Question = {
+      ...questions[2],
+      id: "question-short-text",
+      questionKey: "student_id",
+      title: { ko: "학번을 입력해주세요." },
+      config: {
+        textMode: "short",
+        multiline: false,
+        maxLength: 20,
+      },
+    };
+    renderPreview({
+      getPreviewSurvey: async (command: PreviewSurveyCommand) => ({
+        survey: fakeSurvey,
+        sections: [sections[0]],
+        questions: [{ ...shortTextQuestion, sectionId: "section-1" }],
+        assets: [],
+        previewMode: true,
+        options: command.options,
+      }),
+    });
+
+    await screen.findByRole("heading", { name: "시설" });
+    await user.type(screen.getByLabelText("단답형 답변"), "22400001");
+
+    expect(screen.getByLabelText("단답형 답변")).toHaveValue("22400001");
+    expect(screen.getByText("단답형")).toBeInTheDocument();
+  });
+
   it("changes toolbar options through query-backed controls", async () => {
     const user = userEvent.setup();
     const getPreviewSurvey = vi.fn<AdminApiController["getPreviewSurvey"]>(async (command: PreviewSurveyCommand) => ({

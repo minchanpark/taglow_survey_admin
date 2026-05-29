@@ -6,7 +6,15 @@ type SupabaseResult<T> = PromiseLike<{ data: T | null; error: unknown }>;
 
 type SupabaseClientLike = {
   auth: {
+    getSession(): Promise<{
+      data: { session: { user: { id: string; email?: string } } | null };
+      error: unknown;
+    }>;
     getUser(): Promise<{ data: { user: { id: string; email?: string } | null }; error: unknown }>;
+    signInWithOAuth(args: {
+      provider: "google";
+      options: { redirectTo: string };
+    }): Promise<{ data: unknown; error: unknown }>;
   };
   storage: {
     from(bucket: string): {
@@ -22,6 +30,22 @@ export class SupabaseParticipantSurveyGateway implements ParticipantSurveyGatewa
     private readonly supabase: SupabaseClientLike,
     private readonly bucket = "survey-assets",
   ) {}
+
+  async getCurrentAuthUser() {
+    const { data, error } = await this.supabase.auth.getSession();
+    if (error) throw normalizeParticipantSurveyApiError(error, "UNAUTHENTICATED");
+    return data.session?.user ? { id: data.session.user.id, email: data.session.user.email } : null;
+  }
+
+  async signInWithGoogle(args: { redirectTo: string }): Promise<void> {
+    const { error } = await this.supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: args.redirectTo,
+      },
+    });
+    if (error) throw normalizeParticipantSurveyApiError(error, "UNAUTHENTICATED");
+  }
 
   async getPublishedSurveyByIdentifier(publicIdentifier: string): Promise<RawSurvey> {
     const identifier = publicIdentifier.trim();

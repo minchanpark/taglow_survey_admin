@@ -1,6 +1,11 @@
 import type { RawQuestion, RawSection, RawSurvey, RawSurveyAsset } from "../../../admin/service/gateway/rawTypes";
 import type { JsonRecord } from "../../../admin/model";
 
+export type RawParticipantAuthUser = Readonly<{
+  id: string;
+  email?: string;
+}>;
+
 export type RawParticipantQuestionImageUpload = Readonly<{
   storage_bucket: string;
   storage_path: string;
@@ -9,6 +14,8 @@ export type RawParticipantQuestionImageUpload = Readonly<{
 }>;
 
 export interface ParticipantSurveyGateway {
+  getCurrentAuthUser(): Promise<RawParticipantAuthUser | null>;
+  signInWithGoogle(args: { redirectTo: string }): Promise<void>;
   getPublishedSurveyByIdentifier(publicIdentifier: string): Promise<RawSurvey>;
   listSections(surveyId: string): Promise<RawSection[]>;
   listQuestions(surveyId: string): Promise<RawQuestion[]>;

@@ -30,6 +30,7 @@ import {
   useReorderQuestionsMutation,
   useReorderSectionsMutation,
   useSurveyDetailQuery,
+  useUpdateSurveyMutation,
   useUpdateQuestionMutation,
   useUpdateSectionMutation,
   useUploadSurveyImageMutation,
@@ -44,6 +45,7 @@ import type {
   QuestionSetTemplateId,
   QuestionType,
   SectionType,
+  Survey,
   SurveyAsset,
   SurveySection,
 } from "../../../api/admin/model";
@@ -52,6 +54,10 @@ import { useAdminBuilderStore } from "../../../store";
 import "./css/SurveyBuilderPage.css";
 
 const questionSetTemplateId: QuestionSetTemplateId = "dorm_regular_25_2";
+const shortTextQuestionKind = "short_text" as const;
+const choiceTextQuestionKind = "choice_text" as const;
+
+type QuestionKind = QuestionType | typeof shortTextQuestionKind | typeof choiceTextQuestionKind;
 
 const sectionTypes: Array<{ value: SectionType; label: string }> = [
   { value: "general", label: "일반" },
@@ -68,17 +74,32 @@ const sectionTypes: Array<{ value: SectionType; label: string }> = [
   { value: "submitter", label: "제출" },
 ];
 
-const questionTypes: Array<{ value: QuestionType; label: string }> = [
-  { value: "profile", label: "기본 정보" },
-  { value: "experience", label: "경험 여부" },
+const visibleQuestionTypes: Array<{ value: QuestionKind; label: string }> = [
   { value: "scale", label: "척도" },
   { value: "single_choice", label: "단일 선택" },
   { value: "multi_select", label: "복수 선택" },
-  { value: "ranking", label: "순위" },
+  { value: shortTextQuestionKind, label: "단답형" },
   { value: "text", label: "주관식" },
+  { value: choiceTextQuestionKind, label: "선택후 주관식" },
   { value: "image_tag", label: "이미지 태깅" },
   { value: "participant_image_tag", label: "태깅 건의" },
+];
+
+const legacyQuestionTypes: Array<{ value: QuestionType; label: string }> = [
+  { value: "profile", label: "기본 정보" },
+  { value: "experience", label: "경험 여부" },
+  { value: "ranking", label: "순위" },
   { value: "attention_check", label: "주의력 확인" },
+];
+
+const allQuestionKinds: Array<{ value: QuestionKind; label: string }> = [...visibleQuestionTypes, ...legacyQuestionTypes];
+
+const defaultChoiceTextOptions = [
+  { value: "complaint", labelKo: "불편" },
+  { value: "improvement", labelKo: "개선" },
+  { value: "praise", labelKo: "칭찬" },
+  { value: "inquiry", labelKo: "문의" },
+  { value: "other", labelKo: "기타" },
 ];
 
 const metricTypes: Array<{ value: MetricType; label: string }> = [
@@ -86,6 +107,17 @@ const metricTypes: Array<{ value: MetricType; label: string }> = [
   { value: "satisfaction", label: "만족도" },
   { value: "importance", label: "중요도" },
   { value: "experience", label: "경험" },
+];
+
+const profileFieldOptions = [
+  { value: "gender", label: "성별" },
+  { value: "semester", label: "학기" },
+  { value: "department", label: "학부/전공" },
+  { value: "rc", label: "RC" },
+  { value: "dormitory", label: "생활관" },
+  { value: "room_type", label: "인실" },
+  { value: "student_number", label: "학번" },
+  { value: "name", label: "이름" },
 ];
 
 const keyRegex = /^[a-z0-9_]*$/;
@@ -105,11 +137,39 @@ const editSectionSchema = z.object({
   sectionType: z.custom<SectionType>((value) => sectionTypes.some((type) => type.value === value), "섹션 유형을 선택해주세요."),
 });
 
-const createQuestionSchema = z.object({
-  titleKo: z.string().trim().min(1, "질문 제목을 입력해주세요.").max(220, "질문 제목은 220자 이하로 입력해주세요."),
-  questionKey: z.string().trim().max(80, "질문 키는 80자 이하로 입력해주세요.").regex(keyRegex, "영문 소문자, 숫자, 밑줄만 사용할 수 있습니다.").optional(),
-  questionType: z.custom<QuestionType>((value) => questionTypes.some((type) => type.value === value), "질문 유형을 선택해주세요."),
+const editSurveySchema = z.object({
+  title: z.string().trim().min(1, "설문 제목을 입력해주세요.").max(120, "설문 제목은 120자 이하로 입력해주세요."),
 });
+
+const createQuestionSchema = z
+  .object({
+    createMode: z.enum(["single", "group"]),
+    titleKo: z.string().trim().max(220, "질문 제목은 220자 이하로 입력해주세요.").optional(),
+    displayGroup: z.string().trim().max(220, "큰 질문은 220자 이하로 입력해주세요.").optional(),
+    groupTitleKo: z.string().trim().max(220, "큰 질문은 220자 이하로 입력해주세요.").optional(),
+    groupItems: z.string().trim().max(2000, "세부 항목은 2000자 이하로 입력해주세요.").optional(),
+    questionKey: z.string().trim().max(80, "질문 키는 80자 이하로 입력해주세요.").regex(keyRegex, "영문 소문자, 숫자, 밑줄만 사용할 수 있습니다.").optional(),
+    questionKeyPrefix: z
+      .string()
+      .trim()
+      .max(60, "질문 키 접두어는 60자 이하로 입력해주세요.")
+      .regex(keyRegex, "영문 소문자, 숫자, 밑줄만 사용할 수 있습니다.")
+      .optional(),
+    questionType: z.custom<QuestionKind>((value) => visibleQuestionTypes.some((type) => type.value === value), "질문 유형을 선택해주세요."),
+  })
+  .superRefine((values, context) => {
+    if (values.createMode === "single" && !values.titleKo?.trim()) {
+      context.addIssue({ code: "custom", path: ["titleKo"], message: "질문 제목을 입력해주세요." });
+    }
+    if (values.createMode === "group") {
+      if (!values.groupTitleKo?.trim()) {
+        context.addIssue({ code: "custom", path: ["groupTitleKo"], message: "큰 질문을 입력해주세요." });
+      }
+      if (splitLines(values.groupItems ?? "").length < 2) {
+        context.addIssue({ code: "custom", path: ["groupItems"], message: "세부 항목을 두 개 이상 입력해주세요." });
+      }
+    }
+  });
 
 const editQuestionSchema = z.object({
   questionKey: z.string().trim().max(80, "질문 키는 80자 이하로 입력해주세요.").regex(keyRegex, "영문 소문자, 숫자, 밑줄만 사용할 수 있습니다.").optional(),
@@ -117,7 +177,7 @@ const editQuestionSchema = z.object({
   titleEn: z.string().trim().max(220, "영문 제목은 220자 이하로 입력해주세요.").optional(),
   descriptionKo: z.string().trim().max(500, "설명은 500자 이하로 입력해주세요.").optional(),
   descriptionEn: z.string().trim().max(500, "영문 설명은 500자 이하로 입력해주세요.").optional(),
-  questionType: z.custom<QuestionType>((value) => questionTypes.some((type) => type.value === value), "질문 유형을 선택해주세요."),
+  questionType: z.custom<QuestionKind>((value) => allQuestionKinds.some((type) => type.value === value), "질문 유형을 선택해주세요."),
   isRequired: z.boolean(),
   metricType: z.custom<MetricType>((value) => metricTypes.some((type) => type.value === value), "분석 지표를 선택해주세요."),
   topicKey: z.string().trim().max(80, "topic key는 80자 이하로 입력해주세요.").optional(),
@@ -127,8 +187,22 @@ const editQuestionSchema = z.object({
 
 type CreateSectionForm = z.infer<typeof createSectionSchema>;
 type EditSectionForm = z.infer<typeof editSectionSchema>;
+type EditSurveyForm = z.infer<typeof editSurveySchema>;
 type CreateQuestionForm = z.infer<typeof createQuestionSchema>;
 type EditQuestionForm = z.infer<typeof editQuestionSchema>;
+
+function defaultCreateQuestionForm(displayGroup = ""): CreateQuestionForm {
+  return {
+    createMode: "single",
+    titleKo: "",
+    displayGroup,
+    groupTitleKo: displayGroup,
+    groupItems: "",
+    questionKey: "",
+    questionKeyPrefix: "",
+    questionType: "scale",
+  };
+}
 
 export function SurveyBuilderPage() {
   const { surveyId = "" } = useParams();
@@ -159,7 +233,7 @@ export function SurveyBuilderPage() {
     [questions, selectedSection],
   );
   const selectedQuestion = sectionQuestions.find((question) => question.id === selectedQuestionId);
-  const isStructureLocked = detailQuery.data?.survey.status !== "draft";
+  const isStructureLocked = detailQuery.data?.survey.status === "archived";
 
   useEffect(() => {
     setSelectedSurveyId(surveyId || undefined);
@@ -217,10 +291,7 @@ export function SurveyBuilderPage() {
   return (
     <section className="tg-builder-page" aria-labelledby="survey-builder-title">
       <header className="tg-builder-page__header">
-        <div>
-          <p className="tg-builder-page__eyebrow">설문 빌더</p>
-          <h1 id="survey-builder-title">{detailQuery.data.survey.title}</h1>
-        </div>
+        <SurveyTitleEditor survey={detailQuery.data.survey} isDisabled={isStructureLocked} />
         <div className="tg-builder-page__header-actions">
           <StatusBadge tone={detailQuery.data.survey.status}>{detailQuery.data.survey.status}</StatusBadge>
           <Button
@@ -235,7 +306,7 @@ export function SurveyBuilderPage() {
       </header>
 
       {isStructureLocked ? (
-        <InlineAlert message="게시 또는 종료된 설문은 구조 수정이 제한됩니다." detail="질문을 바꾸려면 설정에서 다음 버전을 만든 뒤 편집해주세요." />
+        <InlineAlert message="보관된 설문은 편집이 제한됩니다." detail="다시 수정해야 한다면 새 설문 또는 최신 버전에서 작업해주세요." />
       ) : null}
 
       <div className="tg-builder-page__workspace">
@@ -274,6 +345,64 @@ export function SurveyBuilderPage() {
 
       {isImportOpen ? <QuestionSetImportDialog surveyId={surveyId} onClose={() => setImportOpen(false)} /> : null}
     </section>
+  );
+}
+
+function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
+  const updateSurveyMutation = useUpdateSurveyMutation();
+  const [savedTitle, setSavedTitle] = useState(props.survey.title);
+  const titleForm = useForm<EditSurveyForm>({
+    resolver: zodResolver(editSurveySchema),
+    defaultValues: { title: props.survey.title },
+  });
+  const titleValue = titleForm.watch("title");
+  const normalizedTitle = titleValue.trim();
+  const isUnchanged = normalizedTitle === savedTitle;
+  const isBusy = props.isDisabled || updateSurveyMutation.isPending;
+
+  useEffect(() => {
+    setSavedTitle(props.survey.title);
+    titleForm.reset({ title: props.survey.title });
+  }, [props.survey.title, titleForm]);
+
+  return (
+    <div className="tg-builder-title-block">
+      <p className="tg-builder-page__eyebrow">설문 빌더</p>
+      <h1 id="survey-builder-title" className="tg-builder-visually-hidden">
+        {savedTitle}
+      </h1>
+      <form
+        className="tg-builder-title-form"
+        aria-label="설문 제목 편집"
+        onSubmit={titleForm.handleSubmit((values) => {
+          updateSurveyMutation.mutate(
+            {
+              surveyId: props.survey.id,
+              title: values.title.trim(),
+            },
+            {
+              onSuccess: (survey) => {
+                setSavedTitle(survey.title);
+                titleForm.reset({ title: survey.title });
+              },
+            },
+          );
+        })}
+      >
+        <label className="tg-builder-title-form__field">
+          <span>설문 제목</span>
+          <input aria-label="설문 제목" {...titleForm.register("title")} disabled={isBusy} />
+        </label>
+        <Button type="submit" variant="primary" icon={<Save size={16} aria-hidden="true" />} disabled={isBusy || isUnchanged}>
+          제목 저장
+        </Button>
+      </form>
+      {titleForm.formState.errors.title ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.title.message}</small> : null}
+      {updateSurveyMutation.isError ? (
+        <InlineAlert message="설문 제목을 저장하지 못했습니다." detail={getErrorDetail(updateSurveyMutation.error)} />
+      ) : null}
+      {updateSurveyMutation.isSuccess ? <InlineNotice message="설문 제목이 저장되었습니다." /> : null}
+    </div>
   );
 }
 
@@ -557,57 +686,65 @@ function QuestionPanel(props: {
       <div className="tg-builder-list" role="list" aria-label="질문 목록">
         {props.questions.length ? (
           groupedQuestions.map((group) => (
-            <div key={group.key} className="tg-builder-question-group">
-              {group.label ? <p className="tg-builder-question-group__title">{group.label}</p> : null}
-              {group.questions.map((question) => (
-                <div
-                  key={question.id}
-                  className={`tg-builder-list__item ${question.id === props.selectedQuestion?.id ? "tg-builder-list__item--active" : ""}`}
-                  role="listitem"
-                >
-                  <button
-                    type="button"
-                    className="tg-builder-list__item-main"
-                    aria-label={`${question.title.ko} 질문 선택`}
-                    onClick={() => props.onSelectQuestion(question.id)}
-                  >
-                    <strong>{question.title.ko}</strong>
-                    <span>{getQuestionTypeLabel(question.questionType)} · {getMetricTypeLabel(question.metricType)}</span>
-                  </button>
-                  <div className="tg-builder-list__item-meta">
-                    <div className="tg-builder-list__item-tools">
-                      <IconButton
-                        label={`${question.title.ko} 위로 이동`}
-                        disabled={isBusy || props.questions.indexOf(question) === 0}
-                        onClick={() => moveQuestion(question.id, -1)}
-                        icon={<ArrowUp size={15} aria-hidden="true" />}
-                      />
-                      <IconButton
-                        label={`${question.title.ko} 아래로 이동`}
-                        disabled={isBusy || props.questions.indexOf(question) === props.questions.length - 1}
-                        onClick={() => moveQuestion(question.id, 1)}
-                        icon={<ArrowDown size={15} aria-hidden="true" />}
-                      />
-                      <IconButton
-                        label={`${question.title.ko} 질문 복제`}
-                        disabled={isBusy}
-                        onClick={() => duplicateQuestion(question)}
-                        icon={<Copy size={15} aria-hidden="true" />}
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      className="tg-builder-list__add-below"
-                      icon={<FilePlus2 size={16} aria-hidden="true" />}
-                      aria-label={`${question.title.ko} 아래에 새 질문 추가`}
-                      disabled={isBusy}
-                      onClick={() => props.onStartQuestion(selectedSection.id, question.id)}
-                    >
-                      아래에 새 질문 추가
-                    </Button>
-                  </div>
+            <div key={group.key} className={`tg-builder-question-group ${group.label ? "tg-builder-question-group--cluster" : ""}`}>
+              {group.label ? (
+                <div className="tg-builder-question-group__header">
+                  <p className="tg-builder-question-group__title">{group.label}</p>
+                  <span>{group.questions.length}개 항목</span>
                 </div>
-              ))}
+              ) : null}
+              {group.questions.map((question) => {
+                const displayTitle = getQuestionDisplayTitle(question);
+                return (
+                  <div
+                    key={question.id}
+                    className={`tg-builder-list__item ${question.id === props.selectedQuestion?.id ? "tg-builder-list__item--active" : ""}`}
+                    role="listitem"
+                  >
+                    <button
+                      type="button"
+                      className="tg-builder-list__item-main"
+                      aria-label={`${displayTitle} 질문 선택`}
+                      onClick={() => props.onSelectQuestion(question.id)}
+                    >
+                      <strong>{displayTitle}</strong>
+                      <span>{getQuestionTypeLabel(question.questionType, question.config)} · {getMetricTypeLabel(question.metricType)}</span>
+                    </button>
+                    <div className="tg-builder-list__item-meta">
+                      <div className="tg-builder-list__item-tools">
+                        <IconButton
+                          label={`${displayTitle} 위로 이동`}
+                          disabled={isBusy || props.questions.indexOf(question) === 0}
+                          onClick={() => moveQuestion(question.id, -1)}
+                          icon={<ArrowUp size={15} aria-hidden="true" />}
+                        />
+                        <IconButton
+                          label={`${displayTitle} 아래로 이동`}
+                          disabled={isBusy || props.questions.indexOf(question) === props.questions.length - 1}
+                          onClick={() => moveQuestion(question.id, 1)}
+                          icon={<ArrowDown size={15} aria-hidden="true" />}
+                        />
+                        <IconButton
+                          label={`${displayTitle} 질문 복제`}
+                          disabled={isBusy}
+                          onClick={() => duplicateQuestion(question)}
+                          icon={<Copy size={15} aria-hidden="true" />}
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        className="tg-builder-list__add-below"
+                        icon={<FilePlus2 size={16} aria-hidden="true" />}
+                        aria-label={`${displayTitle} 아래에 새 질문 추가`}
+                        disabled={isBusy}
+                        onClick={() => props.onStartQuestion(selectedSection.id, question.id)}
+                      >
+                        아래에 새 질문 추가
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ))
         ) : (
@@ -630,12 +767,13 @@ function QuestionPanel(props: {
   }
 
   function duplicateQuestion(question: Question) {
+    const displayTitle = getQuestionDisplayTitle(question);
     createQuestionMutation.mutate({
       surveyId: props.surveyId,
       sectionId: selectedSection.id,
       questionKey: `${question.questionKey}_copy_${Date.now().toString(36)}`,
       questionType: question.questionType,
-      title: { ko: `${question.title.ko} 복사본`, en: question.title.en },
+      title: { ko: `${displayTitle} 복사본`, en: question.title.en },
       description: question.description,
       orderIndex: props.questions.length,
       isRequired: question.isRequired,
@@ -706,18 +844,18 @@ function QuestionEditor(props: {
     <aside className="tg-builder-panel tg-builder-panel--editor" aria-label="질문 편집">
       <div className="tg-builder-panel__title-row">
         <h2>질문 편집</h2>
-        <StatusBadge tone="info">{getQuestionTypeLabel(question.questionType)}</StatusBadge>
+        <StatusBadge tone="info">{getQuestionTypeLabel(question.questionType, question.config)}</StatusBadge>
       </div>
 
       <form
         className="tg-builder-edit"
         onSubmit={editForm.handleSubmit((values) => {
-          const config = parseJsonRecord(values.configJson) ?? {};
+          const config = normalizeQuestionConfigForKind(values.questionType, parseJsonRecord(values.configJson) ?? {});
           updateQuestionMutation.mutate({
             surveyId: props.surveyId,
             questionId: question.id,
             questionKey: values.questionKey || question.questionKey,
-            questionType: values.questionType,
+            questionType: toPersistedQuestionType(values.questionType),
             title: toLocalizedText(values.titleKo, values.titleEn),
             description: toOptionalLocalizedText(values.descriptionKo, values.descriptionEn),
             isRequired: values.isRequired,
@@ -746,9 +884,9 @@ function QuestionEditor(props: {
               aria-label="질문 유형"
               {...editForm.register("questionType", {
                 onChange: (event) => {
-                  const questionType = event.target.value as QuestionType;
-                  editForm.setValue("metricType", defaultMetricType(questionType), { shouldDirty: true, shouldValidate: true });
-                  editForm.setValue("configJson", stringifyConfig(defaultQuestionConfig(questionType)), {
+                  const questionKind = event.target.value as QuestionKind;
+                  editForm.setValue("metricType", defaultMetricType(questionKind), { shouldDirty: true, shouldValidate: true });
+                  editForm.setValue("configJson", stringifyConfig(defaultQuestionConfig(questionKind)), {
                     shouldDirty: true,
                     shouldValidate: true,
                   });
@@ -756,7 +894,7 @@ function QuestionEditor(props: {
               })}
               disabled={isBusy}
             >
-              {questionTypes.map((type) => (
+              {getQuestionKindOptions(question).map((type) => (
                 <option key={type.value} value={type.value}>
                   {type.label}
                 </option>
@@ -861,16 +999,19 @@ function QuestionCreateEditor(props: {
   const reorderQuestionsMutation = useReorderQuestionsMutation();
   const createForm = useForm<CreateQuestionForm>({
     resolver: zodResolver(createQuestionSchema),
-    defaultValues: { titleKo: "", questionKey: "", questionType: "scale" },
+    defaultValues: defaultCreateQuestionForm(),
   });
+  const watchedCreateMode = createForm.watch("createMode");
   const watchedType = createForm.watch("questionType");
   const selectedSection = props.selectedSection;
   const afterQuestion = props.questions.find((question) => question.id === props.createPlacement.afterQuestionId);
+  const inheritedDisplayGroup = getDisplayGroupFromConfig(afterQuestion?.config);
+  const afterQuestionTitle = afterQuestion ? getQuestionDisplayTitle(afterQuestion) : undefined;
   const isBusy = props.isStructureLocked || createQuestionMutation.isPending || reorderQuestionsMutation.isPending;
 
   useEffect(() => {
-    createForm.reset({ titleKo: "", questionKey: "", questionType: "scale" });
-  }, [createForm, props.createPlacement.afterQuestionId, props.createPlacement.sectionId]);
+    createForm.reset(defaultCreateQuestionForm(inheritedDisplayGroup));
+  }, [createForm, inheritedDisplayGroup, props.createPlacement.afterQuestionId, props.createPlacement.sectionId]);
 
   if (!selectedSection) {
     return (
@@ -889,57 +1030,157 @@ function QuestionCreateEditor(props: {
         </Button>
       </div>
       <p className="tg-builder-hint">
-        {afterQuestion ? `${afterQuestion.title.ko} 아래에 추가됩니다.` : `${selectedSection.title.ko} 끝에 추가됩니다.`}
+        {afterQuestionTitle ? `${afterQuestionTitle} 아래에 추가됩니다.` : `${selectedSection.title.ko} 끝에 추가됩니다.`}
       </p>
 
       <form
         className="tg-builder-edit tg-builder-edit--flat"
-        onSubmit={createForm.handleSubmit((values) => {
-          const metricType = defaultMetricType(values.questionType);
+        onSubmit={createForm.handleSubmit(async (values) => {
           const targetIndex = getQuestionInsertionIndex(props.questions, props.createPlacement.afterQuestionId);
-          createQuestionMutation.mutate(
-            {
+          const metricType = defaultMetricType(values.questionType);
+
+          try {
+            if (values.createMode === "group") {
+              const groupTitle = values.groupTitleKo?.trim() ?? "";
+              const itemTitles = splitLines(values.groupItems ?? "");
+              const keyPrefix = values.questionKeyPrefix || createStableKey(groupTitle, "question_group");
+              const createdQuestions: Question[] = [];
+
+              for (const [index, itemTitle] of itemTitles.entries()) {
+                const question = await createQuestionMutation.mutateAsync({
+                  surveyId: props.surveyId,
+                  sectionId: selectedSection.id,
+                  questionKey: createGroupedQuestionKey(keyPrefix, index),
+                  questionType: toPersistedQuestionType(values.questionType),
+                  title: { ko: itemTitle },
+                  orderIndex: props.questions.length + index,
+                  isRequired: true,
+                  metricType,
+                  config: withDisplayGroup(defaultQuestionConfig(values.questionType), groupTitle),
+                  validation: {},
+                });
+                createdQuestions.push(question);
+              }
+
+              const nextQuestionIds = insertIdsAt(
+                props.questions.map((item) => item.id),
+                createdQuestions.map((question) => question.id),
+                targetIndex,
+              );
+              if (nextQuestionIds.length > createdQuestions.length) {
+                await reorderQuestionsMutation.mutateAsync({
+                  surveyId: props.surveyId,
+                  sectionId: selectedSection.id,
+                  questionIds: nextQuestionIds,
+                });
+              }
+              createForm.reset(defaultCreateQuestionForm());
+              props.onQuestionCreated(createdQuestions[0].id);
+              return;
+            }
+
+            const titleKo = values.titleKo?.trim() ?? "";
+            const question = await createQuestionMutation.mutateAsync({
               surveyId: props.surveyId,
               sectionId: selectedSection.id,
-              questionKey: values.questionKey || createStableKey(values.titleKo, "question"),
-              questionType: values.questionType,
-              title: { ko: values.titleKo },
+              questionKey: values.questionKey || createStableKey(titleKo, "question"),
+              questionType: toPersistedQuestionType(values.questionType),
+              title: { ko: titleKo },
               orderIndex: props.questions.length,
               isRequired: true,
               metricType,
-              config: defaultQuestionConfig(values.questionType),
+              config: withDisplayGroup(defaultQuestionConfig(values.questionType), values.displayGroup),
               validation: {},
-            },
-            {
-              onSuccess: (question) => {
-                const nextQuestionIds = insertIdAt(
-                  props.questions.map((item) => item.id),
-                  question.id,
-                  targetIndex,
-                );
-                if (nextQuestionIds.length > 1) {
-                  reorderQuestionsMutation.mutate({
-                    surveyId: props.surveyId,
-                    sectionId: selectedSection.id,
-                    questionIds: nextQuestionIds,
-                  });
-                }
-                createForm.reset({ titleKo: "", questionKey: "", questionType: "scale" });
-                props.onQuestionCreated(question.id);
-              },
-            },
-          );
+            });
+
+            const nextQuestionIds = insertIdAt(
+              props.questions.map((item) => item.id),
+              question.id,
+              targetIndex,
+            );
+            if (nextQuestionIds.length > 1) {
+              await reorderQuestionsMutation.mutateAsync({
+                surveyId: props.surveyId,
+                sectionId: selectedSection.id,
+                questionIds: nextQuestionIds,
+              });
+            }
+            createForm.reset(defaultCreateQuestionForm());
+            props.onQuestionCreated(question.id);
+          } catch {
+            // Mutation state renders the inline error message.
+          }
         })}
       >
+        <div className="tg-builder-segmented" role="group" aria-label="질문 추가 방식">
+          <button
+            type="button"
+            aria-pressed={watchedCreateMode === "single"}
+            className={watchedCreateMode === "single" ? "tg-builder-segmented__button--active" : undefined}
+            onClick={() => createForm.setValue("createMode", "single", { shouldDirty: true, shouldValidate: true })}
+            disabled={isBusy}
+          >
+            단일 질문
+          </button>
+          <button
+            type="button"
+            aria-pressed={watchedCreateMode === "group"}
+            className={watchedCreateMode === "group" ? "tg-builder-segmented__button--active" : undefined}
+            onClick={() => createForm.setValue("createMode", "group", { shouldDirty: true, shouldValidate: true })}
+            disabled={isBusy}
+          >
+            세부 항목 묶음
+          </button>
+        </div>
+
+        {watchedCreateMode === "group" ? (
+          <div className="tg-builder-group-create">
+            <label className="tg-builder-field">
+              <span>큰 질문</span>
+              <input
+                aria-label="큰 질문"
+                placeholder="예: 침묵시간과 관련된 다음 항목에 대한 만족도"
+                {...createForm.register("groupTitleKo")}
+                disabled={isBusy}
+              />
+              {createForm.formState.errors.groupTitleKo ? <small>{createForm.formState.errors.groupTitleKo.message}</small> : null}
+            </label>
+            <label className="tg-builder-field">
+              <span>세부 항목</span>
+              <textarea
+                aria-label="세부 항목"
+                rows={6}
+                placeholder={"침묵시간 운영시간\n침묵시간 규칙 준수"}
+                {...createForm.register("groupItems")}
+                disabled={isBusy}
+              />
+              {createForm.formState.errors.groupItems ? <small>{createForm.formState.errors.groupItems.message}</small> : null}
+            </label>
+          </div>
+        ) : (
+          <>
+            <label className="tg-builder-field">
+              <span>새 질문</span>
+              <input aria-label="새 질문" placeholder="예: 침대 상태에 만족하시나요?" {...createForm.register("titleKo")} disabled={isBusy} />
+              {createForm.formState.errors.titleKo ? <small>{createForm.formState.errors.titleKo.message}</small> : null}
+            </label>
+            <label className="tg-builder-field">
+              <span>큰 질문</span>
+              <input
+                aria-label="큰 질문"
+                placeholder="세부 항목 묶음에 포함할 때 입력"
+                {...createForm.register("displayGroup")}
+                disabled={isBusy}
+              />
+              {createForm.formState.errors.displayGroup ? <small>{createForm.formState.errors.displayGroup.message}</small> : null}
+            </label>
+          </>
+        )}
+
         <label className="tg-builder-field">
-          <span>새 질문</span>
-          <input aria-label="새 질문" placeholder="예: 침대 상태에 만족하시나요?" {...createForm.register("titleKo")} disabled={isBusy} />
-          {createForm.formState.errors.titleKo ? <small>{createForm.formState.errors.titleKo.message}</small> : null}
-        </label>
-        <label className="tg-builder-field">
-          <span>질문 유형</span>
+          <span>{watchedCreateMode === "group" ? "세부 항목 유형" : "질문 유형"}</span>
           <select aria-label="질문 유형" {...createForm.register("questionType")} disabled={isBusy}>
-            {questionTypes.map((type) => (
+            {visibleQuestionTypes.map((type) => (
               <option key={type.value} value={type.value}>
                 {type.label}
               </option>
@@ -948,13 +1189,24 @@ function QuestionCreateEditor(props: {
         </label>
         <details className="tg-builder-advanced">
           <summary>고급 설정</summary>
-          <label className="tg-builder-field">
-            <span>질문 키</span>
-            <input aria-label="질문 키" placeholder="자동 생성" {...createForm.register("questionKey")} disabled={isBusy} />
-          </label>
-          {createForm.formState.errors.questionKey ? <small>{createForm.formState.errors.questionKey.message}</small> : null}
+          {watchedCreateMode === "group" ? (
+            <label className="tg-builder-field">
+              <span>질문 키 접두어</span>
+              <input aria-label="질문 키 접두어" placeholder="예: silence_time" {...createForm.register("questionKeyPrefix")} disabled={isBusy} />
+              {createForm.formState.errors.questionKeyPrefix ? <small>{createForm.formState.errors.questionKeyPrefix.message}</small> : null}
+            </label>
+          ) : (
+            <label className="tg-builder-field">
+              <span>질문 키</span>
+              <input aria-label="질문 키" placeholder="자동 생성" {...createForm.register("questionKey")} disabled={isBusy} />
+              {createForm.formState.errors.questionKey ? <small>{createForm.formState.errors.questionKey.message}</small> : null}
+            </label>
+          )}
         </details>
-        <p className="tg-builder-hint">기본 설정: {getQuestionTypeLabel(watchedType)}</p>
+        <p className="tg-builder-hint">
+          기본 설정: {getQuestionTypeLabel(toPersistedQuestionType(watchedType), defaultQuestionConfig(watchedType))}
+          {watchedCreateMode === "group" ? " · 세부 항목별 질문으로 저장" : ""}
+        </p>
         {createQuestionMutation.isError ? (
           <InlineAlert message="질문을 추가하지 못했습니다." detail={getErrorDetail(createQuestionMutation.error)} />
         ) : null}
@@ -983,7 +1235,7 @@ function QuestionConfigFields(props: {
   surveyId: string;
   question: Question;
   assets: SurveyAsset[];
-  questionType: QuestionType;
+  questionType: QuestionKind;
   configJson: string;
   disabled: boolean;
   onConfigChange: (configJson: string) => void;
@@ -991,11 +1243,100 @@ function QuestionConfigFields(props: {
   const uploadMutation = useUploadSurveyImageMutation();
   const config = parseJsonRecord(props.configJson) ?? {};
   const setConfig = (patch: JsonRecord) => props.onConfigChange(stringifyConfig({ ...config, ...patch } as QuestionConfig));
+  const displayGroupField = (
+    <label className="tg-builder-field">
+      <span>큰 질문</span>
+      <input
+        aria-label="큰 질문"
+        placeholder="세부 항목 묶음에 포함할 때 입력"
+        value={getDisplayGroupFromConfig(config)}
+        disabled={props.disabled}
+        onChange={(event) => props.onConfigChange(stringifyConfig(withDisplayGroup(config as QuestionConfig, event.target.value)))}
+      />
+    </label>
+  );
+
+  if (props.questionType === "profile") {
+    const choiceOptions = getChoiceOptions(config);
+    const profileField = typeof config.profileField === "string" ? config.profileField : "";
+    const inputType = typeof config.inputType === "string" ? config.inputType : choiceOptions.length ? "single_choice" : "text";
+    return (
+      <div className="tg-builder-config-panel">
+        <div className="tg-builder-config-note">
+          <FileText size={16} aria-hidden="true" />
+          <span>기본 정보 응답은 분석 필터에 쓰일 수 있으므로 항목 값과 선택지를 확인한 뒤 저장해주세요.</span>
+        </div>
+        <div className="tg-builder-two-col">
+          <label className="tg-builder-field">
+            <span>기본 정보 항목</span>
+            <input
+              aria-label="기본 정보 항목"
+              list="tg-builder-profile-fields"
+              placeholder="예: gender"
+              value={profileField}
+              disabled={props.disabled}
+              onChange={(event) => setConfig({ profileField: event.target.value })}
+            />
+            <datalist id="tg-builder-profile-fields">
+              {profileFieldOptions.map((field) => (
+                <option key={field.value} value={field.value}>
+                  {field.label}
+                </option>
+              ))}
+            </datalist>
+          </label>
+          <label className="tg-builder-field">
+            <span>응답 방식</span>
+            <select
+              aria-label="기본 정보 응답 방식"
+              value={inputType}
+              disabled={props.disabled}
+              onChange={(event) => {
+                const nextInputType = event.target.value;
+                setConfig({
+                  inputType: nextInputType,
+                  options: nextInputType === "single_choice" ? choiceOptions.length ? choiceOptions : [{ value: "option_1", labelKo: "선택지 1" }] : [],
+                });
+              }}
+            >
+              <option value="text">텍스트 입력</option>
+              <option value="single_choice">단일 선택</option>
+            </select>
+          </label>
+        </div>
+        {inputType === "single_choice" ? (
+          <div className="tg-builder-profile-options">
+            <label className="tg-builder-field">
+              <span>세부 답변 항목</span>
+              <textarea
+                aria-label="세부 답변 항목"
+                rows={6}
+                value={optionsToText(config)}
+                disabled={props.disabled}
+                placeholder={"여성\n남성\n기타"}
+                onChange={(event) => setConfig({ options: textToOptions(event.target.value, choiceOptions) })}
+              />
+            </label>
+            <div className="tg-builder-config-summary" aria-label="세부 답변 항목 미리보기">
+              {choiceOptions.length ? (
+                choiceOptions.map((option) => (
+                  <span key={option.value}>{option.labelKo}</span>
+                ))
+              ) : (
+                <span>선택지가 없습니다.</span>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   if (props.questionType === "scale") {
     const labels = Array.isArray(config.labelsKo) ? config.labelsKo.filter((label): label is string => typeof label === "string") : [];
     return (
       <div className="tg-builder-config-panel">
+        {displayGroupField}
         <div className="tg-builder-two-col">
           <label className="tg-builder-field">
             <span>최소 점수</span>
@@ -1032,6 +1373,7 @@ function QuestionConfigFields(props: {
   if (props.questionType === "single_choice" || props.questionType === "multi_select" || props.questionType === "ranking") {
     return (
       <div className="tg-builder-config-panel">
+        {displayGroupField}
         <label className="tg-builder-field">
           <span>선택지</span>
           <textarea
@@ -1045,9 +1387,94 @@ function QuestionConfigFields(props: {
     );
   }
 
+  if (props.questionType === shortTextQuestionKind) {
+    return (
+      <div className="tg-builder-config-panel">
+        {displayGroupField}
+        <div className="tg-builder-config-note">
+          <FileText size={16} aria-hidden="true" />
+          <span>참여자는 한 줄 단답형 답변만 작성합니다.</span>
+        </div>
+        <label className="tg-builder-field">
+          <span>최대 글자 수</span>
+          <input
+            type="number"
+            min={1}
+            value={Number(config.maxLength ?? 200)}
+            disabled={props.disabled}
+            onChange={(event) => setConfig({ textMode: "short", multiline: false, maxLength: Number(event.target.value) })}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  if (props.questionType === "text") {
+    return (
+      <div className="tg-builder-config-panel">
+        {displayGroupField}
+        <div className="tg-builder-config-note">
+          <FileText size={16} aria-hidden="true" />
+          <span>참여자는 별도 분류 선택 없이 주관식 답변만 작성합니다.</span>
+        </div>
+        <label className="tg-builder-field">
+          <span>최대 글자 수</span>
+          <input
+            type="number"
+            min={1}
+            value={Number(config.maxLength ?? 1000)}
+            disabled={props.disabled}
+            onChange={(event) => setConfig({ textMode: "plain", multiline: true, maxLength: Number(event.target.value) })}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  if (props.questionType === choiceTextQuestionKind) {
+    const choiceOptions = getChoiceOptions(config);
+    return (
+      <div className="tg-builder-config-panel">
+        {displayGroupField}
+        <div className="tg-builder-config-note">
+          <FileText size={16} aria-hidden="true" />
+          <span>참여자는 분류를 먼저 선택한 뒤 주관식 답변을 작성합니다.</span>
+        </div>
+        <label className="tg-builder-field">
+          <span>선택 항목</span>
+          <textarea
+            rows={5}
+            value={optionsToText(config)}
+            disabled={props.disabled}
+            placeholder={"불편\n개선\n칭찬\n문의\n기타"}
+            onChange={(event) =>
+              setConfig({
+                textMode: "choice_then_text",
+                multiline: true,
+                maxLength: Number(config.maxLength ?? 1000),
+                options: textToOptions(event.target.value, choiceOptions),
+              })
+            }
+          />
+        </label>
+        <label className="tg-builder-field">
+          <span>최대 글자 수</span>
+          <input
+            type="number"
+            min={1}
+            value={Number(config.maxLength ?? 1000)}
+            disabled={props.disabled}
+            onChange={(event) => setConfig({ textMode: "choice_then_text", multiline: true, maxLength: Number(event.target.value) })}
+          />
+        </label>
+      </div>
+    );
+  }
+
   if (props.questionType === "attention_check") {
     return (
       <div className="tg-builder-config-panel">
+        {displayGroupField}
         <label className="tg-builder-field">
           <span>정답으로 선택해야 할 값</span>
           <input
@@ -1066,6 +1493,7 @@ function QuestionConfigFields(props: {
     const asset = props.assets.find((item) => item.id === assetId);
     return (
       <div className="tg-builder-config-panel">
+        {displayGroupField}
         <div className="tg-builder-upload-card">
           <div>
             <ImageIcon size={16} aria-hidden="true" />
@@ -1129,6 +1557,7 @@ function QuestionConfigFields(props: {
     const tagTypes = Array.isArray(config.tagTypes) ? config.tagTypes.filter((tag): tag is string => typeof tag === "string") : [];
     return (
       <div className="tg-builder-config-panel">
+        {displayGroupField}
         <div className="tg-builder-config-note">
           <ImageIcon size={16} aria-hidden="true" />
           <span>관리자는 태깅 카테고리만 정하고, 참여자가 직접 사진을 올려 지점을 표시합니다.</span>
@@ -1148,7 +1577,8 @@ function QuestionConfigFields(props: {
 
   return (
     <div className="tg-builder-config-panel tg-builder-config-panel--quiet">
-      <span>{getQuestionTypeLabel(props.questionType)} 문항은 기본 설정으로 저장됩니다.</span>
+      {displayGroupField}
+      <span>{getQuestionTypeLabel(toPersistedQuestionType(props.questionType), config as QuestionConfig)} 문항은 기본 설정으로 저장됩니다.</span>
     </div>
   );
 }
@@ -1212,7 +1642,7 @@ function QuestionSetImportDialog(props: { surveyId: string; onClose: () => void 
 
 function QuestionSetImportPreviewSummary(props: { preview: QuestionSetImportPreview }) {
   const typeCounts = props.preview.questions.reduce<Record<string, number>>((acc, question) => {
-    acc[getQuestionTypeLabel(question.questionType)] = (acc[getQuestionTypeLabel(question.questionType)] ?? 0) + 1;
+    acc[getQuestionTypeLabel(question.questionType, question.config)] = (acc[getQuestionTypeLabel(question.questionType, question.config)] ?? 0) + 1;
     return acc;
   }, {});
 
@@ -1318,18 +1748,19 @@ function sectionToEditForm(section: SurveySection | undefined): EditSectionForm 
 }
 
 function questionToEditForm(question: Question | undefined): EditQuestionForm {
+  const questionKind = question ? getQuestionKind(question) : "scale";
   return {
     questionKey: question?.questionKey ?? "",
-    titleKo: question?.title.ko ?? "",
+    titleKo: question ? getQuestionDisplayTitle(question) : "",
     titleEn: question?.title.en ?? "",
     descriptionKo: question?.description?.ko ?? "",
     descriptionEn: question?.description?.en ?? "",
-    questionType: question?.questionType ?? "scale",
+    questionType: questionKind,
     isRequired: question?.isRequired ?? true,
     metricType: question?.metricType ?? "none",
     topicKey: question?.topicKey ?? "",
     spaceKey: question?.spaceKey ?? "",
-    configJson: stringifyConfig(question?.config ?? defaultQuestionConfig(question?.questionType ?? "scale")),
+    configJson: stringifyConfig(question?.config ?? defaultQuestionConfig(questionKind)),
   };
 }
 
@@ -1342,7 +1773,7 @@ function toOptionalLocalizedText(ko?: string, en?: string): LocalizedText | unde
   return toLocalizedText(ko ?? "", en);
 }
 
-function defaultMetricType(questionType: QuestionType): MetricType {
+function defaultMetricType(questionType: QuestionKind): MetricType {
   if (questionType === "scale") return "satisfaction";
   if (questionType === "experience") return "experience";
   return "none";
@@ -1352,7 +1783,14 @@ function countQuestionsForSection(questions: Question[], sectionId: string): num
   return questions.filter((question) => question.sectionId === sectionId).length;
 }
 
-function defaultQuestionConfig(questionType: QuestionType): QuestionConfig {
+function defaultQuestionConfig(questionType: QuestionKind): QuestionConfig {
+  if (questionType === "profile") {
+    return {
+      profileField: "custom",
+      inputType: "text",
+      options: [],
+    };
+  }
   if (questionType === "scale") {
     return {
       scaleMin: 1,
@@ -1367,6 +1805,28 @@ function defaultQuestionConfig(questionType: QuestionType): QuestionConfig {
     return {
       minSelect: 1,
       options: [{ value: "option_1", labelKo: "선택지 1" }],
+    };
+  }
+  if (questionType === "text") {
+    return {
+      textMode: "plain",
+      multiline: true,
+      maxLength: 1000,
+    };
+  }
+  if (questionType === shortTextQuestionKind) {
+    return {
+      textMode: "short",
+      multiline: false,
+      maxLength: 200,
+    };
+  }
+  if (questionType === choiceTextQuestionKind) {
+    return {
+      textMode: "choice_then_text",
+      multiline: true,
+      maxLength: 1000,
+      options: defaultChoiceTextOptions,
     };
   }
   if (questionType === "image_tag") {
@@ -1394,6 +1854,121 @@ function defaultQuestionConfig(questionType: QuestionType): QuestionConfig {
     };
   }
   return {};
+}
+
+function toPersistedQuestionType(questionType: QuestionKind): QuestionType {
+  return questionType === choiceTextQuestionKind || questionType === shortTextQuestionKind ? "text" : questionType;
+}
+
+function normalizeQuestionConfigForKind(questionType: QuestionKind, config: JsonRecord): QuestionConfig {
+  if (questionType === shortTextQuestionKind) {
+    return {
+      ...config,
+      textMode: "short",
+      multiline: false,
+      maxLength: typeof config.maxLength === "number" ? config.maxLength : 200,
+    } as QuestionConfig;
+  }
+  if (questionType === "text") {
+    return {
+      ...config,
+      textMode: "plain",
+      multiline: typeof config.multiline === "boolean" ? config.multiline : true,
+    } as QuestionConfig;
+  }
+  if (questionType === choiceTextQuestionKind) {
+    const options = getChoiceOptions(config);
+    return {
+      ...config,
+      textMode: "choice_then_text",
+      multiline: typeof config.multiline === "boolean" ? config.multiline : true,
+      options: options.length ? options : defaultChoiceTextOptions,
+    } as QuestionConfig;
+  }
+  return config as QuestionConfig;
+}
+
+function getQuestionKind(question: Question): QuestionKind {
+  if (question.questionType === "text" && isShortTextConfig(question.config)) return shortTextQuestionKind;
+  if (question.questionType === "text" && isChoiceTextConfig(question.config)) return choiceTextQuestionKind;
+  return question.questionType;
+}
+
+function getQuestionKindOptions(question: Question): Array<{ value: QuestionKind; label: string }> {
+  const current = getQuestionKind(question);
+  if (visibleQuestionTypes.some((type) => type.value === current)) return visibleQuestionTypes;
+  const legacyType = legacyQuestionTypes.find((type) => type.value === current);
+  return legacyType ? [...visibleQuestionTypes, legacyType] : visibleQuestionTypes;
+}
+
+function isChoiceTextConfig(config: QuestionConfig | JsonRecord | undefined): boolean {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return false;
+  const record = config as JsonRecord;
+  return (
+    record.textMode === "choice_then_text" ||
+    record.inputMode === "choice_then_text" ||
+    record.choiceFirst === true ||
+    Array.isArray(record.options)
+  );
+}
+
+function isShortTextConfig(config: QuestionConfig | JsonRecord | undefined): boolean {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return false;
+  const record = config as JsonRecord;
+  return record.textMode === "short" || record.inputMode === "short" || (record.multiline === false && !Array.isArray(record.options));
+}
+
+function withDisplayGroup(config: QuestionConfig, displayGroup?: string): QuestionConfig {
+  const nextConfig: JsonRecord = { ...(config as JsonRecord) };
+  const normalized = displayGroup?.trim();
+  if (normalized) {
+    nextConfig.displayGroup = normalized;
+  } else {
+    delete nextConfig.displayGroup;
+  }
+  return nextConfig as QuestionConfig;
+}
+
+function getDisplayGroupFromConfig(config: QuestionConfig | JsonRecord | undefined): string {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return "";
+  const value = (config as JsonRecord).displayGroup;
+  return typeof value === "string" ? value : "";
+}
+
+function getQuestionDisplayTitle(question: Question): string {
+  const itemTitle = extractDisplayGroupItemTitle(question.title.ko, getDisplayGroupFromConfig(question.config));
+  return itemTitle || question.title.ko;
+}
+
+function extractDisplayGroupItemTitle(title: string, displayGroup: string): string {
+  if (!displayGroup) return title;
+  const bracketLabel = extractTrailingBracketLabel(title);
+  if (bracketLabel) return stripItemNumber(bracketLabel);
+
+  const trimmedTitle = title.trim();
+  const trimmedGroup = displayGroup.trim();
+  if (!trimmedTitle.startsWith(trimmedGroup)) return trimmedTitle;
+
+  return stripItemNumber(stripWrappingBrackets(trimmedTitle.slice(trimmedGroup.length).trim())) || trimmedTitle;
+}
+
+function extractTrailingBracketLabel(value: string): string | undefined {
+  const match = value.match(/\[([^\]]+)\]\s*$/);
+  return match?.[1]?.trim();
+}
+
+function stripWrappingBrackets(value: string): string {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^\[([^\]]+)\]$/);
+  return match?.[1]?.trim() ?? trimmed;
+}
+
+function stripItemNumber(value: string): string {
+  return value
+    .trim()
+    .replace(/^\((\d+)\)\s*/, "")
+    .replace(/^\d+[.)]\s*/, "")
+    .trim();
 }
 
 function stringifyConfig(config: QuestionConfig): string {
@@ -1441,8 +2016,23 @@ function insertIdAt(ids: string[], id: string, index: number): string[] {
   return next;
 }
 
-function getQuestionTypeLabel(type: QuestionType): string {
-  return questionTypes.find((item) => item.value === type)?.label ?? type;
+function insertIdsAt(ids: string[], idsToInsert: string[], index: number): string[] {
+  const inserting = idsToInsert.filter(Boolean);
+  const next = ids.filter((currentId) => !inserting.includes(currentId));
+  next.splice(Math.min(Math.max(index, 0), next.length), 0, ...inserting);
+  return next;
+}
+
+function createGroupedQuestionKey(prefix: string, index: number): string {
+  const suffix = (index + 1).toString().padStart(2, "0");
+  const maxPrefixLength = 80 - suffix.length - 1;
+  return `${prefix.slice(0, maxPrefixLength)}_${suffix}`;
+}
+
+function getQuestionTypeLabel(type: QuestionType, config?: QuestionConfig | JsonRecord): string {
+  if (type === "text" && isShortTextConfig(config)) return "단답형";
+  if (type === "text" && isChoiceTextConfig(config)) return "선택후 주관식";
+  return allQuestionKinds.find((item) => item.value === type)?.label ?? type;
 }
 
 function getMetricTypeLabel(type: MetricType): string {
@@ -1457,21 +2047,45 @@ function splitLines(value: string): string[] {
 }
 
 function optionsToText(config: JsonRecord): string {
-  const options = Array.isArray(config.options) ? config.options : [];
-  return options
-    .map((option) => {
-      if (!isRecord(option)) return "";
-      return typeof option.labelKo === "string" ? option.labelKo : typeof option.value === "string" ? option.value : "";
-    })
+  return getChoiceOptions(config)
+    .map((option) => option.labelKo)
     .filter(Boolean)
     .join("\n");
 }
 
-function textToOptions(value: string) {
+function textToOptions(value: string, existingOptions: Array<{ value: string; labelKo: string }> = []) {
   return splitLines(value).map((label, index) => ({
-    value: `option_${index + 1}`,
+    value: existingOptions[index]?.value ?? `option_${index + 1}`,
     labelKo: label,
   }));
+}
+
+function getChoiceOptions(config: JsonRecord): Array<{ value: string; labelKo: string; labelEn?: string }> {
+  const options = Array.isArray(config.options) ? config.options : [];
+  return options
+    .map((option, index) => normalizeChoiceOption(option, index))
+    .filter((option): option is { value: string; labelKo: string; labelEn?: string } => Boolean(option));
+}
+
+function normalizeChoiceOption(option: unknown, index: number): { value: string; labelKo: string; labelEn?: string } | undefined {
+  if (typeof option === "string" && option.trim()) {
+    return { value: `option_${index + 1}`, labelKo: option.trim() };
+  }
+  if (!isRecord(option)) return undefined;
+  const labelKo =
+    typeof option.labelKo === "string"
+      ? option.labelKo
+      : isRecord(option.label) && typeof option.label.ko === "string"
+        ? option.label.ko
+        : typeof option.label === "string"
+          ? option.label
+          : typeof option.value === "string"
+            ? option.value
+            : "";
+  if (!labelKo.trim()) return undefined;
+  const value = typeof option.value === "string" && option.value.trim() ? option.value : `option_${index + 1}`;
+  const labelEn = typeof option.labelEn === "string" ? option.labelEn : undefined;
+  return labelEn ? { value, labelKo, labelEn } : { value, labelKo };
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -1481,8 +2095,7 @@ function isRecord(value: unknown): value is JsonRecord {
 function groupQuestionsForDisplay(questions: Question[]): Array<{ key: string; label?: string; questions: Question[] }> {
   const groups: Array<{ key: string; label?: string; questions: Question[] }> = [];
   for (const question of questions) {
-    const config = question.config as JsonRecord;
-    const groupLabel = typeof config.displayGroup === "string" ? config.displayGroup : undefined;
+    const groupLabel = getDisplayGroupFromConfig(question.config) || undefined;
     const key = groupLabel ?? question.id;
     const existing = groups.find((group) => group.key === key);
     if (existing) {

@@ -7,9 +7,13 @@ import { Button, EmptyState, ErrorState, LoadingState, StatusBadge, SurveyStatus
 import { useAdminPreviewStore } from "../../../store";
 import "./css/SurveyPreviewPage.css";
 
-type PreviewAnswer = string | number | string[] | RankingAnswer | ImageTagDraft[] | ParticipantImageTagDraft;
+type PreviewAnswer = string | number | string[] | RankingAnswer | ChoiceTextPreviewAnswer | ImageTagDraft[] | ParticipantImageTagDraft;
 type PreviewAnswers = Record<string, PreviewAnswer | undefined>;
 type RankingAnswer = Record<string, number | undefined>;
+type ChoiceTextPreviewAnswer = Readonly<{
+  choiceValue?: string;
+  text?: string;
+}>;
 type PreviewIssue = Readonly<{
   id: string;
   tone: "warning" | "danger";
@@ -305,7 +309,7 @@ function PreviewQuestion(props: {
         </div>
         <div className="tg-preview-question__badges">
           {props.question.isRequired ? <StatusBadge tone={isAnswered ? "success" : "warning"}>필수</StatusBadge> : null}
-          <StatusBadge tone="info">{props.question.questionType}</StatusBadge>
+          <StatusBadge tone="info">{formatPreviewQuestionType(props.question)}</StatusBadge>
         </div>
       </header>
 
@@ -345,6 +349,14 @@ function QuestionControl(props: {
     return <ParticipantImageTagControl {...props} />;
   }
 
+  if (isShortTextQuestion(props.question)) {
+    return <ShortTextControl {...props} />;
+  }
+
+  if (isChoiceTextQuestion(props.question)) {
+    return <ChoiceTextControl {...props} options={getChoiceOptions(props.question)} />;
+  }
+
   if (props.question.questionType === "attention_check") {
     return (
       <label className="tg-preview-field">
@@ -366,6 +378,61 @@ function QuestionControl(props: {
         onChange={(event) => props.onAnswerChange(event.target.value || undefined)}
       />
     </label>
+  );
+}
+
+function ShortTextControl(props: {
+  question: Question;
+  answer: PreviewAnswer | undefined;
+  onAnswerChange: (answer: PreviewAnswer | undefined) => void;
+}) {
+  const maxLength = getNumber(toRecord(props.question.config).maxLength);
+  return (
+    <label className="tg-preview-field">
+      <span>단답형 답변</span>
+      <input
+        type="text"
+        maxLength={maxLength}
+        value={typeof props.answer === "string" ? props.answer : ""}
+        onChange={(event) => props.onAnswerChange(event.target.value || undefined)}
+      />
+    </label>
+  );
+}
+
+function ChoiceTextControl(props: {
+  question: Question;
+  locale: Locale;
+  answer: PreviewAnswer | undefined;
+  options: ChoiceOption[];
+  onAnswerChange: (answer: PreviewAnswer | undefined) => void;
+}) {
+  const answer = isChoiceTextAnswer(props.answer) ? props.answer : {};
+
+  return (
+    <div className="tg-preview-choice-text">
+      <div className="tg-preview-choice-list">
+        {props.options.map((option) => (
+          <label key={option.value} className="tg-preview-choice">
+            <input
+              type="radio"
+              name={`preview-choice-text-${props.question.id}`}
+              checked={answer.choiceValue === option.value}
+              onChange={() => props.onAnswerChange({ ...answer, choiceValue: option.value })}
+            />
+            <span>{localizedOption(option, props.locale)}</span>
+          </label>
+        ))}
+      </div>
+      <label className="tg-preview-field">
+        <span>상세 답변</span>
+        <textarea
+          rows={4}
+          value={answer.text ?? ""}
+          onChange={(event) => props.onAnswerChange({ ...answer, text: event.target.value || undefined })}
+        />
+      </label>
+    </div>
   );
 }
 
@@ -637,7 +704,7 @@ function getPreviewIssues(sections: SurveySection[], questions: Question[], asse
 
     const config = toRecord(question.config);
     const options = getChoiceOptions(question);
-    if ((question.questionType === "single_choice" || question.questionType === "multi_select" || question.questionType === "ranking") && !options.length) {
+    if ((question.questionType === "single_choice" || question.questionType === "multi_select" || question.questionType === "ranking" || isChoiceTextQuestion(question)) && !options.length) {
       issues.push({ id: `options-${question.id}`, tone: "danger", label: `${question.questionKey} 선택지가 없습니다.`, questionId: question.id });
     }
 
@@ -682,6 +749,10 @@ function isQuestionVisible(question: Question, questions: Question[], answers: P
     return answer.some((value) => String(value) === String(expected));
   }
 
+  if (isChoiceTextAnswer(answer)) {
+    return String(answer.choiceValue ?? answer.text ?? "") === String(expected);
+  }
+
   return String(answer) === String(expected);
 }
 
@@ -696,6 +767,9 @@ function getChoiceOptions(question: Question): ChoiceOption[] {
   if (!Array.isArray(options)) return [];
 
   return options.map((item, index) => {
+    if (typeof item === "string") {
+      return { value: `option_${index + 1}`, labelKo: item };
+    }
     const option = toRecord(item);
     const value = getString(option.value) ?? `option_${index + 1}`;
     return {
@@ -746,6 +820,7 @@ function sortByOrder<TItem extends { orderIndex: number }>(items: readonly TItem
 function hasAnswer(answer: PreviewAnswer | undefined): boolean {
   if (answer === undefined || answer === "") return false;
   if (Array.isArray(answer)) return answer.length > 0;
+  if (isChoiceTextAnswer(answer)) return Boolean(answer.choiceValue || answer.text);
   if (isRankingAnswer(answer)) return Object.values(answer).some((value) => value !== undefined);
   return true;
 }
@@ -760,6 +835,39 @@ function isImageTagAnswer(value: unknown): value is ImageTagDraft[] {
 
 function isParticipantImageTagAnswer(value: unknown): value is ParticipantImageTagDraft {
   return isRecord(value) && Array.isArray(value.tags);
+}
+
+function isChoiceTextAnswer(value: unknown): value is ChoiceTextPreviewAnswer {
+  return isRecord(value) && !Array.isArray(value.tags) && ("choiceValue" in value || "text" in value);
+}
+
+function isChoiceTextQuestion(question: Question): boolean {
+  if (question.questionType !== "text") return false;
+  const config = toRecord(question.config);
+  return (
+    config.textMode === "choice_then_text" ||
+    config.inputMode === "choice_then_text" ||
+    config.choiceFirst === true ||
+    Array.isArray(config.options)
+  );
+}
+
+function isShortTextQuestion(question: Question): boolean {
+  if (question.questionType !== "text") return false;
+  const config = toRecord(question.config);
+  return config.textMode === "short" || config.inputMode === "short" || (config.multiline === false && !Array.isArray(config.options));
+}
+
+function formatPreviewQuestionType(question: Question): string {
+  if (isShortTextQuestion(question)) return "단답형";
+  if (isChoiceTextQuestion(question)) return "선택후 주관식";
+  if (question.questionType === "single_choice") return "단일 선택";
+  if (question.questionType === "multi_select") return "복수 선택";
+  if (question.questionType === "text") return "주관식";
+  if (question.questionType === "image_tag") return "이미지 태깅";
+  if (question.questionType === "participant_image_tag") return "태깅 건의";
+  if (question.questionType === "scale") return "척도";
+  return question.questionType;
 }
 
 function isRecord(value: unknown): value is JsonRecord {

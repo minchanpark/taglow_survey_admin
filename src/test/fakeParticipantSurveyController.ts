@@ -45,6 +45,11 @@ export function createFakeParticipantSurveyController(
   overrides: Partial<ParticipantSurveyController> = {},
 ): ParticipantSurveyController {
   return {
+    getParticipantSessionState: async () => ({
+      isAuthenticated: true,
+      email: "participant@example.com",
+    }),
+    signInWithGoogle: async () => undefined,
     getPublishedSurveyByIdentifier: async () => fakeParticipantSurveyDetail,
     uploadQuestionImage: async (command) => ({
       storageBucket: "survey-assets",

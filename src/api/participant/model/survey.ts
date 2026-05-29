@@ -27,6 +27,15 @@ export type ParticipantQuestionImageUploadCommand = Readonly<{
   file: File;
 }>;
 
+export type ParticipantSignInCommand = Readonly<{
+  redirectTo: string;
+}>;
+
+export type ParticipantSessionState = Readonly<{
+  isAuthenticated: boolean;
+  email?: string;
+}>;
+
 export type ParticipantQuestionImageUpload = Readonly<{
   storageBucket: string;
   storagePath: string;

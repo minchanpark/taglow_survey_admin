@@ -24,8 +24,13 @@ describe("dormRegularSurveyQuestionSet", () => {
 
     expect(questions.get(1)?.questionType).toBe("profile");
     expect(questions.get(7)?.questionType).toBe("scale");
+    expect(questions.get(7)?.title.ko).toBe("입주 업무 (택배 관리 및 정리, 차량 통제, 끌차 대여)");
+    expect(questions.get(7)?.displayGroup).toBe("다음 자치회 사업에 대한 만족도는 어떠합니까? (학생 복지 부문)");
     expect(questions.get(31)?.questionType).toBe("text");
-    expect(questions.get(51)?.questionType).toBe("attention_check");
+    expect(questions.get(51)?.questionType).toBe("single_choice");
+    expect(questions.get(51)?.config).toMatchObject({
+      options: expect.arrayContaining([expect.objectContaining({ labelKo: "만족" })]),
+    });
     expect(questions.get(163)?.questionType).toBe("multi_select");
     expect(questions.get(172)?.questionType).toBe("single_choice");
     expect(questions.get(173)?.metricType).toBe("importance");

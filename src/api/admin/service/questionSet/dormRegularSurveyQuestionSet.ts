@@ -285,10 +285,11 @@ function toTemplateQuestion(
 ): QuestionSetTemplateQuestion {
   const questionType = inferQuestionType(source);
   const metricType = inferMetricType(source, questionType);
+  const displayGroup = inferDisplayGroup(source.text);
   return {
     sourceNumber: source.number,
     questionKey: `dorm_25_2_q${source.number.toString().padStart(3, "0")}`,
-    title: { ko: source.text },
+    title: { ko: inferQuestionTitle(source.text, displayGroup) },
     questionType,
     metricType,
     topicKey: section.topicKey,
@@ -296,7 +297,7 @@ function toTemplateQuestion(
     config: inferConfig(source, questionType, metricType),
     validation: {},
     isRequired: true,
-    displayGroup: inferDisplayGroup(source.text),
+    displayGroup,
   };
 }
 
@@ -317,7 +318,7 @@ function parseSourceQuestions(value: string): SourceQuestion[] {
 
 function inferQuestionType(source: SourceQuestion): QuestionType {
   const text = source.text;
-  if (text.includes("선택해주세요")) return "attention_check";
+  if (text.includes("선택해주세요")) return "single_choice";
   if (source.number <= 6 || source.number >= 194) return "profile";
   if (hasAny(text, ["자유롭게", "이유", "부족", "건의/문의"])) return "text";
   if (text.includes("중복 선택 가능")) return "multi_select";
@@ -327,6 +328,7 @@ function inferQuestionType(source: SourceQuestion): QuestionType {
 }
 
 function inferMetricType(source: SourceQuestion, questionType: QuestionType): MetricType {
+  if (source.text.includes("선택해주세요")) return "none";
   if (questionType === "attention_check" || questionType === "text" || questionType === "profile") return "none";
   if (source.text.includes("중요도") || source.text.includes("매우 중요하다")) return "importance";
   if (questionType === "scale") return "satisfaction";
@@ -357,7 +359,13 @@ function inferConfig(source: SourceQuestion, questionType: QuestionType, metricT
 
   if (questionType === "single_choice") {
     return {
-      options: source.number === 172 ? timeSlotOptions : yesNoOptions(),
+      options: source.text.includes("선택해주세요")
+        ? source.text.includes("매우 중요하다")
+          ? importanceScaleChoiceOptions()
+          : satisfactionScaleChoiceOptions()
+        : source.number === 172
+          ? timeSlotOptions
+          : yesNoOptions(),
     };
   }
 
@@ -415,9 +423,23 @@ function inferDisplayGroup(text: string): string | undefined {
   return bracketless !== text ? bracketless : undefined;
 }
 
+function inferQuestionTitle(text: string, displayGroup: string | undefined): string {
+  if (!displayGroup) return text;
+  const label = inferBracketLabel(text);
+  return label ? stripItemNumber(label) : text;
+}
+
 function inferBracketLabel(text: string): string | undefined {
   const match = text.match(/\[([^\]]+)\]\s*$/);
   return match?.[1]?.trim();
+}
+
+function stripItemNumber(value: string): string {
+  return value
+    .trim()
+    .replace(/^\((\d+)\)\s*/, "")
+    .replace(/^\d+[.)]\s*/, "")
+    .trim();
 }
 
 function inferSpaceKey(text: string): string | undefined {
@@ -451,6 +473,14 @@ function yesNoOptions() {
   ];
 }
 
+function satisfactionScaleChoiceOptions() {
+  return ["매우 불만족", "불만족", "보통", "만족", "매우 만족"].map((label) => ({ value: stableValue(label), labelKo: label }));
+}
+
+function importanceScaleChoiceOptions() {
+  return ["전혀 중요하지 않음", "중요하지 않음", "보통", "중요함", "매우 중요함"].map((label) => ({ value: stableValue(label), labelKo: label }));
+}
+
 function hasAny(value: string, needles: string[]): boolean {
   return needles.some((needle) => value.includes(needle));
 }
@@ -458,7 +488,7 @@ function hasAny(value: string, needles: string[]): boolean {
 function stableValue(value: string): string {
   return value
     .trim()
-    .normalize("NFKD")
+    .normalize("NFC")
     .toLowerCase()
     .replace(/[^a-z0-9가-힣]+/g, "_")
     .replace(/^_+|_+$/g, "") || "option";

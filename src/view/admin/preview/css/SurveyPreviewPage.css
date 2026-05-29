@@ -281,6 +281,7 @@
 }
 
 .tg-preview-choice-list,
+.tg-preview-choice-text,
 .tg-preview-ranking {
   display: grid;
   gap: var(--tg-space-4);

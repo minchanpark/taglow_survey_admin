@@ -13,7 +13,7 @@ import { ParticipantSurveyPage } from "../view/participant/survey/ParticipantSur
 import { RequireAdminShell } from "./routeGuards";
 
 const router = createBrowserRouter([
-  { path: "/", element: <Navigate to="/admin/surveys" replace /> },
+  { path: "/", element: <Navigate to="/admin/login" replace /> },
   { path: "/survey/:publicIdentifier", element: <ParticipantSurveyPage /> },
   { path: "/admin/login", element: <AdminLoginPage /> },
   { path: "/admin/access-denied", element: <AdminAccessDeniedPage /> },

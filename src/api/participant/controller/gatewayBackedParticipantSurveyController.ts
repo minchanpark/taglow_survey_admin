@@ -1,4 +1,10 @@
-import type { ParticipantQuestionImageUpload, ParticipantQuestionImageUploadCommand, ParticipantSurveyDetail } from "../model";
+import type {
+  ParticipantQuestionImageUpload,
+  ParticipantQuestionImageUploadCommand,
+  ParticipantSessionState,
+  ParticipantSignInCommand,
+  ParticipantSurveyDetail,
+} from "../model";
 import type { ParticipantSurveyGateway } from "../service/gateway";
 import { ParticipantSurveyMapper } from "../service/mapper";
 import type { ParticipantSurveyController } from "./participantSurveyController";
@@ -8,6 +14,22 @@ export class GatewayBackedParticipantSurveyController implements ParticipantSurv
     private readonly gateway: ParticipantSurveyGateway,
     private readonly mapper: ParticipantSurveyMapper = new ParticipantSurveyMapper(),
   ) {}
+
+  async getParticipantSessionState(): Promise<ParticipantSessionState> {
+    const user = await this.gateway.getCurrentAuthUser();
+    return user
+      ? {
+          isAuthenticated: true,
+          email: user.email?.toLowerCase(),
+        }
+      : {
+          isAuthenticated: false,
+        };
+  }
+
+  signInWithGoogle(command: ParticipantSignInCommand): Promise<void> {
+    return this.gateway.signInWithGoogle(command);
+  }
 
   async getPublishedSurveyByIdentifier(publicIdentifier: string): Promise<ParticipantSurveyDetail> {
     const survey = await this.gateway.getPublishedSurveyByIdentifier(publicIdentifier);
