@@ -1,25 +1,13 @@
 import { ShieldCheck } from "lucide-react";
-import { useMemo } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAdminSessionQuery, useGoogleSignInMutation } from "../../../api/admin/query";
 import { Button, ErrorState, LoadingState } from "../../../components";
 import "./css/AdminLoginPage.css";
 
-type LoginLocationState = {
-  from?: { pathname?: string };
-};
-
 export function AdminLoginPage() {
-  const location = useLocation();
   const sessionQuery = useAdminSessionQuery();
   const signInMutation = useGoogleSignInMutation();
-
-  const redirectTo = useMemo(() => {
-    const fallbackPath = "/admin/surveys";
-    const state = location.state as LoginLocationState | null;
-    const targetPath = state?.from?.pathname ?? fallbackPath;
-    return `${window.location.origin}${targetPath}`;
-  }, [location.state]);
+  const redirectTo = window.location.origin;
 
   if (sessionQuery.isPending) {
     return (
