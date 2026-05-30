@@ -24,13 +24,15 @@ function renderLogin(overrides: Partial<AdminApiController> = {}) {
 }
 
 describe("AdminLoginPage", () => {
-  it("uses the site origin as the Google auth redirect URL", async () => {
+  it("uses the admin login route as the Google auth redirect URL", async () => {
     const user = userEvent.setup();
     const signInWithGoogle = vi.fn<AdminApiController["signInWithGoogle"]>(async () => undefined);
     renderLogin({ signInWithGoogle });
 
     await user.click(await screen.findByRole("button", { name: "Google로 로그인" }));
 
-    expect(signInWithGoogle).toHaveBeenCalledWith({ redirectTo: window.location.origin });
+    expect(signInWithGoogle).toHaveBeenCalledWith({
+      redirectTo: new URL("/admin/login", window.location.origin).toString(),
+    });
   });
 });

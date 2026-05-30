@@ -7,7 +7,7 @@ import "./css/AdminLoginPage.css";
 export function AdminLoginPage() {
   const sessionQuery = useAdminSessionQuery();
   const signInMutation = useGoogleSignInMutation();
-  const redirectTo = window.location.origin;
+  const redirectTo = new URL("/admin/login", window.location.origin).toString();
 
   if (sessionQuery.isPending) {
     return (
