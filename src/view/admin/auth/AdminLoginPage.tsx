@@ -21,6 +21,10 @@ export function AdminLoginPage() {
     return <Navigate to="/admin/surveys" replace />;
   }
 
+  if (sessionQuery.data?.isAuthenticated) {
+    return <Navigate to="/admin/access-denied" replace />;
+  }
+
   return (
     <main className="tg-admin-login">
       <section className="tg-admin-login__panel" aria-labelledby="admin-login-title">

@@ -12,6 +12,7 @@ function renderLogin(overrides: Partial<AdminApiController> = {}) {
     <MemoryRouter initialEntries={["/admin/login"]}>
       <Routes>
         <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin/access-denied" element={<div>access request route</div>} />
       </Routes>
     </MemoryRouter>,
     {
@@ -34,5 +35,16 @@ describe("AdminLoginPage", () => {
     expect(signInWithGoogle).toHaveBeenCalledWith({
       redirectTo: new URL("/admin/login", window.location.origin).toString(),
     });
+  });
+
+  it("redirects authenticated users without active admin access to the access request route", async () => {
+    renderLogin({
+      getAdminSessionState: async () => ({
+        isAuthenticated: true,
+        email: "pending@example.com",
+      }),
+    });
+
+    expect(await screen.findByText("access request route")).toBeInTheDocument();
   });
 });

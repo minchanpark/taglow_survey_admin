@@ -3,11 +3,13 @@ import type {
   AdminSessionState,
   AdminSignInCommand,
   AnalysisFilterCommand,
+  ApproveAdminMemberCommand,
   BorichResult,
   ChoiceDistribution,
   CreateQuestionCommand,
   CreateSectionCommand,
   CreateSurveyCommand,
+  DeleteAdminMemberCommand,
   FilterOptions,
   GroupCompareFilterCommand,
   GroupCompareResult,
@@ -37,6 +39,7 @@ import type {
   TextAnswer,
   TextAnswerFilterCommand,
   TextGroup,
+  UpdateAdminMemberRoleCommand,
   UpdateQuestionCommand,
   UpdateSectionCommand,
   UpdateSurveyCommand,
@@ -46,6 +49,12 @@ import type {
 export interface AdminApiController {
   getAdminSessionState(): Promise<AdminSessionState>;
   getCurrentAdmin(): Promise<AdminMember | null>;
+  requestAdminAccess(): Promise<AdminMember>;
+  listPendingAdminMembers(): Promise<AdminMember[]>;
+  listActiveAdminMembers(): Promise<AdminMember[]>;
+  approveAdminMember(command: ApproveAdminMemberCommand): Promise<AdminMember>;
+  updateAdminMemberRole(command: UpdateAdminMemberRoleCommand): Promise<AdminMember>;
+  deleteAdminMember(command: DeleteAdminMemberCommand): Promise<void>;
   signInWithGoogle(command: AdminSignInCommand): Promise<void>;
   signOut(): Promise<void>;
 

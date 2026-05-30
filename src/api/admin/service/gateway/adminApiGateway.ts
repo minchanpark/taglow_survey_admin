@@ -33,7 +33,14 @@ import type {
 
 export interface AdminApiGateway {
   getCurrentAuthUser(): Promise<RawAdminAuthUser | null>;
+  getOwnAdminMember(): Promise<RawAdminMember | null>;
   getCurrentAdmin(): Promise<RawAdminMember | null>;
+  requestAdminAccess(): Promise<RawAdminMember>;
+  listPendingAdminMembers(): Promise<RawAdminMember[]>;
+  listActiveAdminMembers(): Promise<RawAdminMember[]>;
+  approveAdminMember(args: { memberId: string; role: "admin" }): Promise<RawAdminMember>;
+  updateAdminMemberRole(args: { memberId: string; role: "super_admin" }): Promise<RawAdminMember>;
+  deleteAdminMember(args: { memberId: string }): Promise<void>;
   signInWithGoogle(args: { redirectTo: string }): Promise<void>;
   signOut(): Promise<void>;
 

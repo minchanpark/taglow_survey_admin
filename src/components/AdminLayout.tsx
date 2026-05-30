@@ -1,7 +1,7 @@
-import { BarChart3, Eye, FileText, LayoutDashboard, ListChecks, LogOut, Settings } from "lucide-react";
+import { BarChart3, Eye, FileText, LayoutDashboard, ListChecks, LogOut, Settings, UserCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import type { AdminRole } from "../api/admin/model";
+import { getAdminRoleLabel, type AdminRole } from "../api/admin/model";
 import { Button } from "./Button";
 import "./css/AdminLayout.css";
 
@@ -28,6 +28,13 @@ const surveyLinks = [
 export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, children }: AdminLayoutProps) {
   const location = useLocation();
   const selectedSurveyId = getSelectedSurveyId(location.pathname);
+  const visiblePrimaryLinks =
+    adminRole === "super_admin"
+      ? [
+          ...primaryLinks,
+          { to: "/admin/admin-members", label: "권한", icon: <UserCheck size={16} aria-hidden="true" /> },
+        ]
+      : primaryLinks;
 
   return (
     <div className="tg-admin-layout">
@@ -41,7 +48,7 @@ export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, ch
         </div>
 
         <nav className="tg-admin-layout__nav">
-          {primaryLinks.map((link) => (
+          {visiblePrimaryLinks.map((link) => (
             <NavLink key={link.to} to={link.to} className={({ isActive }) => navClassName(isActive)}>
               {link.icon}
               <span>{link.label}</span>
@@ -75,7 +82,7 @@ export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, ch
         <div className="tg-admin-layout__account">
           <div className="tg-admin-layout__account-copy">
             <p>{adminEmail}</p>
-            <span>{adminRole}</span>
+            <span>{getAdminRoleLabel(adminRole)}</span>
           </div>
           <Button
             aria-label="로그아웃"

@@ -190,6 +190,7 @@ describe("SurveyBuilderPage", () => {
 
     await screen.findByRole("heading", { name: "생활관 만족도 조사" });
     const introField = screen.getByLabelText("설문 소개 문구");
+    expect(screen.getByText("URL을 입력하면 참여자 화면에서 자동 링크로 표시됩니다.")).toBeInTheDocument();
     await user.clear(introField);
     await user.type(introField, "생활관 생활 경험을 바탕으로 솔직하게 응답해주세요.");
     await user.click(screen.getByRole("button", { name: "기본 정보 저장" }));

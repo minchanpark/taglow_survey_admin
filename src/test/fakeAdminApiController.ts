@@ -41,15 +41,39 @@ export const fakeAdminMember: AdminMember = {
   id: "admin-member-1",
   userId: "user-1",
   email: "admin@example.com",
-  role: "owner",
+  role: "super_admin",
   isActive: true,
   createdAt: "2026-05-28T00:00:00.000Z",
+};
+
+export const fakePendingAdminMember: AdminMember = {
+  id: "admin-member-pending",
+  userId: "user-pending",
+  email: "pending@example.com",
+  role: "admin",
+  isActive: false,
+  createdAt: "2026-05-28T01:00:00.000Z",
+};
+
+export const fakeActiveAdminMember: AdminMember = {
+  id: "admin-member-active",
+  userId: "user-active",
+  email: "member@example.com",
+  role: "admin",
+  isActive: true,
+  createdAt: "2026-05-28T02:00:00.000Z",
 };
 
 export const activeAdminSession: AdminSessionState = {
   isAuthenticated: true,
   email: fakeAdminMember.email,
   admin: fakeAdminMember,
+};
+
+export const pendingAdminSession: AdminSessionState = {
+  isAuthenticated: true,
+  email: fakePendingAdminMember.email,
+  pendingAdmin: fakePendingAdminMember,
 };
 
 export const unauthenticatedSession: AdminSessionState = {
@@ -112,6 +136,21 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
   const controller: AdminApiController = {
     getAdminSessionState: async () => activeAdminSession,
     getCurrentAdmin: async () => fakeAdminMember,
+    requestAdminAccess: async () => fakePendingAdminMember,
+    listPendingAdminMembers: async () => [fakePendingAdminMember],
+    listActiveAdminMembers: async () => [fakeAdminMember, fakeActiveAdminMember],
+    approveAdminMember: async (command) => ({
+      ...fakePendingAdminMember,
+      id: command.memberId,
+      role: command.role,
+      isActive: true,
+    }),
+    updateAdminMemberRole: async (command) => ({
+      ...fakeActiveAdminMember,
+      id: command.memberId,
+      role: command.role,
+    }),
+    deleteAdminMember: async () => undefined,
     signInWithGoogle: async () => undefined,
     signOut: async () => undefined,
     listSurveys: async () => [],

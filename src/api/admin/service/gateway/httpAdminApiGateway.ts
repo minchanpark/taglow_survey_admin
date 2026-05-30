@@ -40,8 +40,42 @@ export class HttpAdminApiGateway implements AdminApiGateway {
     return this.request<RawAdminAuthUser | null>("/api/admin/session-user");
   }
 
+  getOwnAdminMember(): Promise<RawAdminMember | null> {
+    return this.request<RawAdminMember | null>("/api/admin/admin-members/me");
+  }
+
   getCurrentAdmin(): Promise<RawAdminMember | null> {
     return this.request<RawAdminMember | null>("/api/admin/current-admin");
+  }
+
+  requestAdminAccess(): Promise<RawAdminMember> {
+    return this.request<RawAdminMember>("/api/admin/admin-members/requests", { method: "POST" });
+  }
+
+  listPendingAdminMembers(): Promise<RawAdminMember[]> {
+    return this.request<RawAdminMember[]>("/api/admin/admin-members/pending");
+  }
+
+  listActiveAdminMembers(): Promise<RawAdminMember[]> {
+    return this.request<RawAdminMember[]>("/api/admin/admin-members/active");
+  }
+
+  approveAdminMember(args: { memberId: string; role: "admin" }): Promise<RawAdminMember> {
+    return this.request<RawAdminMember>(`/api/admin/admin-members/${args.memberId}/approve`, {
+      method: "POST",
+      body: { role: args.role },
+    });
+  }
+
+  updateAdminMemberRole(args: { memberId: string; role: "super_admin" }): Promise<RawAdminMember> {
+    return this.request<RawAdminMember>(`/api/admin/admin-members/${args.memberId}/role`, {
+      method: "PATCH",
+      body: { role: args.role },
+    });
+  }
+
+  deleteAdminMember(args: { memberId: string }): Promise<void> {
+    return this.request<void>(`/api/admin/admin-members/${args.memberId}`, { method: "DELETE" });
   }
 
   async signInWithGoogle(args: { redirectTo: string }): Promise<void> {

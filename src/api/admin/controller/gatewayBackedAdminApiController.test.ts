@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AdminStorageGateway } from "../service/gateway/adminStorageGateway";
 import type { AdminApiGateway } from "../service/gateway/adminApiGateway";
 import type {
+  RawAdminMember,
   RawCreateQuestionPayload,
   RawCreateSectionPayload,
   RawQuestion,
@@ -44,7 +45,93 @@ const rawSection: RawSection = {
   settings: {},
 };
 
+const rawPendingAdminMember: RawAdminMember = {
+  id: "admin-member-pending",
+  user_id: "user-pending",
+  email: "pending@example.com",
+  role: "admin",
+  is_active: false,
+  created_at: "2026-05-28T01:00:00.000Z",
+  updated_at: "2026-05-28T01:00:00.000Z",
+};
+
+const rawActiveAdminMember: RawAdminMember = {
+  id: "admin-member-active",
+  user_id: "user-active",
+  email: "member@example.com",
+  role: "admin",
+  is_active: true,
+  created_at: "2026-05-28T02:00:00.000Z",
+  updated_at: "2026-05-28T02:00:00.000Z",
+};
+
 describe("GatewayBackedAdminApiController question updates", () => {
+  it("returns inactive own admin member as a pending admin request in the session state", async () => {
+    const controller = new GatewayBackedAdminApiController(
+      {
+        getCurrentAuthUser: vi.fn(async () => ({ id: "user-pending", email: "PENDING@example.com" })),
+        getOwnAdminMember: vi.fn(async () => rawPendingAdminMember),
+      } as unknown as AdminApiGateway,
+      {} as AdminStorageGateway,
+    );
+
+    await expect(controller.getAdminSessionState()).resolves.toMatchObject({
+      isAuthenticated: true,
+      email: "pending@example.com",
+      pendingAdmin: {
+        id: "admin-member-pending",
+        email: "pending@example.com",
+        isActive: false,
+      },
+    });
+  });
+
+  it("maps admin approval commands through the gateway boundary", async () => {
+    const approveAdminMember = vi.fn(async (args: { memberId: string; role: "admin" }): Promise<RawAdminMember> => ({
+      ...rawPendingAdminMember,
+      id: args.memberId,
+      role: args.role,
+      is_active: true,
+    }));
+    const controller = new GatewayBackedAdminApiController(
+      {
+        listActiveAdminMembers: vi.fn(async () => [rawActiveAdminMember]),
+        approveAdminMember,
+        updateAdminMemberRole: vi.fn(
+          async (args: { memberId: string; role: "super_admin" }): Promise<RawAdminMember> => ({
+            ...rawActiveAdminMember,
+            id: args.memberId,
+            role: args.role,
+          }),
+        ),
+        deleteAdminMember: vi.fn(async () => undefined),
+      } as unknown as AdminApiGateway,
+      {} as AdminStorageGateway,
+    );
+
+    await expect(controller.listActiveAdminMembers()).resolves.toMatchObject([
+      {
+        id: "admin-member-active",
+        role: "admin",
+        isActive: true,
+      },
+    ]);
+    await expect(controller.approveAdminMember({ memberId: "admin-member-pending", role: "admin" })).resolves.toMatchObject({
+      id: "admin-member-pending",
+      role: "admin",
+      isActive: true,
+    });
+    await expect(
+      controller.updateAdminMemberRole({ memberId: "admin-member-active", role: "super_admin" }),
+    ).resolves.toMatchObject({
+      id: "admin-member-active",
+      role: "super_admin",
+      isActive: true,
+    });
+    await expect(controller.deleteAdminMember({ memberId: "admin-member-active" })).resolves.toBeUndefined();
+    expect(approveAdminMember).toHaveBeenCalledWith({ memberId: "admin-member-pending", role: "admin" });
+  });
+
   it("forwards survey archive and delete actions to the gateway boundary", async () => {
     const archiveSurvey = vi.fn(async (surveyId: string): Promise<RawSurvey> => ({
       id: surveyId,
