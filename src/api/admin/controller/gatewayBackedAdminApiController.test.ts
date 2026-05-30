@@ -164,6 +164,38 @@ describe("GatewayBackedAdminApiController question updates", () => {
       },
     });
   });
+
+  it("derives analysis filter options from profile question config", async () => {
+    const getFilterOptions = vi.fn();
+    const controller = new GatewayBackedAdminApiController(
+      {
+        listQuestions: vi.fn(async () => [
+          {
+            ...rawQuestion,
+            id: "question-gender",
+            question_key: "profile_gender",
+            question_type: "profile",
+            title_ko: "성별",
+            config: {
+              profileField: "gender",
+              inputType: "single_choice",
+              options: [
+                { value: "남성", labelKo: "남성" },
+                { value: "여성", labelKo: "여성" },
+              ],
+            },
+          },
+        ]),
+        getFilterOptions,
+      } as unknown as AdminApiGateway,
+      {} as AdminStorageGateway,
+    );
+
+    await expect(controller.getFilterOptions("survey-1")).resolves.toMatchObject({
+      genders: ["남성", "여성"],
+    });
+    expect(getFilterOptions).not.toHaveBeenCalled();
+  });
 });
 
 describe("GatewayBackedAdminApiController question set import", () => {

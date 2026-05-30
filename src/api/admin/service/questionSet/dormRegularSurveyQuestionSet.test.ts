@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { departmentOptions, dormitoryOptions, genderOptions, rcOptions, roomTypeOptions, semesterGroupOptions } from "../../model";
 import { getQuestionSetTemplate } from "./dormRegularSurveyQuestionSet";
 
 describe("dormRegularSurveyQuestionSet", () => {
@@ -34,5 +35,38 @@ describe("dormRegularSurveyQuestionSet", () => {
     expect(questions.get(163)?.questionType).toBe("multi_select");
     expect(questions.get(172)?.questionType).toBe("single_choice");
     expect(questions.get(173)?.metricType).toBe("importance");
+  });
+
+  it("uses canonical profile options with stored Korean values", () => {
+    const questions = new Map(template.sections.flatMap((section) => section.questions.map((question) => [question.sourceNumber, question])));
+
+    expect(questions.get(1)?.config).toMatchObject({
+      profileField: "gender",
+      inputType: "single_choice",
+      options: genderOptions.map((value) => ({ value, labelKo: value })),
+    });
+    expect(questions.get(2)?.config).toMatchObject({
+      profileField: "semester_group",
+      inputType: "single_choice",
+      options: semesterGroupOptions.map((value) => ({ value, labelKo: value })),
+    });
+    expect(questions.get(3)?.config).toMatchObject({
+      profileField: "department",
+      options: departmentOptions.map((value) => ({ value, labelKo: value })),
+    });
+    expect(questions.get(4)?.config).toMatchObject({
+      profileField: "rc",
+      options: rcOptions.map((value) => ({ value, labelKo: value })),
+    });
+    expect(questions.get(5)?.config).toMatchObject({
+      profileField: "room_type",
+      options: roomTypeOptions.map((value) => ({ value, labelKo: value })),
+    });
+    expect(questions.get(6)?.config).toMatchObject({
+      profileField: "dormitory",
+      options: dormitoryOptions.map((value) => ({ value, labelKo: value })),
+    });
+    expect(JSON.stringify(questions.get(1)?.config)).not.toContain("기타");
+    expect(JSON.stringify(questions.get(5)?.config)).not.toContain("기타");
   });
 });

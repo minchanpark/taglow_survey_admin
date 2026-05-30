@@ -265,7 +265,7 @@ function PreviewSection(props: {
   return (
     <section className="tg-participant-section" aria-labelledby={`preview-section-${props.section.id}`}>
       <div className="tg-participant-section__header">
-        <p>{props.section.sectionType}</p>
+        <p>Section {props.section.orderIndex + 1}</p>
         <h3 id={`preview-section-${props.section.id}`}>{localizedText(props.section.title, props.locale)}</h3>
         {props.section.description ? <span>{localizedText(props.section.description, props.locale)}</span> : null}
       </div>
@@ -297,18 +297,18 @@ function PreviewQuestion(props: {
   answer: PreviewAnswer | undefined;
   onAnswerChange: (answer: PreviewAnswer | undefined) => void;
 }) {
-  const isAnswered = hasAnswer(props.answer);
-
   return (
     <article className="tg-preview-question">
       <header className="tg-preview-question__header">
         <div>
           <p>{props.question.questionKey}</p>
-          <h4>{localizedText(props.question.title, props.locale)}</h4>
+          <h4>
+            {localizedText(props.question.title, props.locale)}
+            {props.question.isRequired ? <span className="tg-preview-question__required" aria-label="필수"> *</span> : null}
+          </h4>
           {props.question.description ? <span>{localizedText(props.question.description, props.locale)}</span> : null}
         </div>
         <div className="tg-preview-question__badges">
-          {props.question.isRequired ? <StatusBadge tone={isAnswered ? "success" : "warning"}>필수</StatusBadge> : null}
           <StatusBadge tone="info">{formatPreviewQuestionType(props.question)}</StatusBadge>
         </div>
       </header>
@@ -476,7 +476,7 @@ function SingleChoiceControl(props: {
   const options = props.options.length ? props.options : getExperienceFallbackOptions();
 
   return (
-    <div className="tg-preview-choice-list">
+    <div className="tg-preview-choice-list" role="radiogroup" aria-label={localizedText(props.question.title, props.locale)}>
       {options.map((option) => (
         <label key={option.value} className="tg-preview-choice">
           <input
@@ -505,26 +505,31 @@ function MultiSelectControl(props: {
 
   return (
     <div className="tg-preview-choice-list">
-      {props.options.map((option) => {
-        const checked = selected.includes(option.value);
-        const disabled = Boolean(maxSelect && !checked && selected.length >= maxSelect);
-        return (
-          <label key={option.value} className="tg-preview-choice">
-            <input
-              type="checkbox"
-              checked={checked}
-              disabled={disabled}
-              onChange={(event) => {
-                const next = event.target.checked
-                  ? [...selected, option.value]
-                  : selected.filter((value) => value !== option.value);
-                props.onAnswerChange(next.length ? next : undefined);
-              }}
-            />
-            <span>{localizedOption(option, props.locale)}</span>
-          </label>
-        );
-      })}
+      <p className="tg-preview-choice-list__meta">
+        {selected.length}개 선택됨{maxSelect ? ` · 최대 ${maxSelect}개` : ""}
+      </p>
+      <div className="tg-preview-choice-list__options">
+        {props.options.map((option) => {
+          const checked = selected.includes(option.value);
+          const disabled = Boolean(maxSelect && !checked && selected.length >= maxSelect);
+          return (
+            <label key={option.value} className="tg-preview-choice">
+              <input
+                type="checkbox"
+                checked={checked}
+                disabled={disabled}
+                onChange={(event) => {
+                  const next = event.target.checked
+                    ? [...selected, option.value]
+                    : selected.filter((value) => value !== option.value);
+                  props.onAnswerChange(next.length ? next : undefined);
+                }}
+              />
+              <span>{localizedOption(option, props.locale)}</span>
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -584,7 +589,7 @@ function ImageTagControl(props: {
       <button
         type="button"
         className="tg-preview-image-tag__surface"
-        aria-label="이미지 태깅 영역"
+        aria-label="위치 선택 영역"
         disabled={!assetId || tags.length >= maxTags}
         onClick={(event) => {
           const rect = event.currentTarget.getBoundingClientRect();
@@ -593,7 +598,7 @@ function ImageTagControl(props: {
           props.onAnswerChange([...tags, { id: crypto.randomUUID(), xRatio, yRatio }]);
         }}
       >
-        {imageUrl ? <img src={imageUrl} alt="" /> : <span className="tg-preview-image-tag__placeholder">{asset?.storagePath ?? "이미지 자산 없음"}</span>}
+        {imageUrl ? <img src={imageUrl} alt="" /> : <span className="tg-preview-image-tag__placeholder">{asset?.storagePath ?? "선택할 이미지를 불러오지 못했습니다."}</span>}
         {tags.map((tag, index) => (
           <span
             key={tag.id}
@@ -606,7 +611,7 @@ function ImageTagControl(props: {
       </button>
       <p>
         <MousePointer2 size={14} aria-hidden="true" />
-        <span>{tags.length} / {maxTags}</span>
+        <span>위치 {tags.length} / {maxTags}</span>
       </p>
     </div>
   );
@@ -643,7 +648,7 @@ function ParticipantImageTagControl(props: {
         <button
           type="button"
           className="tg-preview-image-tag__surface"
-          aria-label="이미지 태깅 영역"
+          aria-label="위치 선택 영역"
           disabled={!answer.imageUrl || tags.length >= maxTags}
           onClick={(event) => {
             const rect = event.currentTarget.getBoundingClientRect();
@@ -652,7 +657,7 @@ function ParticipantImageTagControl(props: {
             props.onAnswerChange({ ...answer, tags: [...tags, { id: crypto.randomUUID(), xRatio, yRatio }] });
           }}
         >
-          {answer.imageUrl ? <img src={answer.imageUrl} alt="" /> : <span className="tg-preview-image-tag__placeholder">참여자가 사진을 업로드합니다.</span>}
+          {answer.imageUrl ? <img src={answer.imageUrl} alt="" /> : <span className="tg-preview-image-tag__placeholder">사진을 올리면 위치를 선택할 수 있습니다.</span>}
           {tags.map((tag, index) => (
             <span
               key={tag.id}
@@ -665,7 +670,7 @@ function ParticipantImageTagControl(props: {
         </button>
         <p>
           <MousePointer2 size={14} aria-hidden="true" />
-          <span>{tags.length} / {maxTags}</span>
+          <span>위치 {tags.length} / {maxTags}</span>
           {answer.fileName ? <span>{answer.fileName}</span> : null}
         </p>
       </div>
@@ -864,8 +869,8 @@ function formatPreviewQuestionType(question: Question): string {
   if (question.questionType === "single_choice") return "단일 선택";
   if (question.questionType === "multi_select") return "복수 선택";
   if (question.questionType === "text") return "주관식";
-  if (question.questionType === "image_tag") return "이미지 태깅";
-  if (question.questionType === "participant_image_tag") return "태깅 건의";
+  if (question.questionType === "image_tag") return "위치 선택";
+  if (question.questionType === "participant_image_tag") return "사진 위치 선택";
   if (question.questionType === "scale") return "척도";
   return question.questionType;
 }

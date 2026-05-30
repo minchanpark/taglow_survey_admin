@@ -1,4 +1,4 @@
-import type { AnalysisFilters, HeatmapFilters, PreviewOptions, TextAnswerFilters } from "../model";
+import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, PreviewOptions, TextAnswerFilters } from "../model";
 
 export const adminQueryKeys = {
   adminSession: ["admin", "session"] as const,
@@ -13,14 +13,29 @@ export const adminQueryKeys = {
   previewRoot: (surveyId: string) => ["admin", "survey", surveyId, "preview"] as const,
   preview: (surveyId: string, options: PreviewOptions) => ["admin", "survey", surveyId, "preview", options] as const,
   filterOptions: (surveyId: string) => ["admin", "survey", surveyId, "filterOptions"] as const,
+  analysisRoot: (surveyId: string) => ["admin", "survey", surveyId, "analysis"] as const,
+  responseSummary: (surveyId: string, filters: AnalysisFilters) =>
+    ["admin", "survey", surveyId, "analysis", "responseSummary", filters] as const,
   sectionSummary: (surveyId: string, filters: AnalysisFilters) =>
     ["admin", "survey", surveyId, "analysis", "sectionSummary", filters] as const,
+  questionSummary: (surveyId: string, filters: AnalysisFilters) =>
+    ["admin", "survey", surveyId, "analysis", "questionSummary", filters] as const,
+  choiceDistribution: (surveyId: string, filters: AnalysisFilters) =>
+    ["admin", "survey", surveyId, "analysis", "choiceDistribution", filters] as const,
+  groupCompare: (surveyId: string, filters: GroupCompareFilters) =>
+    ["admin", "survey", surveyId, "analysis", "groupCompare", filters] as const,
+  priorityTop5: (surveyId: string, filters: AnalysisFilters) =>
+    ["admin", "survey", surveyId, "analysis", "priorityTop5", filters] as const,
   borich: (surveyId: string, filters: AnalysisFilters) =>
     ["admin", "survey", surveyId, "analysis", "borich", filters] as const,
+  locus: (surveyId: string, filters: AnalysisFilters) =>
+    ["admin", "survey", surveyId, "analysis", "locus", filters] as const,
   heatmap: (surveyId: string, filters: HeatmapFilters) =>
     ["admin", "survey", surveyId, "analysis", "heatmap", filters] as const,
   imageTagAnswers: (surveyId: string, filters: HeatmapFilters) =>
     ["admin", "survey", surveyId, "analysis", "imageTagAnswers", filters] as const,
   textAnswers: (surveyId: string, filters: TextAnswerFilters) =>
     ["admin", "survey", surveyId, "analysis", "textAnswers", filters] as const,
+  textGroups: (surveyId: string, filters: TextAnswerFilters) =>
+    ["admin", "survey", surveyId, "analysis", "textGroups", filters] as const,
 };

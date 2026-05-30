@@ -48,6 +48,71 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
     });
   });
 
+  it("maps response summary distribution and low sample groups", () => {
+    expect(
+      mapper.toResponseSummary({
+        total_responses: 20,
+        submitted_responses: 18,
+        filtered_responses: 4,
+        low_sample_threshold: 10,
+        profile_distribution: {
+          semesterGroups: [{ key: "1학기", label: "1학기", n: 3, percentage: 75 }],
+          dormitory: [{ key: "기타/미분류", label: "기타/미분류", n: 1, percentage: 25, isUnclassified: true }],
+        },
+        low_sample_groups: [{ dimension: "dormitory", label: "비전관", n: 4 }],
+      }),
+    ).toMatchObject({
+      totalResponses: 20,
+      submittedResponses: 18,
+      filteredResponses: 4,
+      isLowSample: true,
+      profileDistribution: {
+        semesterGroup: [{ key: "1학기", label: "1학기", n: 3, percentage: 75, isUnclassified: false }],
+        dormitory: [{ key: "기타/미분류", label: "기타/미분류", n: 1, percentage: 25, isUnclassified: true }],
+      },
+      lowSampleGroups: [{ dimension: "dormitory", label: "비전관", n: 4 }],
+    });
+  });
+
+  it("maps group comparison and text group rows", () => {
+    expect(
+      mapper.toGroupCompareResult({
+        group_key: "비전관",
+        group_label: "비전관",
+        avg_score: 2.4,
+        n: 8,
+        is_lowest: true,
+        is_highest: false,
+        is_low_sample: true,
+      }),
+    ).toEqual({
+      groupKey: "비전관",
+      groupLabel: "비전관",
+      averageScore: 2.4,
+      n: 8,
+      isHighest: false,
+      isLowest: true,
+      isLowSample: true,
+    });
+
+    expect(
+      mapper.toTextGroup({
+        group_key: "facility",
+        label: "facility",
+        topic_key: "facility",
+        issue_type: null,
+        question_id: "question-1",
+        count: 3,
+        representative_texts: ["조명이 어둡습니다.", "환기가 부족합니다."],
+      }),
+    ).toMatchObject({
+      groupKey: "facility",
+      label: "facility",
+      count: 3,
+      representativeTexts: ["조명이 어둡습니다.", "환기가 부족합니다."],
+    });
+  });
+
   it("maps current Borich RPC column names", () => {
     expect(
       mapper.toBorichResult({

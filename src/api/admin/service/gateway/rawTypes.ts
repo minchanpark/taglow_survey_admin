@@ -157,6 +157,71 @@ export type RawSectionSummary = Readonly<{
   n: number;
 }>;
 
+export type RawResponseSummary = Readonly<{
+  total_responses: number;
+  submitted_responses: number;
+  filtered_responses: number;
+  low_sample_threshold?: number | null;
+  is_low_sample?: boolean | null;
+  profile_distribution?: JsonRecord | null;
+  low_sample_groups?: unknown[] | null;
+}>;
+
+export type RawQuestionSummary = Readonly<{
+  question_id: string;
+  question_title: string | null;
+  section_id: string | null;
+  section_title: string | null;
+  topic_key: string | null;
+  metric_type: string | null;
+  avg_score?: number | null;
+  average_score?: number | null;
+  stddev_score?: number | null;
+  standard_deviation?: number | null;
+  n: number;
+}>;
+
+export type RawChoiceDistribution = Readonly<{
+  question_id: string;
+  question_title: string | null;
+  section_id: string | null;
+  section_title: string | null;
+  option_value: string | null;
+  option_label: string | null;
+  count: number;
+  n: number;
+  percentage?: number | null;
+}>;
+
+export type RawGroupCompareResult = Readonly<{
+  group_key: string | null;
+  group_label: string | null;
+  avg_score?: number | null;
+  average_score?: number | null;
+  n: number;
+  is_highest?: boolean | null;
+  is_lowest?: boolean | null;
+  is_low_sample?: boolean | null;
+}>;
+
+export type RawPriorityIssue = Readonly<{
+  id?: string | null;
+  label: string | null;
+  source: string | null;
+  topic_key: string | null;
+  section_title?: string | null;
+  avg_importance?: number | null;
+  avg_satisfaction?: number | null;
+  avg_gap?: number | null;
+  average_importance?: number | null;
+  average_satisfaction?: number | null;
+  gap?: number | null;
+  borich_score: number | null;
+  text_count?: number | null;
+  tag_count?: number | null;
+  n: number;
+}>;
+
 export type RawBorichResult = Readonly<{
   topic_key: string;
   avg_importance?: number | null;
@@ -167,6 +232,19 @@ export type RawBorichResult = Readonly<{
   gap?: number | null;
   borich_score: number | null;
   n: number;
+}>;
+
+export type RawLocusPoint = Readonly<{
+  topic_key: string;
+  label: string | null;
+  avg_importance?: number | null;
+  avg_satisfaction?: number | null;
+  avg_gap?: number | null;
+  average_importance?: number | null;
+  average_satisfaction?: number | null;
+  gap?: number | null;
+  n: number;
+  quadrant: string | null;
 }>;
 
 export type RawHeatmapPoint = Readonly<{
@@ -227,4 +305,15 @@ export type RawTextAnswer = Readonly<{
   department?: string | null;
   profile?: JsonRecord | null;
   created_at: string;
+}>;
+
+export type RawTextGroup = Readonly<{
+  group_key: string | null;
+  label: string | null;
+  topic_key: string | null;
+  issue_type?: string | null;
+  question_id: string | null;
+  count: number;
+  n?: number | null;
+  representative_texts?: string[] | null;
 }>;

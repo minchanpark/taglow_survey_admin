@@ -4,7 +4,7 @@ import type { AnalysisFilters } from "../api/admin/model";
 type AdminFilterState = Readonly<{
   surveyId?: string;
   filters: AnalysisFilters;
-  activeTab: "overview" | "groups" | "borich" | "heatmap" | "text";
+  activeTab: "overview" | "scale" | "groups" | "borich" | "heatmap" | "text";
   setSurveyId: (surveyId: string | undefined) => void;
   setFilters: (filters: AnalysisFilters) => void;
   setActiveTab: (tab: AdminFilterState["activeTab"]) => void;

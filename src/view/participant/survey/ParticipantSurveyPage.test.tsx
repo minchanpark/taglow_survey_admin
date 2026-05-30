@@ -41,6 +41,7 @@ describe("ParticipantSurveyPage", () => {
 
     await user.click(screen.getByRole("button", { name: "인트로로 이동" }));
     expect(await screen.findByRole("heading", { name: "생활관 만족도 조사" })).toBeInTheDocument();
+    expect(screen.getByText("2026 봄학기")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "섹션 시작" }));
     expect(screen.getByText("생활관 시설")).toBeInTheDocument();

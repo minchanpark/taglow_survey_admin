@@ -3,12 +3,19 @@ import {
   type AdminMember,
   type AdminRole,
   type BorichResult,
+  type ChoiceDistribution,
   type FilterOptions,
+  type GroupCompareResult,
   type HeatmapPoint,
   type ImageTagAnswer,
   type JsonRecord,
+  type LocusPoint,
+  type LocusQuadrant,
   type MetricType,
+  type PriorityIssue,
   type Question,
+  type QuestionSummary,
+  type ResponseSummary,
   type QuestionType,
   type SectionSummary,
   type SectionType,
@@ -18,19 +25,27 @@ import {
   type SurveySection,
   type SurveyStatus,
   type TextAnswer,
+  type TextGroup,
 } from "../../model";
 import type {
   RawAdminMember,
   RawBorichResult,
+  RawChoiceDistribution,
   RawFilterOptions,
+  RawGroupCompareResult,
   RawHeatmapPoint,
   RawImageTagAnswer,
+  RawLocusPoint,
+  RawPriorityIssue,
   RawQuestion,
+  RawQuestionSummary,
+  RawResponseSummary,
   RawSection,
   RawSectionSummary,
   RawSurvey,
   RawSurveyAsset,
   RawTextAnswer,
+  RawTextGroup,
 } from "../gateway/rawTypes";
 
 export class AdminPayloadMapper {
@@ -130,12 +145,83 @@ export class AdminPayloadMapper {
     };
   }
 
+  toResponseSummary(row: RawResponseSummary): ResponseSummary {
+    const threshold = Number(row.low_sample_threshold ?? 10);
+    const filteredResponses = Number(row.filtered_responses ?? 0);
+    return {
+      totalResponses: Number(row.total_responses ?? 0),
+      submittedResponses: Number(row.submitted_responses ?? 0),
+      filteredResponses,
+      lowSampleThreshold: threshold,
+      isLowSample: Boolean(row.is_low_sample ?? (filteredResponses > 0 && filteredResponses < threshold)),
+      profileDistribution: normalizeProfileDistribution(row.profile_distribution),
+      lowSampleGroups: normalizeLowSampleGroups(row.low_sample_groups),
+    };
+  }
+
   toSectionSummary(row: RawSectionSummary): SectionSummary {
     return {
       sectionId: row.section_id,
       sectionTitle: row.section_title ?? "Untitled section",
       averageScore: row.avg_score ?? row.average_score ?? null,
       n: row.n,
+    };
+  }
+
+  toQuestionSummary(row: RawQuestionSummary): QuestionSummary {
+    return {
+      questionId: row.question_id,
+      questionTitle: row.question_title ?? "제목 없는 질문",
+      sectionId: row.section_id ?? undefined,
+      sectionTitle: row.section_title ?? undefined,
+      topicKey: row.topic_key ?? undefined,
+      metricType: normalizeMetricType(row.metric_type),
+      averageScore: row.avg_score ?? row.average_score ?? null,
+      standardDeviation: row.stddev_score ?? row.standard_deviation ?? null,
+      n: row.n,
+    };
+  }
+
+  toChoiceDistribution(row: RawChoiceDistribution): ChoiceDistribution {
+    return {
+      questionId: row.question_id,
+      questionTitle: row.question_title ?? "제목 없는 질문",
+      sectionId: row.section_id ?? undefined,
+      sectionTitle: row.section_title ?? undefined,
+      optionValue: row.option_value ?? "unknown",
+      optionLabel: row.option_label ?? row.option_value ?? "미분류",
+      count: Number(row.count ?? 0),
+      n: Number(row.n ?? 0),
+      percentage: Number(row.percentage ?? 0),
+    };
+  }
+
+  toGroupCompareResult(row: RawGroupCompareResult): GroupCompareResult {
+    return {
+      groupKey: row.group_key ?? "unclassified",
+      groupLabel: row.group_label ?? row.group_key ?? "기타/미분류",
+      averageScore: row.avg_score ?? row.average_score ?? null,
+      n: Number(row.n ?? 0),
+      isHighest: Boolean(row.is_highest),
+      isLowest: Boolean(row.is_lowest),
+      isLowSample: Boolean(row.is_low_sample),
+    };
+  }
+
+  toPriorityIssue(row: RawPriorityIssue): PriorityIssue {
+    return {
+      id: row.id ?? row.topic_key ?? row.label ?? "priority",
+      label: row.label ?? row.topic_key ?? "분류 없음",
+      source: normalizePrioritySource(row.source),
+      topicKey: row.topic_key ?? undefined,
+      sectionTitle: row.section_title ?? undefined,
+      averageImportance: row.avg_importance ?? row.average_importance ?? null,
+      averageSatisfaction: row.avg_satisfaction ?? row.average_satisfaction ?? null,
+      gap: row.avg_gap ?? row.gap ?? null,
+      borichScore: row.borich_score,
+      textCount: Number(row.text_count ?? 0),
+      tagCount: Number(row.tag_count ?? 0),
+      n: Number(row.n ?? 0),
     };
   }
 
@@ -147,6 +233,18 @@ export class AdminPayloadMapper {
       gap: row.avg_gap ?? row.gap ?? null,
       borichScore: row.borich_score,
       n: row.n,
+    };
+  }
+
+  toLocusPoint(row: RawLocusPoint): LocusPoint {
+    return {
+      topicKey: row.topic_key,
+      label: row.label ?? row.topic_key,
+      averageImportance: row.avg_importance ?? row.average_importance ?? null,
+      averageSatisfaction: row.avg_satisfaction ?? row.average_satisfaction ?? null,
+      gap: row.avg_gap ?? row.gap ?? null,
+      n: Number(row.n ?? 0),
+      quadrant: normalizeLocusQuadrant(row.quadrant),
     };
   }
 
@@ -222,6 +320,96 @@ export class AdminPayloadMapper {
       createdAt: row.created_at,
     };
   }
+
+  toTextGroup(row: RawTextGroup): TextGroup {
+    return {
+      groupKey: row.group_key ?? row.topic_key ?? row.question_id ?? "unclassified",
+      label: row.label ?? row.group_key ?? "기타/미분류",
+      topicKey: row.topic_key ?? undefined,
+      issueType: row.issue_type ?? undefined,
+      questionId: row.question_id ?? undefined,
+      count: Number(row.count ?? 0),
+      n: Number(row.n ?? row.count ?? 0),
+      representativeTexts: normalizeStringArray(row.representative_texts),
+    };
+  }
+}
+
+function normalizeProfileDistribution(value: JsonRecord | null | undefined): ResponseSummary["profileDistribution"] {
+  return {
+    gender: normalizeDistributionItems(value?.gender),
+    semesterGroup: normalizeDistributionItems(value?.semesterGroups ?? value?.semester_groups),
+    department: normalizeDistributionItems(value?.department ?? value?.departments),
+    rc: normalizeDistributionItems(value?.rc ?? value?.rcs),
+    dormitory: normalizeDistributionItems(value?.dormitory ?? value?.dormitories),
+    roomType: normalizeDistributionItems(value?.roomType ?? value?.room_type ?? value?.roomTypes ?? value?.room_types),
+    dormExperience: normalizeDistributionItems(value?.dormExperience ?? value?.dorm_experience ?? value?.dormExperiences ?? value?.dorm_experiences),
+  };
+}
+
+function normalizeDistributionItems(value: unknown): ResponseSummary["profileDistribution"]["gender"] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(isRecord)
+    .map((item) => ({
+      key: getString(item.key) ?? getString(item.label) ?? "unclassified",
+      label: getString(item.label) ?? getString(item.key) ?? "기타/미분류",
+      n: getFiniteNumber(item.n) ?? 0,
+      percentage: getFiniteNumber(item.percentage) ?? 0,
+      isUnclassified: Boolean(item.isUnclassified ?? item.is_unclassified),
+    }));
+}
+
+function normalizeLowSampleGroups(value: unknown): ResponseSummary["lowSampleGroups"] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(isRecord)
+    .map((item) => ({
+      dimension: normalizeProfileDimension(getString(item.dimension)),
+      label: getString(item.label) ?? "기타/미분류",
+      n: getFiniteNumber(item.n) ?? 0,
+    }));
+}
+
+function normalizeProfileDimension(value: string | undefined): ResponseSummary["lowSampleGroups"][number]["dimension"] {
+  if (
+    value === "gender" ||
+    value === "semesterGroup" ||
+    value === "department" ||
+    value === "rc" ||
+    value === "dormitory" ||
+    value === "roomType" ||
+    value === "dormExperience"
+  ) {
+    return value;
+  }
+  if (value === "semester_group") return "semesterGroup";
+  if (value === "room_type") return "roomType";
+  if (value === "dorm_experience") return "dormExperience";
+  return "dormitory";
+}
+
+function normalizePrioritySource(value: string | null | undefined): PriorityIssue["source"] {
+  if (value === "borich" || value === "low_satisfaction" || value === "text" || value === "heatmap" || value === "mixed") return value;
+  return "mixed";
+}
+
+function normalizeLocusQuadrant(value: string | null | undefined): LocusQuadrant {
+  if (value === "top_priority" || value === "maintain_strengthen" || value === "gradual_improvement" || value === "maintain") return value;
+  return "maintain";
+}
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function getFiniteNumber(value: unknown): number | undefined {
+  const numberValue = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(numberValue) ? numberValue : undefined;
 }
 
 function compactImage(value: {

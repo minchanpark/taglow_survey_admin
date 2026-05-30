@@ -3,6 +3,8 @@ import type { AdminApiGateway } from "./adminApiGateway";
 import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
+  RawChoiceDistribution,
+  RawGroupCompareResult,
   RawAdminAuthUser,
   RawAdminMember,
   RawBorichResult,
@@ -13,12 +15,17 @@ import type {
   RawFilterOptions,
   RawHeatmapPoint,
   RawImageTagAnswer,
+  RawLocusPoint,
+  RawPriorityIssue,
   RawQuestion,
+  RawQuestionSummary,
+  RawResponseSummary,
   RawSection,
   RawSectionSummary,
   RawSurvey,
   RawSurveyAsset,
   RawTextAnswer,
+  RawTextGroup,
   RawUpdateAssetPayload,
   RawUpdateQuestionPayload,
   RawUpdateSectionPayload,
@@ -153,12 +160,36 @@ export class HttpAdminApiGateway implements AdminApiGateway {
     return this.request<RawFilterOptions>(`/api/admin/surveys/${surveyId}/filter-options`);
   }
 
+  getResponseSummary(args: AnalysisQueryArgs): Promise<RawResponseSummary> {
+    return this.request<RawResponseSummary>(`/api/admin/surveys/${args.surveyId}/response-summary`, { method: "POST", body: args.filters });
+  }
+
   getSectionSatisfactionSummary(args: AnalysisQueryArgs): Promise<RawSectionSummary[]> {
     return this.request<RawSectionSummary[]>(`/api/admin/surveys/${args.surveyId}/analysis/section-summary`, { method: "POST", body: args.filters });
   }
 
+  getQuestionSatisfactionSummary(args: AnalysisQueryArgs): Promise<RawQuestionSummary[]> {
+    return this.request<RawQuestionSummary[]>(`/api/admin/surveys/${args.surveyId}/analysis/question-average`, { method: "POST", body: args.filters });
+  }
+
+  getChoiceDistribution(args: AnalysisQueryArgs): Promise<RawChoiceDistribution[]> {
+    return this.request<RawChoiceDistribution[]>(`/api/admin/surveys/${args.surveyId}/analysis/choice-distribution`, { method: "POST", body: args.filters });
+  }
+
+  getGroupCompareSummary(args: AnalysisQueryArgs): Promise<RawGroupCompareResult[]> {
+    return this.request<RawGroupCompareResult[]>(`/api/admin/surveys/${args.surveyId}/analysis/group-compare`, { method: "POST", body: args.filters });
+  }
+
+  getPriorityTop5(args: AnalysisQueryArgs): Promise<RawPriorityIssue[]> {
+    return this.request<RawPriorityIssue[]>(`/api/admin/surveys/${args.surveyId}/analysis/priority-top5`, { method: "POST", body: args.filters });
+  }
+
   getBorichSummary(args: AnalysisQueryArgs): Promise<RawBorichResult[]> {
     return this.request<RawBorichResult[]>(`/api/admin/surveys/${args.surveyId}/analysis/borich`, { method: "POST", body: args.filters });
+  }
+
+  getLocusSummary(args: AnalysisQueryArgs): Promise<RawLocusPoint[]> {
+    return this.request<RawLocusPoint[]>(`/api/admin/surveys/${args.surveyId}/analysis/locus`, { method: "POST", body: args.filters });
   }
 
   getHeatmapPoints(args: HeatmapQueryArgs): Promise<RawHeatmapPoint[]> {
@@ -170,6 +201,10 @@ export class HttpAdminApiGateway implements AdminApiGateway {
       method: "POST",
       body: args.filters,
     });
+  }
+
+  getTextGroups(args: TextAnswerQueryArgs): Promise<RawTextGroup[]> {
+    return this.request<RawTextGroup[]>(`/api/admin/surveys/${args.surveyId}/analysis/text-groups`, { method: "POST", body: args.filters });
   }
 
   listTextAnswers(args: TextAnswerQueryArgs): Promise<RawTextAnswer[]> {

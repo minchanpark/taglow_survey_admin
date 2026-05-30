@@ -103,6 +103,10 @@
   line-height: var(--tg-line-body);
 }
 
+.tg-participant-survey-page__intro-copy {
+  white-space: pre-line;
+}
+
 .tg-participant-flow-card__status {
   display: inline-flex;
   width: fit-content;

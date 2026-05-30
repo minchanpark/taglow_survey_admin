@@ -12,7 +12,7 @@
 
 .tg-analysis-filter__fields {
   display: grid;
-  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--tg-space-6);
 }
 
@@ -39,6 +39,13 @@
   background: var(--tg-bg-panel);
 }
 
+.tg-analysis-filter__empty {
+  margin: 0;
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
 .tg-analysis-filter__footer {
   display: flex;
   align-items: center;
@@ -47,9 +54,21 @@
 }
 
 .tg-analysis-filter__summary {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--tg-space-3);
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-caption);
   line-height: var(--tg-line-caption);
+}
+
+.tg-analysis-filter__summary strong {
+  border-radius: var(--tg-radius-xs);
+  padding: 0 var(--tg-space-3);
+  color: var(--tg-warning);
+  background: var(--tg-warning-soft);
+  font-weight: var(--tg-weight-medium);
 }
 
 @media (max-width: 1180px) {

@@ -4,24 +4,31 @@ import type {
   AdminSignInCommand,
   AnalysisFilterCommand,
   BorichResult,
+  ChoiceDistribution,
   CreateQuestionCommand,
   CreateSectionCommand,
   CreateSurveyCommand,
   FilterOptions,
+  GroupCompareFilterCommand,
+  GroupCompareResult,
   HeatmapFilterCommand,
   HeatmapPoint,
   ImageTagAnswer,
   ImageTagAnswerFilterCommand,
+  LocusPoint,
   PreviewSurvey,
   PreviewSurveyCommand,
+  PriorityIssue,
   QuestionSetImportCommand,
   QuestionSetImportPreview,
   QuestionSetImportPreviewCommand,
   QuestionSetImportResult,
   PublishValidationResult,
   Question,
+  QuestionSummary,
   ReorderQuestionsCommand,
   ReorderSectionsCommand,
+  ResponseSummary,
   SectionSummary,
   Survey,
   SurveyAsset,
@@ -29,6 +36,7 @@ import type {
   SurveySection,
   TextAnswer,
   TextAnswerFilterCommand,
+  TextGroup,
   UpdateQuestionCommand,
   UpdateSectionCommand,
   UpdateSurveyCommand,
@@ -72,9 +80,16 @@ export interface AdminApiController {
   importQuestionSet(command: QuestionSetImportCommand): Promise<QuestionSetImportResult>;
 
   getFilterOptions(surveyId: string): Promise<FilterOptions>;
+  getResponseSummary(command: AnalysisFilterCommand): Promise<ResponseSummary>;
   getSectionSatisfactionSummary(command: AnalysisFilterCommand): Promise<SectionSummary[]>;
+  getQuestionSatisfactionSummary(command: AnalysisFilterCommand): Promise<QuestionSummary[]>;
+  getChoiceDistribution(command: AnalysisFilterCommand): Promise<ChoiceDistribution[]>;
+  getGroupCompareSummary(command: GroupCompareFilterCommand): Promise<GroupCompareResult[]>;
+  getPriorityTop5(command: AnalysisFilterCommand): Promise<PriorityIssue[]>;
   getBorichSummary(command: AnalysisFilterCommand): Promise<BorichResult[]>;
+  getLocusSummary(command: AnalysisFilterCommand): Promise<LocusPoint[]>;
   getHeatmapPoints(command: HeatmapFilterCommand): Promise<HeatmapPoint[]>;
   listImageTagAnswers(command: ImageTagAnswerFilterCommand): Promise<ImageTagAnswer[]>;
+  getTextGroups(command: TextAnswerFilterCommand): Promise<TextGroup[]>;
   listTextAnswers(command: TextAnswerFilterCommand): Promise<TextAnswer[]>;
 }

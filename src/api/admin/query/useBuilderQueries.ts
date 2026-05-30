@@ -213,6 +213,8 @@ function invalidateBuilder(queryClient: ReturnType<typeof useQueryClient>, surve
   void queryClient.invalidateQueries({ queryKey: adminQueryKeys.questions(surveyId) });
   void queryClient.invalidateQueries({ queryKey: adminQueryKeys.assets(surveyId) });
   void queryClient.invalidateQueries({ queryKey: adminQueryKeys.previewRoot(surveyId) });
+  void queryClient.invalidateQueries({ queryKey: adminQueryKeys.filterOptions(surveyId) });
+  void queryClient.invalidateQueries({ queryKey: adminQueryKeys.analysisRoot(surveyId) });
 }
 
 function setSurveyDetail(queryClient: QueryClient, surveyId: string, updater: (detail: SurveyDetail) => SurveyDetail) {

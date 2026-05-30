@@ -105,9 +105,8 @@ const profileQuestion: Question = {
     profileField: "gender",
     inputType: "single_choice",
     options: [
-      { value: "female", labelKo: "여성" },
-      { value: "male", labelKo: "남성" },
-      { value: "other", labelKo: "기타" },
+      { value: "남성", labelKo: "남성" },
+      { value: "여성", labelKo: "여성" },
     ],
   },
   validation: {},
@@ -159,6 +158,7 @@ describe("SurveyBuilderPage", () => {
       ...fakeSurvey,
       id: command.surveyId,
       title: command.title ?? fakeSurvey.title,
+      description: command.description ?? fakeSurvey.description,
     }));
     renderBuilder({ updateSurvey });
 
@@ -166,15 +166,41 @@ describe("SurveyBuilderPage", () => {
     const titleInput = screen.getByLabelText("설문 제목");
     await user.clear(titleInput);
     await user.type(titleInput, "생활관 만족도 조사 2차");
-    await user.click(screen.getByRole("button", { name: "제목 저장" }));
+    await user.click(screen.getByRole("button", { name: "기본 정보 저장" }));
 
     await waitFor(() => {
       expect(updateSurvey).toHaveBeenCalledWith({
         surveyId: "survey-1",
         title: "생활관 만족도 조사 2차",
+        description: "2026 봄학기",
       });
     });
-    expect(await screen.findByRole("status")).toHaveTextContent("설문 제목이 저장되었습니다.");
+    expect(await screen.findByRole("status")).toHaveTextContent("설문 기본 정보가 저장되었습니다.");
+  });
+
+  it("updates the survey intro copy from the builder header", async () => {
+    const user = userEvent.setup();
+    const updateSurvey = vi.fn<AdminApiController["updateSurvey"]>(async (command: UpdateSurveyCommand) => ({
+      ...fakeSurvey,
+      id: command.surveyId,
+      title: command.title ?? fakeSurvey.title,
+      description: command.description,
+    }));
+    renderBuilder({ updateSurvey });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    const introField = screen.getByLabelText("설문 소개 문구");
+    await user.clear(introField);
+    await user.type(introField, "생활관 생활 경험을 바탕으로 솔직하게 응답해주세요.");
+    await user.click(screen.getByRole("button", { name: "기본 정보 저장" }));
+
+    await waitFor(() => {
+      expect(updateSurvey).toHaveBeenCalledWith({
+        surveyId: "survey-1",
+        title: "생활관 만족도 조사",
+        description: "생활관 생활 경험을 바탕으로 솔직하게 응답해주세요.",
+      });
+    });
   });
 
   it("keeps builder controls editable for published surveys", async () => {
@@ -685,12 +711,12 @@ describe("SurveyBuilderPage", () => {
 
     expect(within(editor).getByLabelText("기본 정보 항목")).toHaveValue("gender");
     expect(within(editor).getByLabelText("기본 정보 응답 방식")).toHaveValue("single_choice");
-    expect(within(editor).getByText("여성")).toBeInTheDocument();
     expect(within(editor).getByText("남성")).toBeInTheDocument();
-    expect(within(editor).getByText("기타")).toBeInTheDocument();
+    expect(within(editor).getByText("여성")).toBeInTheDocument();
+    expect(within(editor).queryByText("기타")).not.toBeInTheDocument();
 
     const optionsInput = within(editor).getByLabelText("세부 답변 항목");
-    fireEvent.change(optionsInput, { target: { value: "여성\n남성\n응답하지 않음" } });
+    fireEvent.change(optionsInput, { target: { value: "남성\n여성" } });
     await user.click(within(editor).getByRole("button", { name: "저장" }));
 
     await waitFor(() => {
@@ -704,9 +730,8 @@ describe("SurveyBuilderPage", () => {
             profileField: "gender",
             inputType: "single_choice",
             options: [
-              { value: "female", labelKo: "여성" },
-              { value: "male", labelKo: "남성" },
-              { value: "other", labelKo: "응답하지 않음" },
+              { value: "남성", labelKo: "남성" },
+              { value: "여성", labelKo: "여성" },
             ],
           },
         }),

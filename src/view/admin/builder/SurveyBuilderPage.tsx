@@ -111,11 +111,12 @@ const metricTypes: Array<{ value: MetricType; label: string }> = [
 
 const profileFieldOptions = [
   { value: "gender", label: "성별" },
-  { value: "semester", label: "학기" },
+  { value: "semester_group", label: "학기" },
   { value: "department", label: "학부/전공" },
   { value: "rc", label: "RC" },
   { value: "dormitory", label: "생활관" },
   { value: "room_type", label: "인실" },
+  { value: "dorm_experience", label: "거주 경험" },
   { value: "student_number", label: "학번" },
   { value: "name", label: "이름" },
 ];
@@ -139,6 +140,7 @@ const editSectionSchema = z.object({
 
 const editSurveySchema = z.object({
   title: z.string().trim().min(1, "설문 제목을 입력해주세요.").max(120, "설문 제목은 120자 이하로 입력해주세요."),
+  description: z.string().trim().max(800, "소개 문구는 800자 이하로 입력해주세요.").optional(),
 });
 
 const createQuestionSchema = z
@@ -351,19 +353,23 @@ export function SurveyBuilderPage() {
 function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
   const updateSurveyMutation = useUpdateSurveyMutation();
   const [savedTitle, setSavedTitle] = useState(props.survey.title);
+  const [savedDescription, setSavedDescription] = useState(props.survey.description ?? "");
   const titleForm = useForm<EditSurveyForm>({
     resolver: zodResolver(editSurveySchema),
-    defaultValues: { title: props.survey.title },
+    defaultValues: { title: props.survey.title, description: props.survey.description ?? "" },
   });
   const titleValue = titleForm.watch("title");
+  const descriptionValue = titleForm.watch("description") ?? "";
   const normalizedTitle = titleValue.trim();
-  const isUnchanged = normalizedTitle === savedTitle;
+  const normalizedDescription = descriptionValue.trim();
+  const isUnchanged = normalizedTitle === savedTitle && normalizedDescription === savedDescription;
   const isBusy = props.isDisabled || updateSurveyMutation.isPending;
 
   useEffect(() => {
     setSavedTitle(props.survey.title);
-    titleForm.reset({ title: props.survey.title });
-  }, [props.survey.title, titleForm]);
+    setSavedDescription(props.survey.description ?? "");
+    titleForm.reset({ title: props.survey.title, description: props.survey.description ?? "" });
+  }, [props.survey.description, props.survey.title, titleForm]);
 
   return (
     <div className="tg-builder-title-block">
@@ -379,11 +385,13 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
             {
               surveyId: props.survey.id,
               title: values.title.trim(),
+              description: values.description?.trim() ?? "",
             },
             {
               onSuccess: (survey) => {
                 setSavedTitle(survey.title);
-                titleForm.reset({ title: survey.title });
+                setSavedDescription(survey.description ?? "");
+                titleForm.reset({ title: survey.title, description: survey.description ?? "" });
               },
             },
           );
@@ -393,15 +401,28 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
           <span>설문 제목</span>
           <input aria-label="설문 제목" {...titleForm.register("title")} disabled={isBusy} />
         </label>
-        <Button type="submit" variant="primary" icon={<Save size={16} aria-hidden="true" />} disabled={isBusy || isUnchanged}>
-          제목 저장
-        </Button>
+        <label className="tg-builder-title-form__field tg-builder-title-form__field--intro">
+          <span>설문 소개 문구</span>
+          <textarea
+            aria-label="설문 소개 문구"
+            rows={3}
+            placeholder="예: 이번 설문은 생활관 이용 경험을 더 정확히 파악하기 위해 진행됩니다."
+            {...titleForm.register("description")}
+            disabled={isBusy}
+          />
+        </label>
+        <div className="tg-builder-title-form__actions">
+          <Button type="submit" variant="primary" icon={<Save size={16} aria-hidden="true" />} disabled={isBusy || isUnchanged}>
+            기본 정보 저장
+          </Button>
+        </div>
       </form>
       {titleForm.formState.errors.title ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.title.message}</small> : null}
+      {titleForm.formState.errors.description ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.description.message}</small> : null}
       {updateSurveyMutation.isError ? (
-        <InlineAlert message="설문 제목을 저장하지 못했습니다." detail={getErrorDetail(updateSurveyMutation.error)} />
+        <InlineAlert message="설문 기본 정보를 저장하지 못했습니다." detail={getErrorDetail(updateSurveyMutation.error)} />
       ) : null}
-      {updateSurveyMutation.isSuccess ? <InlineNotice message="설문 제목이 저장되었습니다." /> : null}
+      {updateSurveyMutation.isSuccess ? <InlineNotice message="설문 기본 정보가 저장되었습니다." /> : null}
     </div>
   );
 }
@@ -1313,7 +1334,7 @@ function QuestionConfigFields(props: {
                 rows={6}
                 value={optionsToText(config)}
                 disabled={props.disabled}
-                placeholder={"여성\n남성\n기타"}
+                placeholder={"남성\n여성"}
                 onChange={(event) => setConfig({ options: textToOptions(event.target.value, choiceOptions) })}
               />
             </label>

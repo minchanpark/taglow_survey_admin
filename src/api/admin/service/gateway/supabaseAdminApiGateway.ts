@@ -4,6 +4,8 @@ import type { JsonRecord } from "../../model";
 import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
+  RawChoiceDistribution,
+  RawGroupCompareResult,
   RawAdminAuthUser,
   RawAdminMember,
   RawBorichResult,
@@ -14,13 +16,18 @@ import type {
   RawFilterOptions,
   RawHeatmapPoint,
   RawImageTagAnswer,
+  RawLocusPoint,
+  RawPriorityIssue,
   RawInsertSurveyPayload,
   RawQuestion,
+  RawQuestionSummary,
+  RawResponseSummary,
   RawSection,
   RawSectionSummary,
   RawSurvey,
   RawSurveyAsset,
   RawTextAnswer,
+  RawTextGroup,
   RawUpdateAssetPayload,
   RawUpdateQuestionPayload,
   RawUpdateSectionPayload,
@@ -29,6 +36,33 @@ import type {
 } from "./rawTypes";
 
 type SupabaseResult<T> = PromiseLike<{ data: T | null; error: unknown }>;
+
+type RawAnalysisResponseRow = Readonly<{
+  status?: string | null;
+  gender?: string | null;
+  semester_group?: string | null;
+  department?: string | null;
+  rc?: string | null;
+  dormitory?: string | null;
+  room_type?: string | null;
+  dorm_experience?: string | null;
+  profile_json?: JsonRecord | null;
+  raw_payload?: JsonRecord | null;
+}>;
+
+type ProfileOptionRow = Readonly<{
+  value: string;
+  label: string;
+  orderIndex: number;
+}>;
+
+type ProfileDistributionRow = Readonly<{
+  key: string;
+  label: string;
+  n: number;
+  percentage: number;
+  isUnclassified: boolean;
+}>;
 
 type SupabaseClientLike = {
   auth: {
@@ -55,9 +89,16 @@ type SupabaseClientLike = {
 const RPC = {
   createNextSurveyVersion: "create_next_survey_version",
   filterOptions: "get_survey_filter_options",
+  responseSummary: "get_response_summary",
   sectionSatisfactionSummary: "get_section_satisfaction_summary",
+  questionSatisfactionSummary: "get_question_satisfaction_summary",
+  choiceDistribution: "get_choice_distribution",
+  groupCompareSummary: "get_group_compare_summary",
+  priorityTop5: "get_priority_top5",
   borichSummary: "get_borich_summary",
+  locusSummary: "get_locus_summary",
   heatmapPoints: "get_heatmap_points",
+  textGroups: "get_text_groups",
   textAnswers: "get_text_answers",
 } as const;
 
@@ -271,6 +312,25 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     return this.one<RawFilterOptions>(this.supabase.rpc(RPC.filterOptions, { p_survey_id: surveyId }), "RPC_FAILED");
   }
 
+  async getResponseSummary(args: AnalysisQueryArgs): Promise<RawResponseSummary> {
+    try {
+      return await this.one<RawResponseSummary>(
+        this.supabase.rpc(RPC.responseSummary, {
+          p_survey_id: args.surveyId,
+          p_filters: args.filters,
+        }),
+        "RPC_FAILED",
+      );
+    } catch (error) {
+      if (!isMissingRpcError(error, RPC.responseSummary)) {
+        throw error;
+      }
+    }
+
+    const [responses, questions] = await Promise.all([this.listResponseRowsForSummary(args.surveyId), this.listQuestions(args.surveyId)]);
+    return buildRawResponseSummary(responses, questions, args.filters);
+  }
+
   async getSectionSatisfactionSummary(args: AnalysisQueryArgs): Promise<RawSectionSummary[]> {
     return this.many<RawSectionSummary>(
       this.supabase.rpc(RPC.sectionSatisfactionSummary, {
@@ -281,9 +341,59 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     );
   }
 
+  async getQuestionSatisfactionSummary(args: AnalysisQueryArgs): Promise<RawQuestionSummary[]> {
+    return this.many<RawQuestionSummary>(
+      this.supabase.rpc(RPC.questionSatisfactionSummary, {
+        p_survey_id: args.surveyId,
+        p_filters: args.filters,
+      }),
+      "RPC_FAILED",
+    );
+  }
+
+  async getChoiceDistribution(args: AnalysisQueryArgs): Promise<RawChoiceDistribution[]> {
+    return this.many<RawChoiceDistribution>(
+      this.supabase.rpc(RPC.choiceDistribution, {
+        p_survey_id: args.surveyId,
+        p_filters: args.filters,
+      }),
+      "RPC_FAILED",
+    );
+  }
+
+  async getGroupCompareSummary(args: AnalysisQueryArgs): Promise<RawGroupCompareResult[]> {
+    return this.many<RawGroupCompareResult>(
+      this.supabase.rpc(RPC.groupCompareSummary, {
+        p_survey_id: args.surveyId,
+        p_filters: args.filters,
+      }),
+      "RPC_FAILED",
+    );
+  }
+
+  async getPriorityTop5(args: AnalysisQueryArgs): Promise<RawPriorityIssue[]> {
+    return this.many<RawPriorityIssue>(
+      this.supabase.rpc(RPC.priorityTop5, {
+        p_survey_id: args.surveyId,
+        p_filters: args.filters,
+      }),
+      "RPC_FAILED",
+    );
+  }
+
   async getBorichSummary(args: AnalysisQueryArgs): Promise<RawBorichResult[]> {
     return this.many<RawBorichResult>(
       this.supabase.rpc(RPC.borichSummary, {
+        p_survey_id: args.surveyId,
+        p_filters: args.filters,
+      }),
+      "RPC_FAILED",
+    );
+  }
+
+  async getLocusSummary(args: AnalysisQueryArgs): Promise<RawLocusPoint[]> {
+    return this.many<RawLocusPoint>(
+      this.supabase.rpc(RPC.locusSummary, {
         p_survey_id: args.surveyId,
         p_filters: args.filters,
       }),
@@ -302,6 +412,20 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
   }
 
   async listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawImageTagAnswer[]> {
+    try {
+      return await this.listImageTagAnswersWithResponseRelation(args, "responses!answers_response_same_survey_fk!inner");
+    } catch (error) {
+      if (!isMissingRelationshipError(error)) {
+        throw error;
+      }
+      return this.listImageTagAnswersWithResponseRelation(args, "responses!inner");
+    }
+  }
+
+  private async listImageTagAnswersWithResponseRelation(
+    args: HeatmapQueryArgs,
+    responseRelation: string,
+  ): Promise<RawImageTagAnswer[]> {
     const filters = args.filters;
     let query = this.supabase
       .from("answers")
@@ -320,7 +444,7 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
           text_value,
           value_json,
           created_at,
-          responses!answers_response_same_survey_fk!inner(
+          ${responseRelation}(
             status,
             gender,
             semester_group,
@@ -366,6 +490,16 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     return Promise.all(rows.map((row) => this.toRawImageTagAnswer(row)));
   }
 
+  async getTextGroups(args: TextAnswerQueryArgs): Promise<RawTextGroup[]> {
+    return this.many<RawTextGroup>(
+      this.supabase.rpc(RPC.textGroups, {
+        p_survey_id: args.surveyId,
+        p_filters: args.filters,
+      }),
+      "RPC_FAILED",
+    );
+  }
+
   async listTextAnswers(args: TextAnswerQueryArgs): Promise<RawTextAnswer[]> {
     return this.many<RawTextAnswer>(
       this.supabase.rpc(RPC.textAnswers, {
@@ -380,7 +514,35 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     const { data, error } = await query;
     if (error) throw normalizeAdminApiError(error, fallbackCode);
     if (!data) throw new AdminApiError(fallbackCode, "Admin API expected one row but received none.");
+    if (Array.isArray(data)) {
+      const [first] = data;
+      if (!first) throw new AdminApiError(fallbackCode, "Admin API expected one row but received none.");
+      return first as T;
+    }
     return data as T;
+  }
+
+  private async listResponseRowsForSummary(surveyId: string): Promise<RawAnalysisResponseRow[]> {
+    try {
+      return await this.many<RawAnalysisResponseRow>(
+        this.supabase
+          .from("responses")
+          .select("status, gender, semester_group, department, rc, dormitory, room_type, dorm_experience, profile_json, raw_payload")
+          .eq("survey_id", surveyId),
+        "RPC_FAILED",
+      );
+    } catch (error) {
+      if (!isMissingColumnError(error, ["profile_json", "raw_payload"])) {
+        throw error;
+      }
+      return this.many<RawAnalysisResponseRow>(
+        this.supabase
+          .from("responses")
+          .select("status, gender, semester_group, department, rc, dormitory, room_type, dorm_experience")
+          .eq("survey_id", surveyId),
+        "RPC_FAILED",
+      );
+    }
   }
 
   private async many<T>(query: SupabaseResult<unknown>, fallbackCode: "RPC_FAILED" | "UNKNOWN" = "UNKNOWN"): Promise<T[]> {
@@ -477,6 +639,278 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
 
 function applyMaybeEq(query: any, column: string, value: unknown): any {
   return typeof value === "string" && value.trim() ? query.eq(column, value) : query;
+}
+
+function buildRawResponseSummary(
+  responses: readonly RawAnalysisResponseRow[],
+  questions: readonly RawQuestion[],
+  filters: JsonRecord,
+): RawResponseSummary {
+  const submitted = responses.filter((response) => response.status === "submitted");
+  const filtered = submitted.filter((response) => matchesResponseFilters(response, filters));
+  const profileOptions = buildProfileOptionsByDimension(questions);
+  const lowSampleThreshold = 10;
+
+  const profileDistribution = {
+    gender: buildProfileDistribution(filtered, profileOptions.gender ?? [], "gender"),
+    semesterGroups: buildProfileDistribution(filtered, profileOptions.semester_group ?? [], "semester_group"),
+    department: buildProfileDistribution(filtered, profileOptions.department ?? [], "department"),
+    rc: buildProfileDistribution(filtered, profileOptions.rc ?? [], "rc"),
+    dormitory: buildProfileDistribution(filtered, profileOptions.dormitory ?? [], "dormitory"),
+    roomType: buildProfileDistribution(filtered, profileOptions.room_type ?? [], "room_type"),
+    dormExperience: buildProfileDistribution(filtered, profileOptions.dorm_experience ?? [], "dorm_experience"),
+  };
+
+  return {
+    total_responses: responses.length,
+    submitted_responses: submitted.length,
+    filtered_responses: filtered.length,
+    low_sample_threshold: lowSampleThreshold,
+    is_low_sample: filtered.length > 0 && filtered.length < lowSampleThreshold,
+    profile_distribution: profileDistribution,
+    low_sample_groups: buildLowSampleGroups(profileDistribution, lowSampleThreshold),
+  };
+}
+
+function buildProfileOptionsByDimension(questions: readonly RawQuestion[]): Record<string, ProfileOptionRow[]> {
+  const byDimension: Record<string, ProfileOptionRow[]> = {};
+  const sortedQuestions = [...questions]
+    .filter((question) => question.question_type === "profile")
+    .sort((a, b) => a.order_index - b.order_index);
+
+  for (const question of sortedQuestions) {
+    const config = getRelationRecord(question.config);
+    const dimension = normalizeProfileFieldKey(getString(config?.profileField));
+    if (!dimension || byDimension[dimension]) continue;
+    const rawOptions = Array.isArray(config?.options) ? config.options : [];
+    const options: ProfileOptionRow[] = [];
+    const seen = new Set<string>();
+    rawOptions.forEach((rawOption, optionIndex) => {
+      const option = getRelationRecord(rawOption);
+      const value =
+        getString(option?.value) ??
+        getString(option?.labelKo) ??
+        getString(option?.label) ??
+        getString(option?.labelEn);
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      options.push({
+        value,
+        label: getString(option?.labelKo) ?? getString(option?.label) ?? getString(option?.labelEn) ?? value,
+        orderIndex: question.order_index * 1000 + optionIndex,
+      });
+    });
+    byDimension[dimension] = options;
+  }
+
+  return byDimension;
+}
+
+function buildProfileDistribution(
+  responses: readonly RawAnalysisResponseRow[],
+  options: readonly ProfileOptionRow[],
+  dimension: string,
+): ProfileDistributionRow[] {
+  const canonicalValues = new Set(options.map((option) => option.value));
+  const counts = new Map<string, number>();
+  for (const response of responses) {
+    const rawValue = getResponseDimensionValue(response, dimension);
+    const value = rawValue ? canonicalValues.size > 0 && !canonicalValues.has(rawValue) ? "기타/미분류" : rawValue : "기타/미분류";
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+
+  const total = responses.length;
+  const rows: ProfileDistributionRow[] = options.map((option) => ({
+    key: option.value,
+    label: option.label,
+    n: counts.get(option.value) ?? 0,
+    percentage: percentage(counts.get(option.value) ?? 0, total),
+    isUnclassified: false,
+  }));
+  const unclassifiedCount = counts.get("기타/미분류") ?? 0;
+  if (unclassifiedCount > 0) {
+    rows.push({
+      key: "기타/미분류",
+      label: "기타/미분류",
+      n: unclassifiedCount,
+      percentage: percentage(unclassifiedCount, total),
+      isUnclassified: true,
+    });
+  }
+
+  if (!options.length) {
+    const actualRows = [...counts.entries()]
+      .filter(([key]) => key !== "기타/미분류")
+      .sort(([left], [right]) => left.localeCompare(right, "ko"))
+      .map(([key, n]) => ({
+        key,
+        label: key,
+        n,
+        percentage: percentage(n, total),
+        isUnclassified: false,
+      }));
+    return unclassifiedCount > 0 ? [...actualRows, rows[rows.length - 1]] : actualRows;
+  }
+
+  return rows;
+}
+
+function buildLowSampleGroups(
+  distribution: NonNullable<RawResponseSummary["profile_distribution"]>,
+  threshold: number,
+): NonNullable<RawResponseSummary["low_sample_groups"]> {
+  const dimensions = [
+    ["gender", "gender"],
+    ["semesterGroup", "semesterGroups"],
+    ["department", "department"],
+    ["rc", "rc"],
+    ["dormitory", "dormitory"],
+    ["roomType", "roomType"],
+    ["dormExperience", "dormExperience"],
+  ] as const;
+
+  return dimensions.flatMap(([dimension, key]) => {
+    const rows = distribution[key];
+    return Array.isArray(rows)
+      ? rows
+          .filter((row): row is ProfileDistributionRow => isProfileDistributionRow(row) && row.n > 0 && row.n < threshold)
+          .map((row) => ({ dimension, label: row.label, n: row.n }))
+      : [];
+  });
+}
+
+function matchesResponseFilters(response: RawAnalysisResponseRow, filters: JsonRecord): boolean {
+  return (
+    matchesFilter(getResponseDimensionValue(response, "gender"), filters.gender) &&
+    matchesFilter(getResponseDimensionValue(response, "semester_group"), filters.semester_group) &&
+    matchesFilter(getResponseDimensionValue(response, "department"), filters.department) &&
+    matchesFilter(getResponseDimensionValue(response, "rc"), filters.rc) &&
+    matchesFilter(getResponseDimensionValue(response, "dormitory"), filters.dormitory) &&
+    matchesFilter(getResponseDimensionValue(response, "room_type"), filters.room_type) &&
+    matchesFilter(getResponseDimensionValue(response, "dorm_experience"), filters.dorm_experience)
+  );
+}
+
+function matchesFilter(value: unknown, filter: unknown): boolean {
+  const normalizedFilter = getString(filter);
+  return !normalizedFilter || getString(value) === normalizedFilter;
+}
+
+function normalizeProfileFieldKey(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  if (value === "gender") return "gender";
+  if (value === "semester" || value === "semester_group" || value === "semesterGroup") return "semester_group";
+  if (value === "department") return "department";
+  if (value === "rc") return "rc";
+  if (value === "dormitory") return "dormitory";
+  if (value === "room_type" || value === "roomType") return "room_type";
+  if (value === "dorm_experience" || value === "dormExperience") return "dorm_experience";
+  return undefined;
+}
+
+function getResponseDimensionValue(response: RawAnalysisResponseRow, dimension: string): string | undefined {
+  const profile = getRelationRecord(response.profile_json);
+  const nestedProfile = getRelationRecord(profile?.profile);
+  const rawPayload = getRelationRecord(response.raw_payload);
+  const nestedRawPayloadProfile = getRelationRecord(rawPayload?.profile);
+  if (dimension === "gender") return firstString(response.gender, profile?.gender, nestedProfile?.gender, rawPayload?.gender, nestedRawPayloadProfile?.gender);
+  if (dimension === "semester_group") {
+    return firstString(
+      response.semester_group,
+      profile?.semester_group,
+      profile?.semesterGroup,
+      nestedProfile?.semester_group,
+      nestedProfile?.semesterGroup,
+      rawPayload?.semester_group,
+      rawPayload?.semesterGroup,
+      nestedRawPayloadProfile?.semester_group,
+      nestedRawPayloadProfile?.semesterGroup,
+    );
+  }
+  if (dimension === "department") return firstString(response.department, profile?.department, nestedProfile?.department, rawPayload?.department, nestedRawPayloadProfile?.department);
+  if (dimension === "rc") return firstString(response.rc, profile?.rc, nestedProfile?.rc, rawPayload?.rc, nestedRawPayloadProfile?.rc);
+  if (dimension === "dormitory") return firstString(response.dormitory, profile?.dormitory, nestedProfile?.dormitory, rawPayload?.dormitory, nestedRawPayloadProfile?.dormitory);
+  if (dimension === "room_type") {
+    return firstString(
+      response.room_type,
+      profile?.room_type,
+      profile?.roomType,
+      nestedProfile?.room_type,
+      nestedProfile?.roomType,
+      rawPayload?.room_type,
+      rawPayload?.roomType,
+      nestedRawPayloadProfile?.room_type,
+      nestedRawPayloadProfile?.roomType,
+    );
+  }
+  if (dimension === "dorm_experience") {
+    return firstString(
+      response.dorm_experience,
+      profile?.dorm_experience,
+      profile?.dormExperience,
+      nestedProfile?.dorm_experience,
+      nestedProfile?.dormExperience,
+      rawPayload?.dorm_experience,
+      rawPayload?.dormExperience,
+      nestedRawPayloadProfile?.dorm_experience,
+      nestedRawPayloadProfile?.dormExperience,
+    );
+  }
+  return undefined;
+}
+
+function firstString(...values: readonly unknown[]): string | undefined {
+  for (const value of values) {
+    const normalized = getString(value);
+    if (normalized) return normalized;
+  }
+  return undefined;
+}
+
+function percentage(count: number, total: number): number {
+  return total > 0 ? Math.round((count / total) * 1000) / 10 : 0;
+}
+
+function isProfileDistributionRow(value: unknown): value is ProfileDistributionRow {
+  return isRecord(value) && typeof value.label === "string" && typeof value.n === "number";
+}
+
+function isMissingColumnError(error: unknown, columns: readonly string[]): boolean {
+  const text = getErrorText(error).toLowerCase();
+  const mentionsColumn = columns.some((column) => text.includes(column.toLowerCase()));
+  return mentionsColumn && (text.includes("schema cache") || text.includes("does not exist") || text.includes("not found"));
+}
+
+function isMissingRelationshipError(error: unknown): boolean {
+  const text = getErrorText(error).toLowerCase();
+  return (
+    text.includes("relationship") &&
+    text.includes("answers") &&
+    text.includes("responses") &&
+    (text.includes("schema cache") || text.includes("does not exist") || text.includes("not found"))
+  );
+}
+
+function isMissingRpcError(error: unknown, rpcName: string): boolean {
+  const text = getErrorText(error).toLowerCase();
+  return (
+    text.includes(rpcName.toLowerCase()) &&
+    (text.includes("function") || text.includes("rpc")) &&
+    (text.includes("schema cache") || text.includes("does not exist") || text.includes("not found"))
+  );
+}
+
+function getErrorText(error: unknown): string {
+  if (error instanceof AdminApiError) {
+    return [error.message, getErrorText(error.cause)].filter(Boolean).join(" ");
+  }
+  if (isRecord(error)) {
+    return ["message", "code", "details", "hint"]
+      .map((key) => error[key])
+      .filter((value): value is string => typeof value === "string")
+      .join(" ");
+  }
+  return typeof error === "string" ? error : "";
 }
 
 function getRelationRecord(value: unknown): Record<string, unknown> | undefined {

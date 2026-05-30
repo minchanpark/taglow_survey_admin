@@ -65,6 +65,47 @@
   gap: var(--tg-space-12);
 }
 
+.tg-analysis-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--tg-space-2);
+  overflow: auto;
+  border-bottom: 1px solid var(--tg-border-subtle);
+}
+
+.tg-analysis-tabs button {
+  min-width: 88px;
+  height: 36px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0 var(--tg-space-6);
+  color: var(--tg-text-muted);
+  background: transparent;
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-dense);
+  cursor: pointer;
+}
+
+.tg-analysis-tabs button:hover {
+  color: var(--tg-text-strong);
+}
+
+.tg-analysis-tabs__item--active {
+  color: var(--tg-accent) !important;
+  border-bottom-color: var(--tg-accent) !important;
+}
+
+.tg-analysis-page__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tg-space-12);
+}
+
+.tg-analysis-page__grid--overview {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 @media (max-width: 780px) {
   .tg-analysis-page {
     padding: var(--tg-space-10);
@@ -75,6 +116,11 @@
   }
 
   .tg-analysis-page__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .tg-analysis-page__grid,
+  .tg-analysis-page__grid--overview {
     grid-template-columns: 1fr;
   }
 }

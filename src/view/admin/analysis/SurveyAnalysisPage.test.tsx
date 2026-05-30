@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminApiController } from "../../../api/admin/controller";
-import type { FilterOptions, ImageTagAnswer, Question, SurveyAsset, SurveySection } from "../../../api/admin/model";
+import type { ImageTagAnswer, Question, ResponseSummary, SurveyAsset, SurveySection } from "../../../api/admin/model";
 import { useAdminFilterStore } from "../../../store";
 import { createFakeAdminApiController, fakeSurvey } from "../../../test/fakeAdminApiController";
 import { renderWithProviders } from "../../../test/renderWithProviders";
@@ -22,6 +22,46 @@ const sections: SurveySection[] = [
 ];
 
 const questions: Question[] = [
+  {
+    id: "question-profile-dormitory",
+    surveyId: "survey-1",
+    sectionId: "section-1",
+    questionKey: "profile_dormitory",
+    questionType: "profile",
+    title: { ko: "거주 생활관" },
+    orderIndex: -2,
+    isRequired: true,
+    metricType: "none",
+    config: {
+      profileField: "dormitory",
+      inputType: "single_choice",
+      options: [
+        { value: "비전관", labelKo: "비전관" },
+        { value: "커스텀관", labelKo: "커스텀관" },
+      ],
+    },
+    validation: {},
+  },
+  {
+    id: "question-profile-room",
+    surveyId: "survey-1",
+    sectionId: "section-1",
+    questionKey: "profile_room_type",
+    questionType: "profile",
+    title: { ko: "인실" },
+    orderIndex: -1,
+    isRequired: true,
+    metricType: "none",
+    config: {
+      profileField: "room_type",
+      inputType: "single_choice",
+      options: [
+        { value: "2인실", labelKo: "2인실" },
+        { value: "3인실", labelKo: "3인실" },
+      ],
+    },
+    validation: {},
+  },
   {
     id: "question-admin-image",
     surveyId: "survey-1",
@@ -115,14 +155,28 @@ const imageTagAnswers: ImageTagAnswer[] = [
   },
 ];
 
-const filterOptions: FilterOptions = {
-  genders: [],
-  semesterGroups: [],
-  departments: ["전산전자공학부"],
-  rcs: ["장기려"],
-  dormitories: ["A동", "B동"],
-  roomTypes: ["2인실", "3인실"],
-  dormExperiences: [],
+const baseResponseSummary: ResponseSummary = {
+  totalResponses: 5,
+  submittedResponses: 4,
+  filteredResponses: 4,
+  lowSampleThreshold: 10,
+  isLowSample: true,
+  profileDistribution: {
+    gender: [],
+    semesterGroup: [],
+    department: [],
+    rc: [],
+    dormitory: [
+      { key: "비전관", label: "비전관", n: 2, percentage: 50 },
+      { key: "커스텀관", label: "커스텀관", n: 2, percentage: 50 },
+    ],
+    roomType: [
+      { key: "2인실", label: "2인실", n: 3, percentage: 75 },
+      { key: "3인실", label: "3인실", n: 1, percentage: 25 },
+    ],
+    dormExperience: [],
+  },
+  lowSampleGroups: [],
 };
 
 function renderAnalysis(overrides: Partial<AdminApiController> = {}) {
@@ -140,7 +194,6 @@ function renderAnalysis(overrides: Partial<AdminApiController> = {}) {
           questions,
           assets,
         }),
-        getFilterOptions: async () => filterOptions,
         listImageTagAnswers: async () => imageTagAnswers,
         ...overrides,
       }),
@@ -154,9 +207,11 @@ describe("SurveyAnalysisPage", () => {
   });
 
   it("shows admin image tag answers and participant uploaded image tag answers", async () => {
+    const user = userEvent.setup();
     renderAnalysis();
 
     expect(await screen.findByRole("heading", { name: "생활관 만족도 조사" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "공간 태깅" }));
 
     const adminSection = screen.getByRole("heading", { name: "관리자 이미지 태깅" }).closest("section");
     expect(adminSection).toBeTruthy();
@@ -179,10 +234,61 @@ describe("SurveyAnalysisPage", () => {
     renderAnalysis({ listImageTagAnswers });
 
     await screen.findByRole("heading", { name: "생활관 만족도 조사" });
-    await user.selectOptions(screen.getByLabelText("생활관"), "A동");
+    await user.selectOptions(screen.getByLabelText("거주 생활관"), "비전관");
 
     await waitFor(() => {
-      expect(listImageTagAnswers).toHaveBeenLastCalledWith({ surveyId: "survey-1", filters: { dormitory: "A동" } });
+      expect(listImageTagAnswers).toHaveBeenLastCalledWith({ surveyId: "survey-1", filters: { dormitory: "비전관" } });
     });
+  });
+
+  it("uses profile question choices as the analysis filter criteria", async () => {
+    renderAnalysis();
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+
+    expect(screen.getByLabelText("거주 생활관")).toHaveDisplayValue("전체");
+    expect(screen.getByRole("option", { name: "커스텀관" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "은혜관" })).not.toBeInTheDocument();
+  });
+
+  it("updates response summary and profile distribution cards when a global filter changes", async () => {
+    const user = userEvent.setup();
+    const getResponseSummary = vi.fn<AdminApiController["getResponseSummary"]>(async (command) =>
+      command.filters.dormitory
+        ? {
+            ...baseResponseSummary,
+            filteredResponses: 2,
+            profileDistribution: {
+              ...baseResponseSummary.profileDistribution,
+              dormitory: [
+                { key: "비전관", label: "비전관", n: 2, percentage: 100 },
+                { key: "커스텀관", label: "커스텀관", n: 0, percentage: 0 },
+              ],
+              roomType: [
+                { key: "2인실", label: "2인실", n: 2, percentage: 100 },
+                { key: "3인실", label: "3인실", n: 0, percentage: 0 },
+              ],
+            },
+          }
+        : baseResponseSummary,
+    );
+    renderAnalysis({ getResponseSummary });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.selectOptions(screen.getByLabelText("거주 생활관"), "비전관");
+
+    await waitFor(() => {
+      expect(getResponseSummary).toHaveBeenLastCalledWith({ surveyId: "survey-1", filters: { dormitory: "비전관" } });
+    });
+
+    const summaryCard = screen.getByRole("heading", { name: "응답 요약" }).closest("article");
+    expect(summaryCard).toBeTruthy();
+    expect(within(summaryCard!).getByText("필터 적용 응답")).toBeInTheDocument();
+
+    const distributionCard = screen.getByRole("heading", { name: "기본 정보 분포" }).closest("article");
+    expect(distributionCard).toBeTruthy();
+    expect(within(distributionCard!).getByText("필터 1개 적용 · 응답 비율")).toBeInTheDocument();
+    expect(within(distributionCard!).getByText("비전관")).toBeInTheDocument();
+    expect(within(distributionCard!).queryByText("커스텀관")).not.toBeInTheDocument();
   });
 });

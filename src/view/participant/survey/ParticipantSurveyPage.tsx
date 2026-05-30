@@ -208,7 +208,7 @@ function ParticipantIntroStep(props: {
       <section className="tg-participant-flow-card" aria-labelledby="participant-survey-title">
         <p className="tg-participant-survey-page__eyebrow">인트로</p>
         <h1 id="participant-survey-title">{props.survey.title}</h1>
-        {props.survey.description ? <p>{props.survey.description}</p> : null}
+        {props.survey.description ? <p className="tg-participant-survey-page__intro-copy">{props.survey.description}</p> : null}
         {props.introSection?.description?.ko ? <p>{props.introSection.description.ko}</p> : null}
         <div className="tg-participant-survey-page__meta" aria-label="설문 공개 정보">
           <span>

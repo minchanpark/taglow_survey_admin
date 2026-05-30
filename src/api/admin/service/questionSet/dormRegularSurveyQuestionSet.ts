@@ -1,3 +1,12 @@
+import {
+  departmentOptions,
+  dormitoryOptions,
+  genderOptions,
+  rcOptions,
+  roomTypeOptions,
+  semesterGroupOptions,
+  toChoiceOptions,
+} from "../../model";
 import type {
   MetricType,
   QuestionConfig,
@@ -394,7 +403,7 @@ function inferConfig(source: SourceQuestion, questionType: QuestionType, metricT
 function inferProfileConfig(source: SourceQuestion): QuestionConfig {
   const profileFieldByNumber: Record<number, string> = {
     1: "gender",
-    2: "semester",
+    2: "semester_group",
     3: "department",
     4: "rc",
     5: "room_type",
@@ -404,12 +413,12 @@ function inferProfileConfig(source: SourceQuestion): QuestionConfig {
   };
   const profileField = profileFieldByNumber[source.number] ?? `profile_${source.number}`;
   const optionsByField: Record<string, Array<{ value: string; labelKo: string }>> = {
-    gender: [
-      { value: "female", labelKo: "여성" },
-      { value: "male", labelKo: "남성" },
-      { value: "other", labelKo: "기타" },
-    ],
-    room_type: ["1인실", "2인실", "3인실", "4인실", "기타"].map((label) => ({ value: stableValue(label), labelKo: label })),
+    gender: toChoiceOptions(genderOptions),
+    semester_group: toChoiceOptions(semesterGroupOptions),
+    department: toChoiceOptions(departmentOptions),
+    rc: toChoiceOptions(rcOptions),
+    room_type: toChoiceOptions(roomTypeOptions),
+    dormitory: toChoiceOptions(dormitoryOptions),
   };
   return {
     profileField,

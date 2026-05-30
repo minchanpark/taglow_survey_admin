@@ -6,6 +6,7 @@ export * from "./auth";
 export * from "./commands";
 export * from "./common";
 export * from "./preview";
+export * from "./profileOptions";
 export * from "./question";
 export * from "./questionSet";
 export * from "./response";

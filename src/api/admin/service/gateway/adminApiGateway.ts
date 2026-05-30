@@ -1,5 +1,7 @@
 import type {
   AnalysisQueryArgs,
+  RawChoiceDistribution,
+  RawGroupCompareResult,
   HeatmapQueryArgs,
   RawAdminAuthUser,
   RawAdminMember,
@@ -11,12 +13,17 @@ import type {
   RawFilterOptions,
   RawHeatmapPoint,
   RawImageTagAnswer,
+  RawLocusPoint,
   RawQuestion,
+  RawQuestionSummary,
+  RawPriorityIssue,
+  RawResponseSummary,
   RawSection,
   RawSectionSummary,
   RawSurvey,
   RawSurveyAsset,
   RawTextAnswer,
+  RawTextGroup,
   RawUpdateAssetPayload,
   RawUpdateQuestionPayload,
   RawUpdateSectionPayload,
@@ -60,9 +67,16 @@ export interface AdminApiGateway {
   createNextSurveyVersion(surveyId: string): Promise<RawSurvey>;
 
   getFilterOptions(surveyId: string): Promise<RawFilterOptions>;
+  getResponseSummary(args: AnalysisQueryArgs): Promise<RawResponseSummary>;
   getSectionSatisfactionSummary(args: AnalysisQueryArgs): Promise<RawSectionSummary[]>;
+  getQuestionSatisfactionSummary(args: AnalysisQueryArgs): Promise<RawQuestionSummary[]>;
+  getChoiceDistribution(args: AnalysisQueryArgs): Promise<RawChoiceDistribution[]>;
+  getGroupCompareSummary(args: AnalysisQueryArgs): Promise<RawGroupCompareResult[]>;
+  getPriorityTop5(args: AnalysisQueryArgs): Promise<RawPriorityIssue[]>;
   getBorichSummary(args: AnalysisQueryArgs): Promise<RawBorichResult[]>;
+  getLocusSummary(args: AnalysisQueryArgs): Promise<RawLocusPoint[]>;
   getHeatmapPoints(args: HeatmapQueryArgs): Promise<RawHeatmapPoint[]>;
   listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawImageTagAnswer[]>;
+  getTextGroups(args: TextAnswerQueryArgs): Promise<RawTextGroup[]>;
   listTextAnswers(args: TextAnswerQueryArgs): Promise<RawTextAnswer[]>;
 }

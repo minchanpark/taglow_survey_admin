@@ -15,23 +15,29 @@ import { assertCreateSurveyCommand, assertUpdateSurveyCommand } from "../service
 import { assertUploadSurveyImageCommand } from "../service/validation/assetSchema";
 import { toAnalysisFilterPayload } from "../service/validation/filterSchema";
 import { validatePublishSurveyDetail } from "../service/validation/publishValidation";
+import { buildFilterOptionsFromQuestions } from "../model";
 import type {
   AdminMember,
   AdminSessionState,
   AdminSignInCommand,
   AnalysisFilterCommand,
   BorichResult,
+  ChoiceDistribution,
   CreateQuestionCommand,
   CreateSectionCommand,
   CreateSurveyCommand,
   FilterOptions,
+  GroupCompareFilterCommand,
+  GroupCompareResult,
   HeatmapFilterCommand,
   HeatmapPoint,
   ImageTagAnswer,
   ImageTagAnswerFilterCommand,
   JsonRecord,
+  LocusPoint,
   PreviewSurvey,
   PreviewSurveyCommand,
+  PriorityIssue,
   QuestionSetImportCommand,
   QuestionSetImportPreview,
   QuestionSetImportPreviewCommand,
@@ -42,8 +48,10 @@ import type {
   QuestionSetTemplateSection,
   PublishValidationResult,
   Question,
+  QuestionSummary,
   ReorderQuestionsCommand,
   ReorderSectionsCommand,
+  ResponseSummary,
   SectionSummary,
   Survey,
   SurveyAsset,
@@ -51,6 +59,7 @@ import type {
   SurveySection,
   TextAnswer,
   TextAnswerFilterCommand,
+  TextGroup,
   UpdateQuestionCommand,
   UpdateSectionCommand,
   UpdateSurveyCommand,
@@ -319,7 +328,16 @@ export class GatewayBackedAdminApiController implements AdminApiController {
   }
 
   async getFilterOptions(surveyId: string): Promise<FilterOptions> {
-    return this.mapper.toFilterOptions(await this.gateway.getFilterOptions(surveyId));
+    const questions = await this.gateway.listQuestions(surveyId);
+    return buildFilterOptionsFromQuestions(questions.map((row) => this.mapper.toQuestion(row)));
+  }
+
+  async getResponseSummary(command: AnalysisFilterCommand): Promise<ResponseSummary> {
+    const row = await this.gateway.getResponseSummary({
+      surveyId: command.surveyId,
+      filters: toAnalysisFilterPayload(command.filters),
+    });
+    return this.mapper.toResponseSummary(row);
   }
 
   async getSectionSatisfactionSummary(command: AnalysisFilterCommand): Promise<SectionSummary[]> {
@@ -330,12 +348,52 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     return rows.map((row) => this.mapper.toSectionSummary(row));
   }
 
+  async getQuestionSatisfactionSummary(command: AnalysisFilterCommand): Promise<QuestionSummary[]> {
+    const rows = await this.gateway.getQuestionSatisfactionSummary({
+      surveyId: command.surveyId,
+      filters: toAnalysisFilterPayload(command.filters),
+    });
+    return rows.map((row) => this.mapper.toQuestionSummary(row));
+  }
+
+  async getChoiceDistribution(command: AnalysisFilterCommand): Promise<ChoiceDistribution[]> {
+    const rows = await this.gateway.getChoiceDistribution({
+      surveyId: command.surveyId,
+      filters: toAnalysisFilterPayload(command.filters),
+    });
+    return rows.map((row) => this.mapper.toChoiceDistribution(row));
+  }
+
+  async getGroupCompareSummary(command: GroupCompareFilterCommand): Promise<GroupCompareResult[]> {
+    const rows = await this.gateway.getGroupCompareSummary({
+      surveyId: command.surveyId,
+      filters: toAnalysisFilterPayload(command.filters),
+    });
+    return rows.map((row) => this.mapper.toGroupCompareResult(row));
+  }
+
+  async getPriorityTop5(command: AnalysisFilterCommand): Promise<PriorityIssue[]> {
+    const rows = await this.gateway.getPriorityTop5({
+      surveyId: command.surveyId,
+      filters: toAnalysisFilterPayload(command.filters),
+    });
+    return rows.map((row) => this.mapper.toPriorityIssue(row));
+  }
+
   async getBorichSummary(command: AnalysisFilterCommand): Promise<BorichResult[]> {
     const rows = await this.gateway.getBorichSummary({
       surveyId: command.surveyId,
       filters: toAnalysisFilterPayload(command.filters),
     });
     return rows.map((row) => this.mapper.toBorichResult(row));
+  }
+
+  async getLocusSummary(command: AnalysisFilterCommand): Promise<LocusPoint[]> {
+    const rows = await this.gateway.getLocusSummary({
+      surveyId: command.surveyId,
+      filters: toAnalysisFilterPayload(command.filters),
+    });
+    return rows.map((row) => this.mapper.toLocusPoint(row));
   }
 
   async getHeatmapPoints(command: HeatmapFilterCommand): Promise<HeatmapPoint[]> {
@@ -352,6 +410,14 @@ export class GatewayBackedAdminApiController implements AdminApiController {
       filters: toAnalysisFilterPayload(command.filters),
     });
     return rows.map((row) => this.mapper.toImageTagAnswer(row));
+  }
+
+  async getTextGroups(command: TextAnswerFilterCommand): Promise<TextGroup[]> {
+    const rows = await this.gateway.getTextGroups({
+      surveyId: command.surveyId,
+      filters: toAnalysisFilterPayload(command.filters),
+    });
+    return rows.map((row) => this.mapper.toTextGroup(row));
   }
 
   async listTextAnswers(command: TextAnswerFilterCommand): Promise<TextAnswer[]> {
