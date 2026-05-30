@@ -8,4 +8,5 @@ export type AdminSessionState = Readonly<{
   isAuthenticated: boolean;
   email?: string;
   admin?: AdminMember;
+  pendingAdmin?: AdminMember;
 }>;

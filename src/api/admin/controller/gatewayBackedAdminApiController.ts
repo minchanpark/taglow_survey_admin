@@ -15,17 +15,19 @@ import { assertCreateSurveyCommand, assertUpdateSurveyCommand } from "../service
 import { assertUploadSurveyImageCommand } from "../service/validation/assetSchema";
 import { toAnalysisFilterPayload } from "../service/validation/filterSchema";
 import { validatePublishSurveyDetail } from "../service/validation/publishValidation";
-import { buildFilterOptionsFromQuestions } from "../model";
+import { buildFilterOptionsFromQuestions, isAdminAccessRole } from "../model";
 import type {
   AdminMember,
   AdminSessionState,
   AdminSignInCommand,
   AnalysisFilterCommand,
+  ApproveAdminMemberCommand,
   BorichResult,
   ChoiceDistribution,
   CreateQuestionCommand,
   CreateSectionCommand,
   CreateSurveyCommand,
+  DeleteAdminMemberCommand,
   FilterOptions,
   GroupCompareFilterCommand,
   GroupCompareResult,
@@ -60,6 +62,7 @@ import type {
   TextAnswer,
   TextAnswerFilterCommand,
   TextGroup,
+  UpdateAdminMemberRoleCommand,
   UpdateQuestionCommand,
   UpdateSectionCommand,
   UpdateSurveyCommand,
@@ -83,16 +86,65 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     }
 
     const email = user.email?.toLowerCase();
+    let memberRow: Awaited<ReturnType<AdminApiGateway["getOwnAdminMember"]>>;
+    try {
+      memberRow = await this.gateway.getOwnAdminMember();
+    } catch {
+      const activeAdmin = await this.getCurrentAdmin();
+      return {
+        isAuthenticated: true,
+        email,
+        admin: activeAdmin ?? undefined,
+      };
+    }
+    const member = memberRow ? this.mapper.toAdminMember(memberRow) : undefined;
+    const hasAdminAccess = member ? member.isActive && isAdminAccessRole(member.role) : false;
     return {
       isAuthenticated: true,
       email,
-      admin: (await this.getCurrentAdmin()) ?? undefined,
+      admin: hasAdminAccess ? member : undefined,
+      pendingAdmin: member?.role === "admin" && !member.isActive ? member : undefined,
     };
   }
 
   async getCurrentAdmin(): Promise<AdminMember | null> {
     const row = await this.gateway.getCurrentAdmin();
     return row ? this.mapper.toAdminMember(row) : null;
+  }
+
+  async requestAdminAccess(): Promise<AdminMember> {
+    const row = await this.gateway.requestAdminAccess();
+    return this.mapper.toAdminMember(row);
+  }
+
+  async listPendingAdminMembers(): Promise<AdminMember[]> {
+    const rows = await this.gateway.listPendingAdminMembers();
+    return rows.map((row) => this.mapper.toAdminMember(row));
+  }
+
+  async listActiveAdminMembers(): Promise<AdminMember[]> {
+    const rows = await this.gateway.listActiveAdminMembers();
+    return rows.map((row) => this.mapper.toAdminMember(row));
+  }
+
+  async approveAdminMember(command: ApproveAdminMemberCommand): Promise<AdminMember> {
+    const row = await this.gateway.approveAdminMember({
+      memberId: command.memberId,
+      role: command.role,
+    });
+    return this.mapper.toAdminMember(row);
+  }
+
+  async updateAdminMemberRole(command: UpdateAdminMemberRoleCommand): Promise<AdminMember> {
+    const row = await this.gateway.updateAdminMemberRole({
+      memberId: command.memberId,
+      role: command.role,
+    });
+    return this.mapper.toAdminMember(row);
+  }
+
+  deleteAdminMember(command: DeleteAdminMemberCommand): Promise<void> {
+    return this.gateway.deleteAdminMember({ memberId: command.memberId });
   }
 
   signInWithGoogle(command: AdminSignInCommand): Promise<void> {

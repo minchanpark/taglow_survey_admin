@@ -1,9 +1,26 @@
 import { describe, expect, it } from "vitest";
-import type { RawSurvey } from "../gateway/rawTypes";
+import type { RawAdminMember, RawSurvey } from "../gateway/rawTypes";
 import { AdminPayloadMapper } from "./adminPayloadMapper";
 
 describe("AdminPayloadMapper analysis RPC rows", () => {
   const mapper = new AdminPayloadMapper();
+
+  it("maps legacy owner role to super_admin", () => {
+    const row: RawAdminMember = {
+      id: "admin-member-1",
+      user_id: "user-1",
+      email: "itisnewdawn@gmail.com",
+      role: "owner",
+      is_active: true,
+      created_at: "2026-05-28T00:00:00.000Z",
+      updated_at: "2026-05-28T00:00:00.000Z",
+    };
+
+    expect(mapper.toAdminMember(row)).toMatchObject({
+      role: "super_admin",
+      isActive: true,
+    });
+  });
 
   it("maps public slug and public code without exposing internal id as the public route", () => {
     const row: RawSurvey = {

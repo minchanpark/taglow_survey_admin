@@ -107,6 +107,13 @@
   white-space: pre-line;
 }
 
+.tg-participant-survey-page__intro-copy a {
+  color: var(--tg-accent);
+  font-weight: var(--tg-weight-medium);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .tg-participant-flow-card__status {
   display: inline-flex;
   width: fit-content;

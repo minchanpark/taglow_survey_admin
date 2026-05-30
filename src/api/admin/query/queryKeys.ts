@@ -3,6 +3,8 @@ import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, PreviewOptio
 export const adminQueryKeys = {
   adminSession: ["admin", "session"] as const,
   currentAdmin: ["admin", "currentAdmin"] as const,
+  pendingAdminMembers: ["admin", "adminMembers", "pending"] as const,
+  activeAdminMembers: ["admin", "adminMembers", "active"] as const,
   surveys: ["admin", "surveys"] as const,
   survey: (surveyId: string) => ["admin", "survey", surveyId] as const,
   sections: (surveyId: string) => ["admin", "survey", surveyId, "sections"] as const,

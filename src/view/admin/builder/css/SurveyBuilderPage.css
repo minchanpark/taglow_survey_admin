@@ -111,6 +111,12 @@
   line-height: var(--tg-line-caption);
 }
 
+.tg-builder-title-form__help {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
 .tg-builder-visually-hidden {
   position: absolute;
   width: 1px;

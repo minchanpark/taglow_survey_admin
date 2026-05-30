@@ -72,6 +72,42 @@ describe("ParticipantSurveyPage", () => {
     expect(signInWithGoogle).toHaveBeenCalledWith({ redirectTo: "http://localhost:3000/survey/handong-dorm-2026" });
   });
 
+  it("auto-links safe URLs in the survey intro copy", async () => {
+    const user = userEvent.setup();
+    const detail: ParticipantSurveyDetail = {
+      ...fakeParticipantSurveyDetail,
+      survey: {
+        ...fakeParticipantSurveyDetail.survey,
+        description: "자세한 내용은 https://example.com 을 확인해주세요.\n참고: www.handong.edu\njavascript:alert(1)",
+      },
+    };
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/survey/handong-dorm-2026"]}>
+        <Routes>
+          <Route path="/survey/:publicIdentifier" element={<ParticipantSurveyPage />} />
+        </Routes>
+      </MemoryRouter>,
+      {
+        participantController: createFakeParticipantSurveyController({
+          getPublishedSurveyByIdentifier: async () => detail,
+        }),
+      },
+    );
+
+    expect(await screen.findByRole("heading", { name: "로그인" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "인트로로 이동" }));
+
+    const httpsLink = await screen.findByRole("link", { name: "https://example.com" });
+    expect(httpsLink).toHaveAttribute("href", "https://example.com");
+    expect(httpsLink).toHaveAttribute("target", "_blank");
+    expect(httpsLink).toHaveAttribute("rel", "noreferrer noopener");
+
+    const wwwLink = screen.getByRole("link", { name: "www.handong.edu" });
+    expect(wwwLink).toHaveAttribute("href", "https://www.handong.edu");
+    expect(screen.queryByRole("link", { name: "javascript:alert(1)" })).not.toBeInTheDocument();
+    expect(screen.getByText("자세한 내용은", { exact: false })).toBeInTheDocument();
+  });
+
   it("lets participants upload an image and add tags for tagging suggestion questions", async () => {
     const user = userEvent.setup();
     const detail: ParticipantSurveyDetail = {

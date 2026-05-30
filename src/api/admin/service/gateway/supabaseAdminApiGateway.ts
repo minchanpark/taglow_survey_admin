@@ -87,6 +87,12 @@ type SupabaseClientLike = {
 };
 
 const RPC = {
+  requestAdminAccess: "request_admin_access",
+  listPendingAdminMembers: "list_pending_admin_members",
+  listActiveAdminMembers: "list_active_admin_members",
+  approveAdminMember: "approve_admin_member",
+  updateAdminMemberRole: "update_admin_member_role",
+  deleteAdminMember: "delete_admin_member",
   createNextSurveyVersion: "create_next_survey_version",
   filterOptions: "get_survey_filter_options",
   responseSummary: "get_response_summary",
@@ -119,6 +125,30 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     return data.session?.user ? { id: data.session.user.id, email: data.session.user.email } : null;
   }
 
+  async getOwnAdminMember(): Promise<RawAdminMember | null> {
+    const { data: userData, error: userError } = await this.supabase.auth.getUser();
+    if (userError) {
+      throw normalizeAdminApiError(userError, "UNAUTHENTICATED");
+    }
+
+    const user = userData.user;
+    if (!user) {
+      return null;
+    }
+
+    const { data, error } = await this.supabase
+      .from("admin_members")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      throw normalizeAdminApiError(error, "ADMIN_ACCESS_DENIED");
+    }
+
+    return data as RawAdminMember | null;
+  }
+
   async getCurrentAdmin(): Promise<RawAdminMember | null> {
     const { data: userData, error: userError } = await this.supabase.auth.getUser();
     if (userError) {
@@ -135,6 +165,7 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
       .select("*")
       .eq("user_id", user.id)
       .eq("is_active", true)
+      .in("role", ["super_admin", "admin"])
       .maybeSingle();
 
     if (error) {
@@ -142,6 +173,46 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     }
 
     return data as RawAdminMember | null;
+  }
+
+  async requestAdminAccess(): Promise<RawAdminMember> {
+    return this.one<RawAdminMember>(this.supabase.rpc(RPC.requestAdminAccess), "ADMIN_ACCESS_DENIED");
+  }
+
+  async listPendingAdminMembers(): Promise<RawAdminMember[]> {
+    return this.many<RawAdminMember>(this.supabase.rpc(RPC.listPendingAdminMembers), "ADMIN_ACCESS_DENIED");
+  }
+
+  async listActiveAdminMembers(): Promise<RawAdminMember[]> {
+    return this.many<RawAdminMember>(this.supabase.rpc(RPC.listActiveAdminMembers), "ADMIN_ACCESS_DENIED");
+  }
+
+  async approveAdminMember(args: { memberId: string; role: "admin" }): Promise<RawAdminMember> {
+    return this.one<RawAdminMember>(
+      this.supabase.rpc(RPC.approveAdminMember, {
+        p_member_id: args.memberId,
+        p_role: args.role,
+      }),
+      "ADMIN_ACCESS_DENIED",
+    );
+  }
+
+  async updateAdminMemberRole(args: { memberId: string; role: "super_admin" }): Promise<RawAdminMember> {
+    return this.one<RawAdminMember>(
+      this.supabase.rpc(RPC.updateAdminMemberRole, {
+        p_member_id: args.memberId,
+        p_role: args.role,
+      }),
+      "ADMIN_ACCESS_DENIED",
+    );
+  }
+
+  async deleteAdminMember(args: { memberId: string }): Promise<void> {
+    await this.empty(
+      this.supabase.rpc(RPC.deleteAdminMember, {
+        p_member_id: args.memberId,
+      }),
+    );
   }
 
   async signInWithGoogle(args: { redirectTo: string }): Promise<void> {
@@ -164,14 +235,23 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     }
   }
 
-  listSurveys(): Promise<RawSurvey[]> {
+  async listSurveys(): Promise<RawSurvey[]> {
+    const user = await this.requireCurrentAuthUser();
     return this.many<RawSurvey>(
-      this.supabase.from("surveys").select("*").order("updated_at", { ascending: false }),
+      this.supabase
+        .from("surveys")
+        .select("*")
+        .eq("created_by", user.id)
+        .order("updated_at", { ascending: false }),
     );
   }
 
-  getSurvey(surveyId: string): Promise<RawSurvey> {
-    return this.one<RawSurvey>(this.supabase.from("surveys").select("*").eq("id", surveyId).single(), "SURVEY_NOT_FOUND");
+  async getSurvey(surveyId: string): Promise<RawSurvey> {
+    const user = await this.requireCurrentAuthUser();
+    return this.one<RawSurvey>(
+      this.supabase.from("surveys").select("*").eq("id", surveyId).eq("created_by", user.id).single(),
+      "SURVEY_NOT_FOUND",
+    );
   }
 
   async createSurvey(payload: RawCreateSurveyPayload): Promise<RawSurvey> {
@@ -510,7 +590,10 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     );
   }
 
-  private async one<T>(query: SupabaseResult<unknown>, fallbackCode: "SURVEY_NOT_FOUND" | "RPC_FAILED" | "UNKNOWN" = "UNKNOWN"): Promise<T> {
+  private async one<T>(
+    query: SupabaseResult<unknown>,
+    fallbackCode: "SURVEY_NOT_FOUND" | "ADMIN_ACCESS_DENIED" | "RPC_FAILED" | "UNKNOWN" = "UNKNOWN",
+  ): Promise<T> {
     const { data, error } = await query;
     if (error) throw normalizeAdminApiError(error, fallbackCode);
     if (!data) throw new AdminApiError(fallbackCode, "Admin API expected one row but received none.");
@@ -520,6 +603,14 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
       return first as T;
     }
     return data as T;
+  }
+
+  private async requireCurrentAuthUser(): Promise<RawAdminAuthUser> {
+    const user = await this.getCurrentAuthUser();
+    if (!user) {
+      throw new AdminApiError("UNAUTHENTICATED", "Login is required for the admin API.");
+    }
+    return user;
   }
 
   private async listResponseRowsForSummary(surveyId: string): Promise<RawAnalysisResponseRow[]> {
@@ -545,7 +636,10 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     }
   }
 
-  private async many<T>(query: SupabaseResult<unknown>, fallbackCode: "RPC_FAILED" | "UNKNOWN" = "UNKNOWN"): Promise<T[]> {
+  private async many<T>(
+    query: SupabaseResult<unknown>,
+    fallbackCode: "ADMIN_ACCESS_DENIED" | "RPC_FAILED" | "UNKNOWN" = "UNKNOWN",
+  ): Promise<T[]> {
     const { data, error } = await query;
     if (error) throw normalizeAdminApiError(error, fallbackCode);
     return (data ?? []) as T[];

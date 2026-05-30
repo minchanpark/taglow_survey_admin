@@ -2,6 +2,107 @@ import { describe, expect, it, vi } from "vitest";
 import { SupabaseAdminApiGateway } from "./supabaseAdminApiGateway";
 
 describe("SupabaseAdminApiGateway analysis queries", () => {
+  it("uses RPCs for admin access requests and super-admin approvals", async () => {
+    const pendingMember = {
+      id: "admin-member-pending",
+      user_id: "user-pending",
+      email: "pending@example.com",
+      role: "admin",
+      is_active: false,
+      created_at: "2026-05-28T01:00:00.000Z",
+      updated_at: "2026-05-28T01:00:00.000Z",
+    };
+    const supabase = {
+      auth: {
+        getSession: vi.fn(),
+        getUser: vi.fn(),
+        signInWithOAuth: vi.fn(),
+        signOut: vi.fn(),
+      },
+      from: vi.fn(),
+      rpc: vi.fn(async (fn: string) => ({
+        data: fn.startsWith("list_")
+          ? [pendingMember]
+          : fn === "update_admin_member_role"
+            ? { ...pendingMember, role: "super_admin" }
+            : pendingMember,
+        error: null,
+      })),
+    };
+
+    const gateway = new SupabaseAdminApiGateway(supabase as never);
+
+    await expect(gateway.requestAdminAccess()).resolves.toMatchObject({ id: "admin-member-pending" });
+    await expect(gateway.listPendingAdminMembers()).resolves.toHaveLength(1);
+    await expect(gateway.listActiveAdminMembers()).resolves.toHaveLength(1);
+    await expect(gateway.approveAdminMember({ memberId: "admin-member-pending", role: "admin" })).resolves.toMatchObject({
+      email: "pending@example.com",
+    });
+    await expect(
+      gateway.updateAdminMemberRole({ memberId: "admin-member-pending", role: "super_admin" }),
+    ).resolves.toMatchObject({
+      role: "super_admin",
+    });
+    await expect(gateway.deleteAdminMember({ memberId: "admin-member-pending" })).resolves.toBeUndefined();
+
+    expect(supabase.rpc).toHaveBeenCalledWith("request_admin_access");
+    expect(supabase.rpc).toHaveBeenCalledWith("list_pending_admin_members");
+    expect(supabase.rpc).toHaveBeenCalledWith("list_active_admin_members");
+    expect(supabase.rpc).toHaveBeenCalledWith("approve_admin_member", {
+      p_member_id: "admin-member-pending",
+      p_role: "admin",
+    });
+    expect(supabase.rpc).toHaveBeenCalledWith("update_admin_member_role", {
+      p_member_id: "admin-member-pending",
+      p_role: "super_admin",
+    });
+    expect(supabase.rpc).toHaveBeenCalledWith("delete_admin_member", {
+      p_member_id: "admin-member-pending",
+    });
+  });
+
+  it("scopes survey reads to the current auth user before relying on RLS", async () => {
+    const listQuery = createScopedSurveyQuery([]);
+    const detailQuery = createScopedSurveyQuery({
+      id: "survey-1",
+      title: "생활관 만족도 조사",
+      description: null,
+      status: "draft",
+      public_slug: null,
+      public_code: "ABC123",
+      version_group_id: "version-group-1",
+      version_number: 1,
+      parent_survey_id: null,
+      is_latest_version: true,
+      settings: {},
+      created_by: "user-1",
+      published_at: null,
+      closed_at: null,
+      created_at: "2026-05-28T00:00:00.000Z",
+      updated_at: "2026-05-28T00:00:00.000Z",
+    });
+    const queries = [listQuery, detailQuery];
+    const supabase = {
+      auth: {
+        getSession: vi.fn(async () => ({ data: { session: { user: { id: "user-1", email: "admin@example.com" } } }, error: null })),
+        getUser: vi.fn(),
+        signInWithOAuth: vi.fn(),
+        signOut: vi.fn(),
+      },
+      from: vi.fn(() => queries.shift()),
+      rpc: vi.fn(),
+    };
+
+    const gateway = new SupabaseAdminApiGateway(supabase as never);
+
+    await gateway.listSurveys();
+    await gateway.getSurvey("survey-1");
+
+    expect(listQuery.eq).toHaveBeenCalledWith("created_by", "user-1");
+    expect(detailQuery.eq).toHaveBeenCalledWith("id", "survey-1");
+    expect(detailQuery.eq).toHaveBeenCalledWith("created_by", "user-1");
+  });
+
   it("builds response summary and profile distribution directly from responses and profile question config", async () => {
     const responsesQuery = createTableQuery([
       { status: "submitted", gender: "남성", dormitory: "비전관", room_type: "2인실" },
@@ -482,6 +583,18 @@ function createTableQuery(data: unknown[]) {
     eq: vi.fn(() => query),
     order: vi.fn(() => query),
     then: (resolve: (value: { data: unknown[]; error: null }) => void, reject?: (reason: unknown) => void) =>
+      Promise.resolve({ data, error: null }).then(resolve, reject),
+  };
+  return query;
+}
+
+function createScopedSurveyQuery(data: unknown) {
+  const query = {
+    select: vi.fn(() => query),
+    eq: vi.fn(() => query),
+    order: vi.fn(() => query),
+    single: vi.fn(() => query),
+    then: (resolve: (value: { data: unknown; error: null }) => void, reject?: (reason: unknown) => void) =>
       Promise.resolve({ data, error: null }).then(resolve, reject),
   };
   return query;

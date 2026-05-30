@@ -449,7 +449,8 @@ function normalizeStringArray(value: string[] | null | undefined): string[] {
 }
 
 function normalizeAdminRole(value: string): AdminRole {
-  if (value === "owner" || value === "admin" || value === "viewer") return value;
+  if (value === "super_admin" || value === "super-admin" || value === "owner") return "super_admin";
+  if (value === "admin" || value === "viewer") return value;
   return "viewer";
 }
 

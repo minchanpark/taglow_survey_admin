@@ -410,6 +410,7 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
             {...titleForm.register("description")}
             disabled={isBusy}
           />
+          <small className="tg-builder-title-form__help">URL을 입력하면 참여자 화면에서 자동 링크로 표시됩니다.</small>
         </label>
         <div className="tg-builder-title-form__actions">
           <Button type="submit" variant="primary" icon={<Save size={16} aria-hidden="true" />} disabled={isBusy || isUnchanged}>

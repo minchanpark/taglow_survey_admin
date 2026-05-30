@@ -208,7 +208,11 @@ function ParticipantIntroStep(props: {
       <section className="tg-participant-flow-card" aria-labelledby="participant-survey-title">
         <p className="tg-participant-survey-page__eyebrow">인트로</p>
         <h1 id="participant-survey-title">{props.survey.title}</h1>
-        {props.survey.description ? <p className="tg-participant-survey-page__intro-copy">{props.survey.description}</p> : null}
+        {props.survey.description ? (
+          <p className="tg-participant-survey-page__intro-copy">
+            <AutoLinkedText text={props.survey.description} />
+          </p>
+        ) : null}
         {props.introSection?.description?.ko ? <p>{props.introSection.description.ko}</p> : null}
         <div className="tg-participant-survey-page__meta" aria-label="설문 공개 정보">
           <span>
@@ -236,6 +240,63 @@ function ParticipantIntroStep(props: {
       ) : null}
     </>
   );
+}
+
+type AutoLinkedTextPart = Readonly<
+  | { type: "text"; text: string }
+  | { type: "link"; text: string; href: string }
+>;
+
+const autoLinkPattern = /(?:https?:\/\/|www\.)[^\s<]+/gi;
+const trailingUrlPunctuationPattern = /[.,!?;:)\]}>"'’”。]+$/;
+
+function AutoLinkedText(props: { text: string }) {
+  return (
+    <>
+      {splitAutoLinkedText(props.text).map((part, index) =>
+        part.type === "link" ? (
+          <a key={`${part.href}-${index}`} href={part.href} target="_blank" rel="noreferrer noopener">
+            {part.text}
+          </a>
+        ) : (
+          part.text
+        ),
+      )}
+    </>
+  );
+}
+
+function splitAutoLinkedText(text: string): AutoLinkedTextPart[] {
+  const parts: AutoLinkedTextPart[] = [];
+  let cursor = 0;
+
+  for (const match of text.matchAll(autoLinkPattern)) {
+    const rawText = match[0];
+    const startIndex = match.index ?? 0;
+    const matchedEndIndex = startIndex + rawText.length;
+    const linkText = rawText.replace(trailingUrlPunctuationPattern, "");
+    const trailingText = rawText.slice(linkText.length);
+
+    if (!linkText) continue;
+    if (startIndex > cursor) {
+      parts.push({ type: "text", text: text.slice(cursor, startIndex) });
+    }
+    parts.push({ type: "link", text: linkText, href: toAutoLinkHref(linkText) });
+    if (trailingText) {
+      parts.push({ type: "text", text: trailingText });
+    }
+    cursor = matchedEndIndex;
+  }
+
+  if (cursor < text.length) {
+    parts.push({ type: "text", text: text.slice(cursor) });
+  }
+
+  return parts;
+}
+
+function toAutoLinkHref(text: string): string {
+  return text.toLowerCase().startsWith("www.") ? `https://${text}` : text;
 }
 
 function ParticipantSectionStep(props: {

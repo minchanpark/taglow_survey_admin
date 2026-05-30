@@ -4,6 +4,7 @@ import type { QuestionConfig, QuestionType, QuestionValidation, MetricType } fro
 import type { SectionType } from "./section";
 import type { SurveySettings, SurveyStatus } from "./survey";
 import type { PreviewOptions } from "./preview";
+import type { ApprovableAdminRole, UpgradableAdminRole } from "./adminMember";
 
 export type CreateSurveyCommand = Readonly<{
   title: string;
@@ -119,4 +120,18 @@ export type TextAnswerFilterCommand = Readonly<{
 export type ImageTagAnswerFilterCommand = Readonly<{
   surveyId: string;
   filters: HeatmapFilters;
+}>;
+
+export type ApproveAdminMemberCommand = Readonly<{
+  memberId: string;
+  role: ApprovableAdminRole;
+}>;
+
+export type UpdateAdminMemberRoleCommand = Readonly<{
+  memberId: string;
+  role: UpgradableAdminRole;
+}>;
+
+export type DeleteAdminMemberCommand = Readonly<{
+  memberId: string;
 }>;
