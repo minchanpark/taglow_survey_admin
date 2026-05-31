@@ -1,1 +1,1 @@
-export * from "./dormRegularSurveyQuestionSet";
+export * from "./handongDomSurveyQuestionSet";

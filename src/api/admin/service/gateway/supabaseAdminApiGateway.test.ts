@@ -61,9 +61,8 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     });
   });
 
-  it("scopes survey reads to the current auth user before relying on RLS", async () => {
-    const listQuery = createScopedSurveyQuery([]);
-    const detailQuery = createScopedSurveyQuery({
+  it("reads owned and shared surveys through access-scoped RPCs", async () => {
+    const surveyRow = {
       id: "survey-1",
       title: "생활관 만족도 조사",
       description: null,
@@ -80,8 +79,8 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
       closed_at: null,
       created_at: "2026-05-28T00:00:00.000Z",
       updated_at: "2026-05-28T00:00:00.000Z",
-    });
-    const queries = [listQuery, detailQuery];
+      access_role: "editor",
+    };
     const supabase = {
       auth: {
         getSession: vi.fn(async () => ({ data: { session: { user: { id: "user-1", email: "admin@example.com" } } }, error: null })),
@@ -89,18 +88,79 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
         signInWithOAuth: vi.fn(),
         signOut: vi.fn(),
       },
-      from: vi.fn(() => queries.shift()),
-      rpc: vi.fn(),
+      from: vi.fn(),
+      rpc: vi.fn(async (fn: string) => ({
+        data: fn === "list_accessible_surveys" ? [surveyRow] : surveyRow,
+        error: null,
+      })),
     };
 
     const gateway = new SupabaseAdminApiGateway(supabase as never);
 
-    await gateway.listSurveys();
-    await gateway.getSurvey("survey-1");
+    await expect(gateway.listSurveys()).resolves.toEqual([surveyRow]);
+    await expect(gateway.getSurvey("survey-1")).resolves.toEqual(surveyRow);
 
-    expect(listQuery.eq).toHaveBeenCalledWith("created_by", "user-1");
-    expect(detailQuery.eq).toHaveBeenCalledWith("id", "survey-1");
-    expect(detailQuery.eq).toHaveBeenCalledWith("created_by", "user-1");
+    expect(supabase.auth.getSession).toHaveBeenCalledTimes(2);
+    expect(supabase.rpc).toHaveBeenCalledWith("list_accessible_surveys");
+    expect(supabase.rpc).toHaveBeenCalledWith("get_accessible_survey", {
+      p_survey_id: "survey-1",
+    });
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("uses survey collaborator table calls for list, invite, update, and revoke", async () => {
+    const collaborator = {
+      id: "collaborator-1",
+      survey_id: "survey-1",
+      email: "viewer@example.com",
+      role: "viewer",
+      invited_by: "user-1",
+      created_at: "2026-05-28T00:00:00.000Z",
+      updated_at: "2026-05-28T00:00:00.000Z",
+      revoked_at: null,
+    };
+    const listQuery = createTableQuery([collaborator]);
+    const insertQuery = createMutationQuery(collaborator);
+    const updateQuery = createMutationQuery({ ...collaborator, role: "editor" });
+    const queries = [listQuery, insertQuery, updateQuery];
+    const supabase = {
+      auth: {
+        getSession: vi.fn(),
+        getUser: vi.fn(),
+        signInWithOAuth: vi.fn(),
+        signOut: vi.fn(),
+      },
+      from: vi.fn(() => queries.shift()),
+      rpc: vi.fn(),
+    };
+    const gateway = new SupabaseAdminApiGateway(supabase as never);
+
+    await expect(gateway.listSurveyCollaborators("survey-1")).resolves.toEqual([collaborator]);
+    await expect(
+      gateway.createSurveyCollaborator({
+        survey_id: "survey-1",
+        email: "viewer@example.com",
+        role: "viewer",
+        invited_by: "user-1",
+      }),
+    ).resolves.toEqual(collaborator);
+    await expect(
+      gateway.updateSurveyCollaborator({
+        collaboratorId: "collaborator-1",
+        payload: { role: "editor" },
+      }),
+    ).resolves.toMatchObject({ role: "editor" });
+
+    expect(listQuery.eq).toHaveBeenCalledWith("survey_id", "survey-1");
+    expect(listQuery.is).toHaveBeenCalledWith("revoked_at", null);
+    expect(insertQuery.insert).toHaveBeenCalledWith({
+      survey_id: "survey-1",
+      email: "viewer@example.com",
+      role: "viewer",
+      invited_by: "user-1",
+    });
+    expect(updateQuery.update).toHaveBeenCalledWith({ role: "editor" });
+    expect(updateQuery.eq).toHaveBeenCalledWith("id", "collaborator-1");
   });
 
   it("builds response summary and profile distribution directly from responses and profile question config", async () => {
@@ -748,8 +808,22 @@ function createTableQuery(data: unknown[]) {
   const query = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
+    is: vi.fn(() => query),
     order: vi.fn(() => query),
     then: (resolve: (value: { data: unknown[]; error: null }) => void, reject?: (reason: unknown) => void) =>
+      Promise.resolve({ data, error: null }).then(resolve, reject),
+  };
+  return query;
+}
+
+function createMutationQuery(data: unknown) {
+  const query = {
+    insert: vi.fn(() => query),
+    update: vi.fn(() => query),
+    select: vi.fn(() => query),
+    eq: vi.fn(() => query),
+    single: vi.fn(() => query),
+    then: (resolve: (value: { data: unknown; error: null }) => void, reject?: (reason: unknown) => void) =>
       Promise.resolve({ data, error: null }).then(resolve, reject),
   };
   return query;

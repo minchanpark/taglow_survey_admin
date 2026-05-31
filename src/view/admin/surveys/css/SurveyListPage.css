@@ -109,6 +109,7 @@
 
 .tg-survey-list-page__survey-link {
   display: grid;
+  gap: var(--tg-space-2);
   min-width: 0;
   text-decoration: none;
 }
@@ -129,6 +130,37 @@
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-caption);
   line-height: var(--tg-line-caption);
+}
+
+.tg-survey-list-page__access {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--tg-space-3);
+}
+
+.tg-survey-list-page__access-badge {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 20px;
+  align-items: center;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-pill);
+  padding: 0 var(--tg-space-5);
+  color: var(--tg-text-muted);
+  background: var(--tg-bg-raised);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-survey-list-page__access-badge--owner {
+  color: var(--tg-success);
+  background: var(--tg-success-soft);
+}
+
+.tg-survey-list-page__access-badge--editor {
+  color: var(--tg-info);
+  background: var(--tg-info-soft);
 }
 
 .tg-survey-list-page__public-id {

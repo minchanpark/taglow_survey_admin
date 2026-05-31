@@ -9,4 +9,5 @@ export type AdminSessionState = Readonly<{
   email?: string;
   admin?: AdminMember;
   pendingAdmin?: AdminMember;
+  hasSurveyAccess?: boolean;
 }>;

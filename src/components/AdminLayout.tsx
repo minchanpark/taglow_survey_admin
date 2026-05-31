@@ -1,7 +1,7 @@
 import { BarChart3, Eye, FileText, LayoutDashboard, ListChecks, LogOut, Settings, UserCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { getAdminRoleLabel, type AdminRole } from "../api/admin/model";
+import { canEditSurvey, canManageSurvey, getAdminRoleLabel, type AdminRole, type SurveyAccessRole } from "../api/admin/model";
 import { Button } from "./Button";
 import "./css/AdminLayout.css";
 
@@ -10,6 +10,7 @@ type AdminLayoutProps = Readonly<{
   adminRole: AdminRole;
   onSignOut: () => void;
   isSigningOut?: boolean;
+  selectedSurveyAccessRole?: SurveyAccessRole;
   children?: ReactNode;
 }>;
 
@@ -17,7 +18,11 @@ const primaryLinks = [
   { to: "/admin/surveys", label: "설문", icon: <ListChecks size={16} aria-hidden="true" /> },
 ];
 
-const surveyLinks = [
+const surveyLinks: ReadonlyArray<{
+  segment: "dashboard" | "builder" | "preview" | "analysis" | "settings";
+  label: string;
+  icon: ReactNode;
+}> = [
   { segment: "dashboard", label: "대시보드", icon: <LayoutDashboard size={16} aria-hidden="true" /> },
   { segment: "builder", label: "빌더", icon: <FileText size={16} aria-hidden="true" /> },
   { segment: "preview", label: "미리보기", icon: <Eye size={16} aria-hidden="true" /> },
@@ -25,7 +30,7 @@ const surveyLinks = [
   { segment: "settings", label: "설정", icon: <Settings size={16} aria-hidden="true" /> },
 ];
 
-export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, children }: AdminLayoutProps) {
+export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, selectedSurveyAccessRole, children }: AdminLayoutProps) {
   const location = useLocation();
   const selectedSurveyId = getSelectedSurveyId(location.pathname);
   const visiblePrimaryLinks =
@@ -60,7 +65,7 @@ export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, ch
           <p className="tg-admin-layout__nav-title">선택 설문</p>
           <div className="tg-admin-layout__muted-nav">
             {surveyLinks.map((link) =>
-              selectedSurveyId ? (
+              shouldShowSurveyLink(link.segment, selectedSurveyAccessRole) && selectedSurveyId ? (
                 <NavLink
                   key={link.segment}
                   to={`/admin/surveys/${selectedSurveyId}/${link.segment}`}
@@ -69,12 +74,12 @@ export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, ch
                   {link.icon}
                   <span>{link.label}</span>
                 </NavLink>
-              ) : (
+              ) : shouldShowSurveyLink(link.segment, selectedSurveyAccessRole) ? (
                 <span key={link.segment} className="tg-admin-layout__nav-link tg-admin-layout__nav-link--disabled">
                   {link.icon}
                   <span>{link.label}</span>
                 </span>
-              ),
+              ) : null,
             )}
           </div>
         </div>
@@ -106,4 +111,11 @@ function getSelectedSurveyId(pathname: string): string | undefined {
   const match = /^\/admin\/surveys\/([^/]+)(?:\/|$)/.exec(pathname);
   if (!match || match[1] === "new") return undefined;
   return decodeURIComponent(match[1]);
+}
+
+function shouldShowSurveyLink(segment: (typeof surveyLinks)[number]["segment"], accessRole: SurveyAccessRole | undefined): boolean {
+  if (!accessRole) return true;
+  if (segment === "builder") return canEditSurvey(accessRole);
+  if (segment === "settings") return canManageSurvey(accessRole);
+  return true;
 }

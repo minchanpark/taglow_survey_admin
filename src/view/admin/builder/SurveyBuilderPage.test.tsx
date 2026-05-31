@@ -781,7 +781,7 @@ describe("SurveyBuilderPage", () => {
     });
   });
 
-  it("previews and imports the dorm question set from the builder", async () => {
+  it("previews and imports the handong dorm survey questions from the builder", async () => {
     const user = userEvent.setup();
     const importQuestionSet = vi.fn<AdminApiController["importQuestionSet"]>(async (command) => ({
       templateId: command.templateId,
@@ -797,15 +797,15 @@ describe("SurveyBuilderPage", () => {
     await user.click(screen.getByRole("button", { name: "질문 목록 불러오기" }));
 
     expect(await screen.findByRole("dialog", { name: "질문 목록 불러오기" })).toBeInTheDocument();
-    expect(screen.getAllByText("195개").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("8개").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("207개").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("7개").length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: "현재 설문에 삽입" }));
 
     await waitFor(() => {
       expect(importQuestionSet).toHaveBeenCalledWith({
         surveyId: "survey-1",
-        templateId: "dorm_regular_25_2",
+        templateId: "handong-dom-survey-2026-1",
         conflictMode: "append_skip_existing_keys",
       });
     });

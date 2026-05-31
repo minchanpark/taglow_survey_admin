@@ -2,7 +2,7 @@ import type { JsonRecord, LocalizedText } from "./common";
 import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, TextAnswerFilters } from "./analysis";
 import type { QuestionConfig, QuestionType, QuestionValidation, MetricType } from "./question";
 import type { SectionType } from "./section";
-import type { SurveySettings, SurveyStatus } from "./survey";
+import type { SurveyCollaboratorRole, SurveySettings, SurveyStatus } from "./survey";
 import type { PreviewOptions } from "./preview";
 import type { ApprovableAdminRole, UpgradableAdminRole } from "./adminMember";
 
@@ -134,4 +134,21 @@ export type UpdateAdminMemberRoleCommand = Readonly<{
 
 export type DeleteAdminMemberCommand = Readonly<{
   memberId: string;
+}>;
+
+export type InviteSurveyCollaboratorCommand = Readonly<{
+  surveyId: string;
+  email: string;
+  role: SurveyCollaboratorRole;
+}>;
+
+export type UpdateSurveyCollaboratorRoleCommand = Readonly<{
+  collaboratorId: string;
+  surveyId: string;
+  role: SurveyCollaboratorRole;
+}>;
+
+export type RevokeSurveyCollaboratorCommand = Readonly<{
+  collaboratorId: string;
+  surveyId: string;
 }>;

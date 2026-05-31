@@ -35,6 +35,7 @@ import {
   useUpdateSectionMutation,
   useUploadSurveyImageMutation,
 } from "../../../api/admin/query";
+import { canEditSurvey } from "../../../api/admin/model";
 import type {
   JsonRecord,
   LocalizedText,
@@ -53,7 +54,7 @@ import { Button, EmptyState, ErrorState, LoadingState, StatusBadge } from "../..
 import { useAdminBuilderStore } from "../../../store";
 import "./css/SurveyBuilderPage.css";
 
-const questionSetTemplateId: QuestionSetTemplateId = "dorm_regular_25_2";
+const questionSetTemplateId: QuestionSetTemplateId = "handong-dom-survey-2026-1";
 const shortTextQuestionKind = "short_text" as const;
 const choiceTextQuestionKind = "choice_text" as const;
 
@@ -286,6 +287,14 @@ export function SurveyBuilderPage() {
           actionLabel="다시 시도"
           onAction={() => void detailQuery.refetch()}
         />
+      </section>
+    );
+  }
+
+  if (!canEditSurvey(detailQuery.data.survey.accessRole)) {
+    return (
+      <section className="tg-builder-page">
+        <ErrorState title="설문을 수정할 수 없습니다." description="이 설문은 결과 보기 권한으로 공유되었습니다. 미리보기와 분석 화면을 이용해주세요." />
       </section>
     );
   }

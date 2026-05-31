@@ -7,6 +7,7 @@ import type {
   RawAdminMember,
   RawBorichResult,
   RawCreateAssetPayload,
+  RawCreateSurveyCollaboratorPayload,
   RawCreateQuestionPayload,
   RawCreateSectionPayload,
   RawCreateSurveyPayload,
@@ -22,9 +23,11 @@ import type {
   RawSectionSummary,
   RawSurvey,
   RawSurveyAsset,
+  RawSurveyCollaborator,
   RawTextAnswer,
   RawTextGroup,
   RawUpdateAssetPayload,
+  RawUpdateSurveyCollaboratorPayload,
   RawUpdateQuestionPayload,
   RawUpdateSectionPayload,
   RawUpdateSurveyPayload,
@@ -51,6 +54,7 @@ export interface AdminApiGateway {
   archiveSurvey(surveyId: string): Promise<RawSurvey>;
   deleteSurvey(surveyId: string): Promise<void>;
   deleteDraftSurvey(surveyId: string): Promise<void>;
+  hasAccessibleSurveys(): Promise<boolean>;
 
   listSections(surveyId: string): Promise<RawSection[]>;
   createSection(payload: RawCreateSectionPayload): Promise<RawSection>;
@@ -72,6 +76,10 @@ export interface AdminApiGateway {
   publishSurvey(surveyId: string): Promise<RawSurvey>;
   closeSurvey(surveyId: string): Promise<RawSurvey>;
   createNextSurveyVersion(surveyId: string): Promise<RawSurvey>;
+
+  listSurveyCollaborators(surveyId: string): Promise<RawSurveyCollaborator[]>;
+  createSurveyCollaborator(payload: RawCreateSurveyCollaboratorPayload): Promise<RawSurveyCollaborator>;
+  updateSurveyCollaborator(args: { collaboratorId: string; payload: RawUpdateSurveyCollaboratorPayload }): Promise<RawSurveyCollaborator>;
 
   getFilterOptions(surveyId: string): Promise<RawFilterOptions>;
   getResponseSummary(args: AnalysisQueryArgs): Promise<RawResponseSummary>;

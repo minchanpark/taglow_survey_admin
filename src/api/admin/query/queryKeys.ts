@@ -7,6 +7,7 @@ export const adminQueryKeys = {
   activeAdminMembers: ["admin", "adminMembers", "active"] as const,
   surveys: ["admin", "surveys"] as const,
   survey: (surveyId: string) => ["admin", "survey", surveyId] as const,
+  surveyCollaborators: (surveyId: string) => ["admin", "survey", surveyId, "collaborators"] as const,
   sections: (surveyId: string) => ["admin", "survey", surveyId, "sections"] as const,
   questions: (surveyId: string) => ["admin", "survey", surveyId, "questions"] as const,
   assets: (surveyId: string) => ["admin", "survey", surveyId, "assets"] as const,

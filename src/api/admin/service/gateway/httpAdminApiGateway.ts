@@ -9,6 +9,7 @@ import type {
   RawAdminMember,
   RawBorichResult,
   RawCreateAssetPayload,
+  RawCreateSurveyCollaboratorPayload,
   RawCreateQuestionPayload,
   RawCreateSectionPayload,
   RawCreateSurveyPayload,
@@ -24,9 +25,11 @@ import type {
   RawSectionSummary,
   RawSurvey,
   RawSurveyAsset,
+  RawSurveyCollaborator,
   RawTextAnswer,
   RawTextGroup,
   RawUpdateAssetPayload,
+  RawUpdateSurveyCollaboratorPayload,
   RawUpdateQuestionPayload,
   RawUpdateSectionPayload,
   RawUpdateSurveyPayload,
@@ -120,6 +123,10 @@ export class HttpAdminApiGateway implements AdminApiGateway {
     return this.deleteSurvey(surveyId);
   }
 
+  hasAccessibleSurveys(): Promise<boolean> {
+    return this.request<boolean>("/api/admin/surveys/has-access");
+  }
+
   listSections(surveyId: string): Promise<RawSection[]> {
     return this.request<RawSection[]>(`/api/admin/surveys/${surveyId}/sections`);
   }
@@ -188,6 +195,24 @@ export class HttpAdminApiGateway implements AdminApiGateway {
 
   createNextSurveyVersion(surveyId: string): Promise<RawSurvey> {
     return this.request<RawSurvey>(`/api/admin/surveys/${surveyId}/versions`, { method: "POST" });
+  }
+
+  listSurveyCollaborators(surveyId: string): Promise<RawSurveyCollaborator[]> {
+    return this.request<RawSurveyCollaborator[]>(`/api/admin/surveys/${surveyId}/collaborators`);
+  }
+
+  createSurveyCollaborator(payload: RawCreateSurveyCollaboratorPayload): Promise<RawSurveyCollaborator> {
+    return this.request<RawSurveyCollaborator>(`/api/admin/surveys/${payload.survey_id}/collaborators`, {
+      method: "POST",
+      body: payload,
+    });
+  }
+
+  updateSurveyCollaborator(args: { collaboratorId: string; payload: RawUpdateSurveyCollaboratorPayload }): Promise<RawSurveyCollaborator> {
+    return this.request<RawSurveyCollaborator>(`/api/admin/survey-collaborators/${args.collaboratorId}`, {
+      method: "PATCH",
+      body: args.payload,
+    });
   }
 
   getFilterOptions(surveyId: string): Promise<RawFilterOptions> {

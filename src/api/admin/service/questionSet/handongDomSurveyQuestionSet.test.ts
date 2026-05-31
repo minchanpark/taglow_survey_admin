@@ -1,23 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { departmentOptions, dormitoryOptions, genderOptions, rcOptions, roomTypeOptions, semesterGroupOptions } from "../../model";
-import { getQuestionSetTemplate } from "./dormRegularSurveyQuestionSet";
+import { getQuestionSetTemplate } from "./handongDomSurveyQuestionSet";
 
-describe("dormRegularSurveyQuestionSet", () => {
-  const template = getQuestionSetTemplate("dorm_regular_25_2");
+describe("handongDomSurveyQuestionSet", () => {
+  const template = getQuestionSetTemplate("handong-dom-survey-2026-1");
 
-  it("groups 195 source questions into the planned 8 sections", () => {
-    expect(template.sections).toHaveLength(8);
+  it("groups the Handong dorm survey questions into the planned sections", () => {
+    expect(template.sections).toHaveLength(7);
     expect(template.sections.map((section) => [section.title.ko, section.questions.length])).toEqual([
-      ["기본 정보", 6],
+      ["기본 정보", 7],
       ["자치회 사업", 26],
       ["입출입 및 점호 시스템", 26],
-      ["생활관 시설", 100],
+      ["생활관 시설", 112],
       ["세탁 및 건조기", 14],
       ["기타 생활", 14],
-      ["글로벌 라운지", 7],
-      ["제출자 정보", 2],
+      ["글로벌 라운지", 8],
     ]);
-    expect(template.sections.flatMap((section) => section.questions)).toHaveLength(195);
+    expect(template.sections.flatMap((section) => section.questions)).toHaveLength(207);
   });
 
   it("infers representative question types and metrics", () => {
@@ -43,6 +42,8 @@ describe("dormRegularSurveyQuestionSet", () => {
     expect(questions.get(163)?.questionType).toBe("multi_select");
     expect(questions.get(172)?.questionType).toBe("single_choice");
     expect(questions.get(173)?.metricType).toBe("importance");
+    expect(questions.get(195)?.questionType).toBe("participant_image_tag");
+    expect(questions.get(207)?.title.ko).toBe("글로벌 라운지와 관련하여 건의/문의하고 싶은 내용이 있다면, 이미지를 올려서 태깅해주세요.");
   });
 
   it("uses canonical profile options with stored Korean values", () => {

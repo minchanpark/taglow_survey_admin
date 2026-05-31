@@ -2,7 +2,7 @@ import type { JsonRecord, LocalizedText } from "./common";
 import type { MetricType, QuestionConfig, QuestionType } from "./question";
 import type { SectionType } from "./section";
 
-export type QuestionSetTemplateId = "dorm_regular_25_2";
+export type QuestionSetTemplateId = "handong-dom-survey-2026-1";
 
 export type QuestionSetConflictMode = "append_skip_existing_keys";
 

@@ -28,6 +28,7 @@ import type {
   SectionSummary,
   Survey,
   SurveyAsset,
+  SurveyCollaborator,
   SurveyDetail,
   SurveySection,
   TextAnswer,
@@ -68,6 +69,7 @@ export const activeAdminSession: AdminSessionState = {
   isAuthenticated: true,
   email: fakeAdminMember.email,
   admin: fakeAdminMember,
+  hasSurveyAccess: true,
 };
 
 export const pendingAdminSession: AdminSessionState = {
@@ -85,6 +87,12 @@ export const nonMemberSession: AdminSessionState = {
   email: "external.admin@example.com",
 };
 
+export const sharedSurveySession: AdminSessionState = {
+  isAuthenticated: true,
+  email: "viewer@example.com",
+  hasSurveyAccess: true,
+};
+
 export const fakeSurvey: Survey = {
   id: "survey-1",
   title: "생활관 만족도 조사",
@@ -100,6 +108,17 @@ export const fakeSurvey: Survey = {
   createdBy: "user-1",
   publishedAt: undefined,
   closedAt: undefined,
+  createdAt: "2026-05-28T00:00:00.000Z",
+  updatedAt: "2026-05-28T00:00:00.000Z",
+  accessRole: "owner",
+};
+
+export const fakeSurveyCollaborator: SurveyCollaborator = {
+  id: "survey-collaborator-1",
+  surveyId: "survey-1",
+  email: "viewer@example.com",
+  role: "viewer",
+  invitedBy: "user-1",
   createdAt: "2026-05-28T00:00:00.000Z",
   updatedAt: "2026-05-28T00:00:00.000Z",
 };
@@ -170,6 +189,25 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
     archiveSurvey: async (surveyId: string) => ({ ...fakeSurvey, id: surveyId, status: "archived" }),
     deleteSurvey: async () => undefined,
     deleteDraftSurvey: async () => undefined,
+    listSurveyCollaborators: async () => [fakeSurveyCollaborator],
+    inviteSurveyCollaborator: async (command) => ({
+      ...fakeSurveyCollaborator,
+      surveyId: command.surveyId,
+      email: command.email,
+      role: command.role,
+    }),
+    updateSurveyCollaboratorRole: async (command) => ({
+      ...fakeSurveyCollaborator,
+      id: command.collaboratorId,
+      surveyId: command.surveyId,
+      role: command.role,
+    }),
+    revokeSurveyCollaborator: async (command) => ({
+      ...fakeSurveyCollaborator,
+      id: command.collaboratorId,
+      surveyId: command.surveyId,
+      revokedAt: "2026-05-28T03:00:00.000Z",
+    }),
     createSection: async (command: CreateSectionCommand): Promise<SurveySection> => ({
       id: "section-1",
       surveyId: command.surveyId,
@@ -249,19 +287,19 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
     }),
     previewQuestionSetImport: async (command: QuestionSetImportPreviewCommand): Promise<QuestionSetImportPreview> => ({
       templateId: command.templateId,
-      title: "25-2 생활관 정기 설문조사 질문 목록",
+      title: "2026년도 1학기 생활관 정기 설문조사 질문 목록",
       sections: [],
       questions: [],
-      totalSectionCount: 8,
-      totalQuestionCount: 195,
-      importableSectionCount: 8,
-      importableQuestionCount: 195,
+      totalSectionCount: 7,
+      totalQuestionCount: 207,
+      importableSectionCount: 7,
+      importableQuestionCount: 207,
       skippedQuestionCount: 0,
     }),
     importQuestionSet: async (command: QuestionSetImportCommand): Promise<QuestionSetImportResult> => ({
       templateId: command.templateId,
-      sectionsCreated: 8,
-      questionsCreated: 195,
+      sectionsCreated: 7,
+      questionsCreated: 207,
       questionsSkipped: 0,
       sectionKeys: [],
       questionKeys: [],

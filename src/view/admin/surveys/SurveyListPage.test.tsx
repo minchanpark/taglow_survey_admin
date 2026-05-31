@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createFakeAdminApiController, fakeSurvey } from "../../../test/fakeAdminApiController";
+import { createFakeAdminApiController, fakeSurvey, sharedSurveySession } from "../../../test/fakeAdminApiController";
 import { renderWithProviders } from "../../../test/renderWithProviders";
 import { SurveyListPage } from "./SurveyListPage";
 
@@ -35,10 +35,47 @@ describe("SurveyListPage", () => {
 
     expect(await screen.findByText("생활관 만족도 조사")).toBeInTheDocument();
     expect(screen.getByText("초안")).toBeInTheDocument();
+    expect(screen.getAllByText("내 설문")).toHaveLength(2);
     expect(screen.getByRole("link", { name: "생활관 만족도 조사 수정" })).toHaveAttribute(
       "href",
       "/admin/surveys/survey-1/builder",
     );
+  });
+
+  it("shows shared viewer surveys as analysis-only rows", async () => {
+    renderSurveyList(
+      createFakeAdminApiController({
+        getAdminSessionState: async () => sharedSurveySession,
+        listSurveys: async () => [{ ...fakeSurvey, accessRole: "viewer" }],
+      }),
+    );
+
+    expect(await screen.findByText("생활관 만족도 조사")).toBeInTheDocument();
+    expect(screen.getByText("공유받음")).toBeInTheDocument();
+    expect(screen.getByText("결과 보기")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "생활관 만족도 조사 분석 보기" })).toHaveAttribute(
+      "href",
+      "/admin/surveys/survey-1/analysis",
+    );
+    expect(screen.queryByRole("link", { name: "생활관 만족도 조사 수정" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "생활관 만족도 조사 삭제" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /새 설문/ })).not.toBeInTheDocument();
+  });
+
+  it("shows shared editor surveys as editable rows without owner actions", async () => {
+    renderSurveyList(
+      createFakeAdminApiController({
+        getAdminSessionState: async () => sharedSurveySession,
+        listSurveys: async () => [{ ...fakeSurvey, accessRole: "editor" }],
+      }),
+    );
+
+    expect(await screen.findByText("작업 가능")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "생활관 만족도 조사 수정" })).toHaveAttribute(
+      "href",
+      "/admin/surveys/survey-1/builder",
+    );
+    expect(screen.queryByRole("button", { name: "생활관 만족도 조사 삭제" })).not.toBeInTheDocument();
   });
 
   it("deletes a draft survey through the admin API boundary after confirmation", async () => {

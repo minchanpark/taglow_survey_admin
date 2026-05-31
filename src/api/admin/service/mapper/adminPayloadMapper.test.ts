@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RawAdminMember, RawSurvey } from "../gateway/rawTypes";
+import type { RawAdminMember, RawSurvey, RawSurveyCollaborator } from "../gateway/rawTypes";
 import { AdminPayloadMapper } from "./adminPayloadMapper";
 
 describe("AdminPayloadMapper analysis RPC rows", () => {
@@ -46,6 +46,54 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
       id: "survey-1",
       publicSlug: "handong-dorm-2026",
       publicCode: "8K2PQA",
+      accessRole: "owner",
+    });
+  });
+
+  it("maps survey access roles and collaborators into domain models", () => {
+    const sharedSurvey: RawSurvey = {
+      id: "survey-1",
+      title: "생활관 만족도 조사",
+      description: null,
+      status: "draft",
+      public_slug: null,
+      public_code: "8K2PQA",
+      version_group_id: "version-group-1",
+      version_number: 1,
+      parent_survey_id: null,
+      is_latest_version: true,
+      settings: null,
+      created_by: "user-1",
+      published_at: null,
+      closed_at: null,
+      created_at: "2026-05-28T00:00:00.000Z",
+      updated_at: "2026-05-28T00:00:00.000Z",
+      access_role: "editor",
+    };
+    const collaborator: RawSurveyCollaborator = {
+      id: "collaborator-1",
+      survey_id: "survey-1",
+      email: "viewer@example.com",
+      role: "viewer",
+      invited_by: "user-1",
+      created_at: "2026-05-28T01:00:00.000Z",
+      updated_at: "2026-05-28T02:00:00.000Z",
+      revoked_at: null,
+    };
+
+    expect(mapper.toSurvey(sharedSurvey)).toMatchObject({
+      id: "survey-1",
+      accessRole: "editor",
+    });
+    expect(mapper.toSurveyCollaborator(collaborator)).toEqual({
+      id: "collaborator-1",
+      surveyId: "survey-1",
+      email: "viewer@example.com",
+      role: "viewer",
+      invitedBy: "user-1",
+      createdAt: "2026-05-28T01:00:00.000Z",
+      updatedAt: "2026-05-28T02:00:00.000Z",
+      revokedAt: undefined,
     });
   });
 

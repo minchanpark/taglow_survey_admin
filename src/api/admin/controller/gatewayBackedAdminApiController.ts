@@ -35,6 +35,7 @@ import type {
   HeatmapPoint,
   ImageTagAnswer,
   ImageTagAnswerFilterCommand,
+  InviteSurveyCollaboratorCommand,
   JsonRecord,
   LocusPoint,
   PreviewSurvey,
@@ -53,10 +54,12 @@ import type {
   QuestionSummary,
   ReorderQuestionsCommand,
   ReorderSectionsCommand,
+  RevokeSurveyCollaboratorCommand,
   ResponseSummary,
   SectionSummary,
   Survey,
   SurveyAsset,
+  SurveyCollaborator,
   SurveyDetail,
   SurveySection,
   TextAnswer,
@@ -65,6 +68,7 @@ import type {
   UpdateAdminMemberRoleCommand,
   UpdateQuestionCommand,
   UpdateSectionCommand,
+  UpdateSurveyCollaboratorRoleCommand,
   UpdateSurveyCommand,
   UploadSurveyImageCommand,
 } from "../model";
@@ -91,19 +95,23 @@ export class GatewayBackedAdminApiController implements AdminApiController {
       memberRow = await this.gateway.getOwnAdminMember();
     } catch {
       const activeAdmin = await this.getCurrentAdmin();
+      const hasSurveyAccess = activeAdmin ? true : await this.gateway.hasAccessibleSurveys();
       return {
         isAuthenticated: true,
         email,
         admin: activeAdmin ?? undefined,
+        hasSurveyAccess,
       };
     }
     const member = memberRow ? this.mapper.toAdminMember(memberRow) : undefined;
     const hasAdminAccess = member ? member.isActive && isAdminAccessRole(member.role) : false;
+    const hasSurveyAccess = hasAdminAccess ? true : await this.gateway.hasAccessibleSurveys();
     return {
       isAuthenticated: true,
       email,
       admin: hasAdminAccess ? member : undefined,
       pendingAdmin: member?.role === "admin" && !member.isActive ? member : undefined,
+      hasSurveyAccess,
     };
   }
 
@@ -214,6 +222,41 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     return this.deleteSurvey(surveyId);
   }
 
+  async listSurveyCollaborators(surveyId: string): Promise<SurveyCollaborator[]> {
+    const rows = await this.gateway.listSurveyCollaborators(surveyId);
+    return rows.map((row) => this.mapper.toSurveyCollaborator(row));
+  }
+
+  async inviteSurveyCollaborator(command: InviteSurveyCollaboratorCommand): Promise<SurveyCollaborator> {
+    const user = await this.gateway.getCurrentAuthUser();
+    if (!user) {
+      throw new Error("Login is required to share a survey.");
+    }
+    const row = await this.gateway.createSurveyCollaborator({
+      survey_id: command.surveyId,
+      email: normalizeEmail(command.email),
+      role: command.role,
+      invited_by: user.id,
+    });
+    return this.mapper.toSurveyCollaborator(row);
+  }
+
+  async updateSurveyCollaboratorRole(command: UpdateSurveyCollaboratorRoleCommand): Promise<SurveyCollaborator> {
+    const row = await this.gateway.updateSurveyCollaborator({
+      collaboratorId: command.collaboratorId,
+      payload: { role: command.role },
+    });
+    return this.mapper.toSurveyCollaborator(row);
+  }
+
+  async revokeSurveyCollaborator(command: RevokeSurveyCollaboratorCommand): Promise<SurveyCollaborator> {
+    const row = await this.gateway.updateSurveyCollaborator({
+      collaboratorId: command.collaboratorId,
+      payload: { revoked_at: new Date().toISOString() },
+    });
+    return this.mapper.toSurveyCollaborator(row);
+  }
+
   async createSection(command: CreateSectionCommand): Promise<SurveySection> {
     assertCreateSectionCommand(command);
     const row = await this.gateway.createSection(toCreateSectionPayload(command));
@@ -319,8 +362,8 @@ export class GatewayBackedAdminApiController implements AdminApiController {
   }
 
   async previewQuestionSetImport(command: QuestionSetImportPreviewCommand): Promise<QuestionSetImportPreview> {
-    const template = getQuestionSetTemplate(command.templateId);
-    const [sections, questions] = await Promise.all([
+    const [template, sections, questions] = await Promise.all([
+      Promise.resolve(getQuestionSetTemplate(command.templateId)),
       this.gateway.listSections(command.surveyId),
       this.gateway.listQuestions(command.surveyId),
     ]);
@@ -332,8 +375,8 @@ export class GatewayBackedAdminApiController implements AdminApiController {
       throw new Error(`Unsupported question set conflict mode: ${command.conflictMode}`);
     }
 
-    const template = getQuestionSetTemplate(command.templateId);
-    const [existingSections, existingQuestions] = await Promise.all([
+    const [template, existingSections, existingQuestions] = await Promise.all([
+      Promise.resolve(getQuestionSetTemplate(command.templateId)),
       this.gateway.listSections(command.surveyId),
       this.gateway.listQuestions(command.surveyId),
     ]);
@@ -362,7 +405,9 @@ export class GatewayBackedAdminApiController implements AdminApiController {
           skippedQuestions += 1;
           continue;
         }
-        questionPayloads.push(toCreateQuestionPayloadFromTemplate(command.surveyId, rawSection.id, question, nextOrder + offset));
+        questionPayloads.push(
+          toCreateQuestionPayloadFromTemplate(command.surveyId, rawSection.id, question, nextOrder + offset, template.templateId),
+        );
         existingQuestionKeys.add(question.questionKey);
         offset += 1;
       }
@@ -555,6 +600,10 @@ function normalizePublicCode(value: string | null | undefined): string | undefin
   return normalized || undefined;
 }
 
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function hasOwn<TObject extends object>(object: TObject, key: keyof TObject): boolean {
   return Object.prototype.hasOwnProperty.call(object, key);
 }
@@ -629,6 +678,7 @@ function toCreateQuestionPayloadFromTemplate(
   sectionId: string,
   question: QuestionSetTemplateQuestion,
   orderIndex: number,
+  templateId: QuestionSetTemplate["templateId"],
 ): RawCreateQuestionPayload {
   return {
     survey_id: surveyId,
@@ -642,7 +692,7 @@ function toCreateQuestionPayloadFromTemplate(
     metric_type: question.metricType,
     topic_key: question.topicKey ?? null,
     space_key: question.spaceKey ?? null,
-    config: withQuestionImportMetadata(question),
+    config: withQuestionImportMetadata(question, templateId),
     validation: question.validation ?? {},
   };
 }
@@ -655,10 +705,10 @@ function createNextQuestionOrderMap(questions: RawQuestion[]): Map<string, numbe
   return orderBySection;
 }
 
-function withQuestionImportMetadata(question: QuestionSetTemplateQuestion): JsonRecord {
+function withQuestionImportMetadata(question: QuestionSetTemplateQuestion, templateId: QuestionSetTemplate["templateId"]): JsonRecord {
   const config: JsonRecord = {
     ...(question.config as JsonRecord),
-    importSource: "dorm_regular_25_2",
+    importSource: templateId,
     sourceNumber: question.sourceNumber,
   };
   if (question.displayGroup) {

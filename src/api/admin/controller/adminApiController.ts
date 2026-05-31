@@ -17,6 +17,7 @@ import type {
   HeatmapPoint,
   ImageTagAnswer,
   ImageTagAnswerFilterCommand,
+  InviteSurveyCollaboratorCommand,
   LocusPoint,
   PreviewSurvey,
   PreviewSurveyCommand,
@@ -30,10 +31,12 @@ import type {
   QuestionSummary,
   ReorderQuestionsCommand,
   ReorderSectionsCommand,
+  RevokeSurveyCollaboratorCommand,
   ResponseSummary,
   SectionSummary,
   Survey,
   SurveyAsset,
+  SurveyCollaborator,
   SurveyDetail,
   SurveySection,
   TextAnswer,
@@ -42,6 +45,7 @@ import type {
   UpdateAdminMemberRoleCommand,
   UpdateQuestionCommand,
   UpdateSectionCommand,
+  UpdateSurveyCollaboratorRoleCommand,
   UpdateSurveyCommand,
   UploadSurveyImageCommand,
 } from "../model";
@@ -65,6 +69,10 @@ export interface AdminApiController {
   archiveSurvey(surveyId: string): Promise<Survey>;
   deleteSurvey(surveyId: string): Promise<void>;
   deleteDraftSurvey(surveyId: string): Promise<void>;
+  listSurveyCollaborators(surveyId: string): Promise<SurveyCollaborator[]>;
+  inviteSurveyCollaborator(command: InviteSurveyCollaboratorCommand): Promise<SurveyCollaborator>;
+  updateSurveyCollaboratorRole(command: UpdateSurveyCollaboratorRoleCommand): Promise<SurveyCollaborator>;
+  revokeSurveyCollaborator(command: RevokeSurveyCollaboratorCommand): Promise<SurveyCollaborator>;
 
   createSection(command: CreateSectionCommand): Promise<SurveySection>;
   updateSection(command: UpdateSectionCommand): Promise<SurveySection>;

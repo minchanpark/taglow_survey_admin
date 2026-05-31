@@ -69,6 +69,29 @@
   background: var(--tg-accent-hover);
 }
 
+.tg-survey-dashboard-page__access {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-pill);
+  padding: 0 var(--tg-space-6);
+  color: var(--tg-text-muted);
+  background: var(--tg-bg-raised);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-survey-dashboard-page__access--owner {
+  color: var(--tg-success);
+  background: var(--tg-success-soft);
+}
+
+.tg-survey-dashboard-page__access--editor {
+  color: var(--tg-info);
+  background: var(--tg-info-soft);
+}
+
 .tg-survey-dashboard-page__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

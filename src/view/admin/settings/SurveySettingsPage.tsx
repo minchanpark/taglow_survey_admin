@@ -1,13 +1,17 @@
-import { CheckCircle2, Copy, ExternalLink, Globe2, RefreshCcw, Rocket, Save, XCircle } from "lucide-react";
+import { CheckCircle2, Copy, ExternalLink, Globe2, RefreshCcw, Rocket, Save, UserPlus, Users, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getSurveyPublicPath } from "../../../api/admin/model";
+import { canManageSurvey, getSurveyPublicPath, type SurveyCollaboratorRole } from "../../../api/admin/model";
 import {
   useCloseSurveyMutation,
   useCreateNextVersionMutation,
+  useInviteSurveyCollaboratorMutation,
   usePublishSurveyMutation,
   usePublishValidationQuery,
+  useRevokeSurveyCollaboratorMutation,
   useSurveyDetailQuery,
+  useSurveyCollaboratorsQuery,
+  useUpdateSurveyCollaboratorRoleMutation,
   useUpdateSurveyMutation,
 } from "../../../api/admin/query";
 import { Button, ErrorState, LoadingState, SurveyStatusBadge } from "../../../components";
@@ -26,14 +30,24 @@ export function SurveySettingsPage() {
   const publishSurveyMutation = usePublishSurveyMutation();
   const closeSurveyMutation = useCloseSurveyMutation();
   const createNextVersionMutation = useCreateNextVersionMutation();
+  const inviteCollaboratorMutation = useInviteSurveyCollaboratorMutation();
+  const updateCollaboratorRoleMutation = useUpdateSurveyCollaboratorRoleMutation();
+  const revokeCollaboratorMutation = useRevokeSurveyCollaboratorMutation();
   const [publicSlugInput, setPublicSlugInput] = useState("");
+  const [collaboratorEmailInput, setCollaboratorEmailInput] = useState("");
+  const [collaboratorRoleInput, setCollaboratorRoleInput] = useState<SurveyCollaboratorRole>("viewer");
   const [notice, setNotice] = useState<Notice | null>(null);
   const survey = surveyQuery.data?.survey;
+  const collaboratorsQuery = useSurveyCollaboratorsQuery(surveyId, survey?.accessRole === "owner");
   const publicPath = survey ? getSurveyPublicPath(survey) : undefined;
   const publicUrl = useMemo(() => {
     if (!publicPath) return undefined;
     return new URL(publicPath, window.location.origin).toString();
   }, [publicPath]);
+  const dashboardUrl = useMemo(() => {
+    if (!surveyId) return undefined;
+    return new URL(`/admin/surveys/${surveyId}/dashboard`, window.location.origin).toString();
+  }, [surveyId]);
 
   useEffect(() => {
     if (survey) {
@@ -58,6 +72,7 @@ export function SurveySettingsPage() {
   }
 
   const activeSurvey = survey;
+  const isOwner = canManageSurvey(activeSurvey.accessRole);
   const normalizedSlug = normalizePublicSlug(publicSlugInput);
   const hasSlugChange = normalizedSlug !== (activeSurvey.publicSlug ?? "");
   const validationIssues = validationQuery.data?.issues ?? [];
@@ -80,6 +95,11 @@ export function SurveySettingsPage() {
         </div>
       ) : null}
 
+      {!isOwner ? (
+        <ErrorState title="설문 설정을 변경할 수 없습니다." description="공유받은 설문에서는 소유자만 공개 URL, 게시 상태, 공유 권한을 변경할 수 있습니다." />
+      ) : null}
+
+      {isOwner ? (
       <div className="tg-settings-page__grid">
         <section className="tg-settings-panel" aria-labelledby="public-url-title">
           <header className="tg-settings-panel__header">
@@ -178,7 +198,100 @@ export function SurveySettingsPage() {
             </Button>
           </div>
         </section>
+
+        <section className="tg-settings-panel tg-settings-panel--wide" aria-labelledby="share-title">
+          <header className="tg-settings-panel__header">
+            <Users size={18} aria-hidden="true" />
+            <div>
+              <h2 id="share-title">공유</h2>
+              <p>이메일을 등록한 뒤 설문 링크를 전달합니다. 메일은 자동 발송하지 않습니다.</p>
+            </div>
+          </header>
+
+          <div className="tg-settings-page__field">
+            <label htmlFor="collaborator-email">공유할 이메일</label>
+            <div className="tg-settings-page__share-row">
+              <input
+                id="collaborator-email"
+                type="email"
+                value={collaboratorEmailInput}
+                onChange={(event) => setCollaboratorEmailInput(event.target.value)}
+                placeholder="member@example.com"
+              />
+              <select
+                aria-label="공유 역할"
+                value={collaboratorRoleInput}
+                onChange={(event) => setCollaboratorRoleInput(event.target.value as SurveyCollaboratorRole)}
+              >
+                <option value="viewer">결과 보기</option>
+                <option value="editor">작업 가능</option>
+              </select>
+              <Button
+                variant="primary"
+                icon={<UserPlus size={15} aria-hidden="true" />}
+                disabled={inviteCollaboratorMutation.isPending}
+                onClick={() => void inviteCollaborator()}
+              >
+                등록
+              </Button>
+            </div>
+            <p>작업 가능은 빌더 수정과 분석 확인이 가능하고, 결과 보기는 분석과 미리보기만 가능합니다.</p>
+          </div>
+
+          <div className="tg-settings-page__url-box">
+            <span>공유할 설문 링크</span>
+            <strong>{dashboardUrl}</strong>
+            {dashboardUrl ? (
+              <div className="tg-settings-page__url-actions">
+                <Button variant="secondary" icon={<Copy size={15} aria-hidden="true" />} onClick={() => void copyPublicUrl(dashboardUrl)}>
+                  복사
+                </Button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="tg-settings-page__collaborators" aria-label="공유된 사용자">
+            {collaboratorsQuery.isPending ? <LoadingState label="공유 사용자를 불러오는 중" /> : null}
+            {collaboratorsQuery.isError ? <p className="tg-settings-page__empty-copy">공유 사용자를 불러오지 못했습니다.</p> : null}
+            {collaboratorsQuery.isSuccess && collaboratorsQuery.data.length === 0 ? (
+              <p className="tg-settings-page__empty-copy">아직 공유된 사용자가 없습니다.</p>
+            ) : null}
+            {collaboratorsQuery.data?.map((collaborator) => (
+              <div className="tg-settings-page__collaborator-row" key={collaborator.id}>
+                <span>{collaborator.email}</span>
+                <select
+                  aria-label={`${collaborator.email} 역할`}
+                  value={collaborator.role}
+                  disabled={updateCollaboratorRoleMutation.isPending || revokeCollaboratorMutation.isPending}
+                  onChange={(event) =>
+                    void updateCollaboratorRoleMutation.mutateAsync({
+                      collaboratorId: collaborator.id,
+                      surveyId: activeSurvey.id,
+                      role: event.target.value as SurveyCollaboratorRole,
+                    })
+                  }
+                >
+                  <option value="viewer">결과 보기</option>
+                  <option value="editor">작업 가능</option>
+                </select>
+                <Button
+                  variant="ghost"
+                  disabled={revokeCollaboratorMutation.isPending}
+                  onClick={() =>
+                    void revokeCollaboratorMutation.mutateAsync({
+                      collaboratorId: collaborator.id,
+                      surveyId: activeSurvey.id,
+                    })
+                  }
+                >
+                  해제
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
+      ) : null}
     </section>
   );
 
@@ -206,6 +319,27 @@ export function SurveySettingsPage() {
       setNotice({ tone: "success", message: "공개 URL을 복사했습니다." });
     } catch {
       setNotice({ tone: "error", message: "브라우저에서 클립보드 복사를 허용하지 않았습니다." });
+    }
+  }
+
+  async function inviteCollaborator() {
+    setNotice(null);
+    const email = collaboratorEmailInput.trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      setNotice({ tone: "error", message: "공유할 이메일을 정확히 입력해주세요." });
+      return;
+    }
+
+    try {
+      await inviteCollaboratorMutation.mutateAsync({
+        surveyId: activeSurvey.id,
+        email,
+        role: collaboratorRoleInput,
+      });
+      setCollaboratorEmailInput("");
+      setNotice({ tone: "success", message: "공유 사용자를 등록했습니다. 설문 링크를 전달해주세요." });
+    } catch {
+      setNotice({ tone: "error", message: "공유 사용자를 등록하지 못했습니다. 이미 등록된 이메일인지 확인해주세요." });
     }
   }
 
@@ -259,4 +393,8 @@ function normalizePublicSlug(value: string): string {
 
 function isValidPublicSlug(value: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length <= 80;
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
 }

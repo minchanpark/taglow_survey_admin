@@ -32,7 +32,21 @@ type SectionDefinition = Readonly<{
   topicKey: string;
 }>;
 
-const DORM_TEMPLATE_ID: QuestionSetTemplateId = "dorm_regular_25_2";
+type ExtraQuestionDefinition = Readonly<{
+  sectionKey: string;
+  orderScore: number;
+  sourceNumber: number;
+  questionKey: string;
+  titleKo: string;
+  questionType: QuestionType;
+  metricType: MetricType;
+  topicKey?: string;
+  spaceKey?: string;
+  config: QuestionConfig;
+  displayGroup?: string;
+}>;
+
+const DORM_TEMPLATE_ID: QuestionSetTemplateId = "handong-dom-survey-2026-1";
 
 const sectionDefinitions: SectionDefinition[] = [
   { sectionKey: "dorm_25_2_profile", titleKo: "기본 정보", sectionType: "profile", start: 1, end: 6, topicKey: "profile" },
@@ -42,7 +56,6 @@ const sectionDefinitions: SectionDefinition[] = [
   { sectionKey: "dorm_25_2_laundry", titleKo: "세탁 및 건조기", sectionType: "laundry", start: 159, end: 172, topicKey: "laundry" },
   { sectionKey: "dorm_25_2_other_life", titleKo: "기타 생활", sectionType: "general", start: 173, end: 186, topicKey: "other_life" },
   { sectionKey: "dorm_25_2_global_lounge", titleKo: "글로벌 라운지", sectionType: "global_lounge", start: 187, end: 193, topicKey: "global_lounge" },
-  { sectionKey: "dorm_25_2_identity", titleKo: "제출자 정보", sectionType: "identity", start: 194, end: 195, topicKey: "identity" },
 ];
 
 const timeSlotOptions = [
@@ -56,6 +69,50 @@ const timeSlotOptions = [
   "19:00~21:00",
   "21:00~23:00",
 ].map((label) => ({ value: stableValue(label), labelKo: label }));
+
+const participantImageTagConfig = {
+  maxTags: 3,
+  tagTypes: ["불편", "수리 요청", "개선 제안", "기타"],
+  enableZoom: true,
+  requireText: true,
+  maxFileSizeMb: 10,
+  acceptedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+};
+
+const extraQuestionDefinitions: ExtraQuestionDefinition[] = [
+  {
+    sectionKey: "dorm_25_2_profile",
+    orderScore: 0.5,
+    sourceNumber: 194,
+    questionKey: "question_mpqztb3f",
+    titleKo: "학번",
+    questionType: "text",
+    metricType: "none",
+    config: { textMode: "short", maxLength: 200, multiline: false },
+  },
+  participantImageQuestion(195, 73.5, "question_mpqzy65n", "화장실과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "'화장실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(196, 80.5, "question_mpr07j52", "샤워실과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "'샤워실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(197, 85.5, "1", "1층 로비 공용 공간과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "'1층 로비 공용 공간'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(198, 91.5, "question_mpr05np9", "복도 공용 공간과 관련하여 건의/문의할 부분이 있다면 이미지를 올려 태깅해주세요.", "'복도 공용 공간'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(199, 97.5, "question_mpr04h83", "쓰레기통 및 분리수거 시설과 관련하여 건의/문의하고 싶은 부분이 있다면, 이미지를 올려 태깅해주세요.", "'쓰레기통 및 분리수거실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(200, 106.5, "question_mpr02eg3", "취사공간과 관련하여 건의/문의하고 싶은 부분이 있다면, 이미지를 올려 태깅해주세요.", "'취사 공간(휴게실 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(201, 114.5, "question_mpr01hnh", "'휴게 및 모임 공간'과 관련하여 건의/문의하고 싶은 부분이 있다면, 이미지를 올려 태깅해주세요.", "'휴게 및 모임 공간(코이노니아실, 휴게실, 회복실 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(202, 120.5, "question_mpr008n6", "'공부 공간 (그룹스터디실, 세미나실, 노트북실, 독서실 등)'과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "'공부 공간 (그룹스터디실, 세미나실, 노트북실, 독서실 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(203, 128.5, "question_mpqzwsvd", "운동 공간과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "운동 공간(헬스장, 탁구장, 포켓볼 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(204, 136.5, "question_mpqzv2pv", "기도실과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "'기도실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(205, 144.5, "question_mpqzvr9k", "엘리베이터와 관련하여 건의/문의하고 싳은 부분이 있다면, 이미지를 올려 태깅해주세요.", "'엘리베이터'와 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
+  participantImageQuestion(206, 158.5, "question_mpqzpnc2", "'생활관 시설'과 관련하여 개선되어야 할 점이 있다면, 이미지를 업로드하고 태깅으로 건의해주세요."),
+  participantImageQuestion(
+    207,
+    193.5,
+    "question_mpqzsirp",
+    "글로벌 라운지와 관련하여 건의/문의하고 싶은 내용이 있다면, 이미지를 올려서 태깅해주세요.",
+    undefined,
+    "dorm_25_2_global_lounge",
+  ),
+];
+
+const extraOrderByQuestionKey = new Map(extraQuestionDefinitions.map((question) => [question.questionKey, question.orderScore]));
 
 const rawQuestionText = `
 1. 성별
@@ -251,8 +308,6 @@ const rawQuestionText = `
 191. 글로벌 라운지와 관련된 다음 항목에 대한 만족도는 어떠합니까? [이용 시간]
 192. 글로벌 라운지와 관련된 다음 항목에 대한 만족도는 어떠합니까? [안전성]
 193. 기타 글로벌 라운지와 관련하여 건의/문의하고 싶은 내용이 있다면, 자유롭게 적어주세요.
-194. 학번 (예. 22400001)
-195. 이름 (예. 김한동)
 `;
 
 export function getQuestionSetTemplate(templateId: QuestionSetTemplateId): QuestionSetTemplate {
@@ -263,7 +318,7 @@ export function getQuestionSetTemplate(templateId: QuestionSetTemplateId): Quest
   const sourceQuestions = parseSourceQuestions(rawQuestionText);
   return {
     templateId,
-    title: "25-2 생활관 정기 설문조사 질문 목록",
+    title: "2026년도 1학기 생활관 정기 설문조사 질문 목록",
     sections: sectionDefinitions.map((section, orderIndex) => toTemplateSection(section, sourceQuestions, orderIndex)),
   };
 }
@@ -281,9 +336,14 @@ function toTemplateSection(
       sourceTemplateId: DORM_TEMPLATE_ID,
       templateOrderIndex: orderIndex,
     },
-    questions: sourceQuestions
+    questions: [
+      ...sourceQuestions
       .filter((question) => question.number >= section.start && question.number <= section.end)
-      .map((question, questionOrderIndex) => toTemplateQuestion(question, section, questionOrderIndex)),
+        .map((question, questionOrderIndex) => toTemplateQuestion(question, section, questionOrderIndex)),
+      ...extraQuestionDefinitions
+        .filter((question) => question.sectionKey === section.sectionKey)
+        .map((question) => toExtraTemplateQuestion(question, section)),
+    ].sort((left, right) => getQuestionOrderScore(left) - getQuestionOrderScore(right)),
   };
 }
 
@@ -306,6 +366,50 @@ function toTemplateQuestion(
     config: inferConfig(source, questionType, metricType),
     validation: {},
     isRequired: true,
+    displayGroup,
+  };
+}
+
+function toExtraTemplateQuestion(
+  source: ExtraQuestionDefinition,
+  section: SectionDefinition,
+): QuestionSetTemplateQuestion {
+  return {
+    sourceNumber: source.sourceNumber,
+    questionKey: source.questionKey,
+    title: { ko: source.titleKo },
+    questionType: source.questionType,
+    metricType: source.metricType,
+    topicKey: source.topicKey ?? section.topicKey,
+    spaceKey: source.spaceKey,
+    config: source.displayGroup ? { ...(source.config as Record<string, unknown>), displayGroup: source.displayGroup } : source.config,
+    validation: {},
+    isRequired: true,
+    displayGroup: source.displayGroup,
+  };
+}
+
+function getQuestionOrderScore(question: QuestionSetTemplateQuestion): number {
+  return extraOrderByQuestionKey.get(question.questionKey) ?? question.sourceNumber;
+}
+
+function participantImageQuestion(
+  sourceNumber: number,
+  orderScore: number,
+  questionKey: string,
+  titleKo: string,
+  displayGroup?: string,
+  sectionKey = "dorm_25_2_facilities",
+): ExtraQuestionDefinition {
+  return {
+    sectionKey,
+    orderScore,
+    sourceNumber,
+    questionKey,
+    titleKo,
+    questionType: "participant_image_tag",
+    metricType: "none",
+    config: participantImageTagConfig,
     displayGroup,
   };
 }

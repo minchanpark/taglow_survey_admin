@@ -1,8 +1,8 @@
-import { Archive, PencilLine, Plus, RefreshCcw, Trash2 } from "lucide-react";
+import { Archive, BarChart3, PencilLine, Plus, RefreshCcw, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getSurveyPublicIdentifier, type Survey } from "../../../api/admin/model";
-import { useArchiveSurveyMutation, useDeleteSurveyMutation, useSurveysQuery } from "../../../api/admin/query";
+import { canEditSurvey, canManageSurvey, getSurveyAccessRoleLabel, getSurveyPublicIdentifier, type Survey } from "../../../api/admin/model";
+import { useAdminSessionQuery, useArchiveSurveyMutation, useDeleteSurveyMutation, useSurveysQuery } from "../../../api/admin/query";
 import { Button, EmptyState, ErrorState, LoadingState, SurveyStatusBadge } from "../../../components";
 import "./css/SurveyListPage.css";
 
@@ -15,6 +15,7 @@ type Notice = Readonly<{
 
 export function SurveyListPage() {
   const surveysQuery = useSurveysQuery();
+  const sessionQuery = useAdminSessionQuery();
   const archiveSurveyMutation = useArchiveSurveyMutation();
   const deleteSurveyMutation = useDeleteSurveyMutation();
   const [listView, setListView] = useState<SurveyListView>("active");
@@ -76,11 +77,13 @@ export function SurveyListPage() {
           <p className="tg-survey-list-page__eyebrow">관리자 대시보드</p>
           <h1 id="survey-list-title">설문 목록</h1>
         </div>
-        <Link to="/admin/surveys/new">
-          <Button variant="primary" icon={<Plus size={16} aria-hidden="true" />}>
-            새 설문
-          </Button>
-        </Link>
+        {sessionQuery.data?.admin ? (
+          <Link to="/admin/surveys/new">
+            <Button variant="primary" icon={<Plus size={16} aria-hidden="true" />}>
+              새 설문
+            </Button>
+          </Link>
+        ) : null}
       </header>
 
       {surveysQuery.isPending ? <LoadingState label="설문 목록을 불러오는 중" /> : null}
@@ -166,6 +169,12 @@ export function SurveyListPage() {
                   <Link to={`/admin/surveys/${survey.id}/dashboard`} className="tg-survey-list-page__survey-link">
                     <strong>{survey.title}</strong>
                     <small>{survey.description ?? "설명 없음"}</small>
+                    <span className="tg-survey-list-page__access">
+                      <span className={`tg-survey-list-page__access-badge tg-survey-list-page__access-badge--${survey.accessRole}`}>
+                        {survey.accessRole === "owner" ? "내 설문" : "공유받음"}
+                      </span>
+                      <span className="tg-survey-list-page__access-badge">{getSurveyAccessRoleLabel(survey.accessRole)}</span>
+                    </span>
                   </Link>
                 </span>
                 <span role="cell">
@@ -177,15 +186,26 @@ export function SurveyListPage() {
                 <span role="cell">v{survey.versionNumber}</span>
                 <span role="cell">{formatDate(survey.updatedAt)}</span>
                 <span role="cell" className="tg-survey-list-page__actions">
-                  <Link
-                    to={`/admin/surveys/${survey.id}/builder`}
-                    className="tg-survey-list-page__edit-link"
-                    aria-label={`${survey.title} 수정`}
-                  >
-                    <PencilLine size={15} aria-hidden="true" />
-                    <span>수정</span>
-                  </Link>
-                  {survey.status === "closed" ? (
+                  {canEditSurvey(survey.accessRole) ? (
+                    <Link
+                      to={`/admin/surveys/${survey.id}/builder`}
+                      className="tg-survey-list-page__edit-link"
+                      aria-label={`${survey.title} 수정`}
+                    >
+                      <PencilLine size={15} aria-hidden="true" />
+                      <span>수정</span>
+                    </Link>
+                  ) : (
+                    <Link
+                      to={`/admin/surveys/${survey.id}/analysis`}
+                      className="tg-survey-list-page__edit-link"
+                      aria-label={`${survey.title} 분석 보기`}
+                    >
+                      <BarChart3 size={15} aria-hidden="true" />
+                      <span>분석</span>
+                    </Link>
+                  )}
+                  {canManageSurvey(survey.accessRole) && survey.status === "closed" ? (
                     <Button
                       className="tg-survey-list-page__action-button"
                       variant="secondary"
@@ -197,17 +217,19 @@ export function SurveyListPage() {
                       {isArchivePending ? "보관 중" : "보관"}
                     </Button>
                   ) : null}
-                  <Button
-                    className="tg-survey-list-page__action-button"
-                    variant="danger"
-                    icon={<Trash2 size={15} aria-hidden="true" />}
-                    aria-label={`${survey.title} 삭제`}
-                    disabled={!canDeleteSurvey(survey) || isDeletePending}
-                    title={canDeleteSurvey(survey) ? undefined : "초안, 종료, 보관 상태의 설문만 삭제할 수 있습니다."}
-                    onClick={() => void handleDeleteSurvey(survey)}
-                  >
-                    {isDeletePending ? "삭제 중" : "삭제"}
-                  </Button>
+                  {canManageSurvey(survey.accessRole) ? (
+                    <Button
+                      className="tg-survey-list-page__action-button"
+                      variant="danger"
+                      icon={<Trash2 size={15} aria-hidden="true" />}
+                      aria-label={`${survey.title} 삭제`}
+                      disabled={!canDeleteSurvey(survey) || isDeletePending}
+                      title={canDeleteSurvey(survey) ? undefined : "초안, 종료, 보관 상태의 설문만 삭제할 수 있습니다."}
+                      onClick={() => void handleDeleteSurvey(survey)}
+                    >
+                      {isDeletePending ? "삭제 중" : "삭제"}
+                    </Button>
+                  ) : null}
                 </span>
               </div>
             );

@@ -8,6 +8,7 @@ import type {
   RawQuestion,
   RawSection,
   RawSurvey,
+  RawSurveyCollaborator,
   RawUpdateQuestionPayload,
   RawUpdateSurveyPayload,
 } from "../service/gateway/rawTypes";
@@ -65,12 +66,24 @@ const rawActiveAdminMember: RawAdminMember = {
   updated_at: "2026-05-28T02:00:00.000Z",
 };
 
+const rawCollaborator: RawSurveyCollaborator = {
+  id: "collaborator-1",
+  survey_id: "survey-1",
+  email: "viewer@example.com",
+  role: "viewer",
+  invited_by: "user-1",
+  created_at: "2026-05-28T00:00:00.000Z",
+  updated_at: "2026-05-28T00:00:00.000Z",
+  revoked_at: null,
+};
+
 describe("GatewayBackedAdminApiController question updates", () => {
   it("returns inactive own admin member as a pending admin request in the session state", async () => {
     const controller = new GatewayBackedAdminApiController(
       {
         getCurrentAuthUser: vi.fn(async () => ({ id: "user-pending", email: "PENDING@example.com" })),
         getOwnAdminMember: vi.fn(async () => rawPendingAdminMember),
+        hasAccessibleSurveys: vi.fn(async () => false),
       } as unknown as AdminApiGateway,
       {} as AdminStorageGateway,
     );
@@ -83,6 +96,80 @@ describe("GatewayBackedAdminApiController question updates", () => {
         email: "pending@example.com",
         isActive: false,
       },
+    });
+  });
+
+  it("allows a signed-in user with only survey access to enter the admin shell", async () => {
+    const controller = new GatewayBackedAdminApiController(
+      {
+        getCurrentAuthUser: vi.fn(async () => ({ id: "user-shared", email: "viewer@example.com" })),
+        getOwnAdminMember: vi.fn(async () => null),
+        hasAccessibleSurveys: vi.fn(async () => true),
+      } as unknown as AdminApiGateway,
+      {} as AdminStorageGateway,
+    );
+
+    await expect(controller.getAdminSessionState()).resolves.toMatchObject({
+      isAuthenticated: true,
+      email: "viewer@example.com",
+      hasSurveyAccess: true,
+      admin: undefined,
+    });
+  });
+
+  it("maps collaborator invite, role update, and revoke commands through the gateway boundary", async () => {
+    const createSurveyCollaborator = vi.fn(async (): Promise<RawSurveyCollaborator> => rawCollaborator);
+    const updateSurveyCollaborator = vi.fn(async (args: { payload: { role?: string; revoked_at?: string | null } }): Promise<RawSurveyCollaborator> => ({
+      ...rawCollaborator,
+      role: args.payload.role ?? rawCollaborator.role,
+      revoked_at: args.payload.revoked_at ?? rawCollaborator.revoked_at,
+    }));
+    const controller = new GatewayBackedAdminApiController(
+      {
+        getCurrentAuthUser: vi.fn(async () => ({ id: "user-1", email: "owner@example.com" })),
+        createSurveyCollaborator,
+        updateSurveyCollaborator,
+      } as unknown as AdminApiGateway,
+      {} as AdminStorageGateway,
+    );
+
+    await expect(
+      controller.inviteSurveyCollaborator({
+        surveyId: "survey-1",
+        email: " VIEWER@example.com ",
+        role: "viewer",
+      }),
+    ).resolves.toMatchObject({
+      email: "viewer@example.com",
+      role: "viewer",
+    });
+    await expect(
+      controller.updateSurveyCollaboratorRole({
+        collaboratorId: "collaborator-1",
+        surveyId: "survey-1",
+        role: "editor",
+      }),
+    ).resolves.toMatchObject({ role: "editor" });
+    await expect(
+      controller.revokeSurveyCollaborator({
+        collaboratorId: "collaborator-1",
+        surveyId: "survey-1",
+      }),
+    ).resolves.toMatchObject({ id: "collaborator-1" });
+
+    expect(createSurveyCollaborator).toHaveBeenCalledWith({
+      survey_id: "survey-1",
+      email: "viewer@example.com",
+      role: "viewer",
+      invited_by: "user-1",
+    });
+    expect(updateSurveyCollaborator).toHaveBeenCalledWith({
+      collaboratorId: "collaborator-1",
+      payload: { role: "editor" },
+    });
+    expect(updateSurveyCollaborator).toHaveBeenLastCalledWith({
+      collaboratorId: "collaborator-1",
+      payload: { revoked_at: expect.any(String) },
     });
   });
 
@@ -302,13 +389,14 @@ describe("GatewayBackedAdminApiController question set import", () => {
 
     const preview = await controller.previewQuestionSetImport({
       surveyId: "survey-1",
-      templateId: "dorm_regular_25_2",
+      templateId: "handong-dom-survey-2026-1",
     });
 
-    expect(preview.totalSectionCount).toBe(8);
-    expect(preview.totalQuestionCount).toBe(195);
-    expect(preview.importableSectionCount).toBe(7);
-    expect(preview.importableQuestionCount).toBe(194);
+    expect(preview.title).toBe("2026년도 1학기 생활관 정기 설문조사 질문 목록");
+    expect(preview.totalSectionCount).toBe(7);
+    expect(preview.totalQuestionCount).toBe(207);
+    expect(preview.importableSectionCount).toBe(6);
+    expect(preview.importableQuestionCount).toBe(206);
     expect(preview.skippedQuestionCount).toBe(1);
     expect(preview.sections.find((section) => section.sectionKey === "dorm_25_2_profile")?.isExisting).toBe(true);
     expect(preview.questions.find((question) => question.questionKey === "dorm_25_2_q001")?.isExisting).toBe(true);
@@ -366,30 +454,31 @@ describe("GatewayBackedAdminApiController question set import", () => {
 
     const result = await controller.importQuestionSet({
       surveyId: "survey-1",
-      templateId: "dorm_regular_25_2",
+      templateId: "handong-dom-survey-2026-1",
       conflictMode: "append_skip_existing_keys",
     });
 
     expect(createSections).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ section_key: "dorm_25_2_facilities" })]));
-    expect(createSections.mock.calls[0]?.[0]).toHaveLength(7);
-    expect(createQuestions.mock.calls[0]?.[0]).toHaveLength(194);
+    expect(createSections.mock.calls[0]?.[0]).toHaveLength(6);
+    expect(createQuestions.mock.calls[0]?.[0]).toHaveLength(206);
     expect(createQuestions.mock.calls[0]?.[0]).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ question_key: "dorm_25_2_q001" })]),
     );
     expect(createQuestions.mock.calls[0]?.[0]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          question_key: "dorm_25_2_q007",
+          question_key: "question_mpqzy65n",
+          question_type: "participant_image_tag",
           config: expect.objectContaining({
-            importSource: "dorm_regular_25_2",
-            sourceNumber: 7,
-            displayGroup: "다음 자치회 사업에 대한 만족도는 어떠합니까? (학생 복지 부문)",
+            importSource: "handong-dom-survey-2026-1",
+            sourceNumber: 195,
+            displayGroup: "'화장실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
           }),
         }),
       ]),
     );
-    expect(result.sectionsCreated).toBe(7);
-    expect(result.questionsCreated).toBe(194);
+    expect(result.sectionsCreated).toBe(6);
+    expect(result.questionsCreated).toBe(206);
     expect(result.questionsSkipped).toBe(1);
   });
 });

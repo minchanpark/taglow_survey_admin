@@ -10,6 +10,7 @@ import type {
   RawAdminMember,
   RawBorichResult,
   RawCreateAssetPayload,
+  RawCreateSurveyCollaboratorPayload,
   RawCreateQuestionPayload,
   RawCreateSectionPayload,
   RawCreateSurveyPayload,
@@ -26,9 +27,11 @@ import type {
   RawSectionSummary,
   RawSurvey,
   RawSurveyAsset,
+  RawSurveyCollaborator,
   RawTextAnswer,
   RawTextGroup,
   RawUpdateAssetPayload,
+  RawUpdateSurveyCollaboratorPayload,
   RawUpdateQuestionPayload,
   RawUpdateSectionPayload,
   RawUpdateSurveyPayload,
@@ -107,6 +110,9 @@ const RPC = {
   imageTagAnswers: "get_image_tag_answers",
   textGroups: "get_text_groups",
   textAnswers: "get_text_answers",
+  hasAccessibleSurveys: "has_accessible_surveys",
+  listAccessibleSurveys: "list_accessible_surveys",
+  getAccessibleSurvey: "get_accessible_survey",
 } as const;
 
 const deletableSurveyStatuses = ["draft", "closed", "archived"] as const;
@@ -237,22 +243,13 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
   }
 
   async listSurveys(): Promise<RawSurvey[]> {
-    const user = await this.requireCurrentAuthUser();
-    return this.many<RawSurvey>(
-      this.supabase
-        .from("surveys")
-        .select("*")
-        .eq("created_by", user.id)
-        .order("updated_at", { ascending: false }),
-    );
+    await this.requireCurrentAuthUser();
+    return this.many<RawSurvey>(this.supabase.rpc(RPC.listAccessibleSurveys));
   }
 
   async getSurvey(surveyId: string): Promise<RawSurvey> {
-    const user = await this.requireCurrentAuthUser();
-    return this.one<RawSurvey>(
-      this.supabase.from("surveys").select("*").eq("id", surveyId).eq("created_by", user.id).single(),
-      "SURVEY_NOT_FOUND",
-    );
+    await this.requireCurrentAuthUser();
+    return this.one<RawSurvey>(this.supabase.rpc(RPC.getAccessibleSurvey, { p_survey_id: surveyId }), "SURVEY_NOT_FOUND");
   }
 
   async createSurvey(payload: RawCreateSurveyPayload): Promise<RawSurvey> {
@@ -298,6 +295,12 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
 
   deleteDraftSurvey(surveyId: string): Promise<void> {
     return this.deleteSurvey(surveyId);
+  }
+
+  async hasAccessibleSurveys(): Promise<boolean> {
+    const { data, error } = await this.supabase.rpc(RPC.hasAccessibleSurveys);
+    if (error) throw normalizeAdminApiError(error);
+    return Boolean(data);
   }
 
   listSections(surveyId: string): Promise<RawSection[]> {
@@ -387,6 +390,27 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
 
   async createNextSurveyVersion(surveyId: string): Promise<RawSurvey> {
     return this.one<RawSurvey>(this.supabase.rpc(RPC.createNextSurveyVersion, { p_survey_id: surveyId }));
+  }
+
+  listSurveyCollaborators(surveyId: string): Promise<RawSurveyCollaborator[]> {
+    return this.many<RawSurveyCollaborator>(
+      this.supabase
+        .from("survey_collaborators")
+        .select("*")
+        .eq("survey_id", surveyId)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false }),
+    );
+  }
+
+  async createSurveyCollaborator(payload: RawCreateSurveyCollaboratorPayload): Promise<RawSurveyCollaborator> {
+    return this.one<RawSurveyCollaborator>(this.supabase.from("survey_collaborators").insert(payload).select("*").single());
+  }
+
+  updateSurveyCollaborator(args: { collaboratorId: string; payload: RawUpdateSurveyCollaboratorPayload }): Promise<RawSurveyCollaborator> {
+    return this.one<RawSurveyCollaborator>(
+      this.supabase.from("survey_collaborators").update(args.payload).eq("id", args.collaboratorId).select("*").single(),
+    );
   }
 
   async getFilterOptions(surveyId: string): Promise<RawFilterOptions> {

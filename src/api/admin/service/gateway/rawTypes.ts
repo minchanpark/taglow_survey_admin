@@ -32,6 +32,18 @@ export type RawSurvey = Readonly<{
   closed_at: string | null;
   created_at: string;
   updated_at: string;
+  access_role?: string | null;
+}>;
+
+export type RawSurveyCollaborator = Readonly<{
+  id: string;
+  survey_id: string;
+  email: string;
+  role: string;
+  invited_by: string | null;
+  created_at: string;
+  updated_at: string;
+  revoked_at: string | null;
 }>;
 
 export type RawSection = Readonly<{
@@ -88,6 +100,9 @@ export type RawInsertSurveyPayload = RawCreateSurveyPayload & Pick<RawSurvey, "c
 export type RawUpdateSurveyPayload = Partial<
   Pick<RawSurvey, "title" | "description" | "status" | "public_slug" | "public_code" | "settings" | "published_at" | "closed_at">
 >;
+
+export type RawCreateSurveyCollaboratorPayload = Pick<RawSurveyCollaborator, "survey_id" | "email" | "role" | "invited_by">;
+export type RawUpdateSurveyCollaboratorPayload = Partial<Pick<RawSurveyCollaborator, "role" | "revoked_at">>;
 
 export type RawCreateSectionPayload = Pick<
   RawSection,

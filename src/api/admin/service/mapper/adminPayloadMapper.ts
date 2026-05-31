@@ -22,6 +22,9 @@ import {
   type Survey,
   type SurveyAsset,
   type SurveyAssetType,
+  type SurveyAccessRole,
+  type SurveyCollaborator,
+  type SurveyCollaboratorRole,
   type SurveySection,
   type SurveyStatus,
   type TextAnswer,
@@ -44,6 +47,7 @@ import type {
   RawSectionSummary,
   RawSurvey,
   RawSurveyAsset,
+  RawSurveyCollaborator,
   RawTextAnswer,
   RawTextGroup,
 } from "../gateway/rawTypes";
@@ -79,6 +83,20 @@ export class AdminPayloadMapper {
       closedAt: row.closed_at ?? undefined,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      accessRole: normalizeSurveyAccessRole(row.access_role),
+    };
+  }
+
+  toSurveyCollaborator(row: RawSurveyCollaborator): SurveyCollaborator {
+    return {
+      id: row.id,
+      surveyId: row.survey_id,
+      email: row.email,
+      role: normalizeSurveyCollaboratorRole(row.role),
+      invitedBy: row.invited_by ?? undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      revokedAt: row.revoked_at ?? undefined,
     };
   }
 
@@ -457,6 +475,15 @@ function normalizeAdminRole(value: string): AdminRole {
 function normalizeSurveyStatus(value: string): SurveyStatus {
   if (value === "draft" || value === "published" || value === "closed" || value === "archived") return value;
   return "draft";
+}
+
+function normalizeSurveyAccessRole(value: string | null | undefined): SurveyAccessRole {
+  if (value === "editor" || value === "viewer") return value;
+  return "owner";
+}
+
+function normalizeSurveyCollaboratorRole(value: string): SurveyCollaboratorRole {
+  return value === "editor" ? "editor" : "viewer";
 }
 
 function normalizeSectionType(value: string): SectionType {

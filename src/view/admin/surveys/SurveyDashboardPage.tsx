@@ -1,6 +1,6 @@
-import { Eye, PencilLine, Settings } from "lucide-react";
+import { BarChart3, Eye, PencilLine, Settings } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { getSurveyPublicPath } from "../../../api/admin/model";
+import { canEditSurvey, canManageSurvey, getSurveyAccessRoleLabel, getSurveyPublicPath } from "../../../api/admin/model";
 import { useSurveyDetailQuery } from "../../../api/admin/query";
 import { EmptyState, ErrorState, LoadingState, SurveyStatusBadge } from "../../../components";
 import "./css/SurveyDashboardPage.css";
@@ -8,6 +8,7 @@ import "./css/SurveyDashboardPage.css";
 export function SurveyDashboardPage() {
   const { surveyId = "" } = useParams();
   const surveyQuery = useSurveyDetailQuery(surveyId);
+  const survey = surveyQuery.data?.survey;
   const publicPath = surveyQuery.data ? getSurveyPublicPath(surveyQuery.data.survey) : undefined;
 
   return (
@@ -25,21 +26,32 @@ export function SurveyDashboardPage() {
             </div>
             <div className="tg-survey-dashboard-page__header-actions">
               <SurveyStatusBadge status={surveyQuery.data.survey.status} />
-              <Link
-                to={`/admin/surveys/${surveyId}/builder`}
-                className="tg-survey-dashboard-page__action tg-survey-dashboard-page__action--primary"
-              >
-                <PencilLine size={15} aria-hidden="true" />
-                <span>빌더에서 수정</span>
-              </Link>
+              <span className={`tg-survey-dashboard-page__access tg-survey-dashboard-page__access--${survey?.accessRole ?? "owner"}`}>
+                {getSurveyAccessRoleLabel(survey?.accessRole ?? "owner")}
+              </span>
+              {survey && canEditSurvey(survey.accessRole) ? (
+                <Link
+                  to={`/admin/surveys/${surveyId}/builder`}
+                  className="tg-survey-dashboard-page__action tg-survey-dashboard-page__action--primary"
+                >
+                  <PencilLine size={15} aria-hidden="true" />
+                  <span>빌더에서 수정</span>
+                </Link>
+              ) : null}
               <Link to={`/admin/surveys/${surveyId}/preview`} className="tg-survey-dashboard-page__action">
                 <Eye size={15} aria-hidden="true" />
                 <span>미리보기</span>
               </Link>
-              <Link to={`/admin/surveys/${surveyId}/settings`} className="tg-survey-dashboard-page__action">
-                <Settings size={15} aria-hidden="true" />
-                <span>설정</span>
+              <Link to={`/admin/surveys/${surveyId}/analysis`} className="tg-survey-dashboard-page__action">
+                <BarChart3 size={15} aria-hidden="true" />
+                <span>분석 보기</span>
               </Link>
+              {survey && canManageSurvey(survey.accessRole) ? (
+                <Link to={`/admin/surveys/${surveyId}/settings`} className="tg-survey-dashboard-page__action">
+                  <Settings size={15} aria-hidden="true" />
+                  <span>설정</span>
+                </Link>
+              ) : null}
             </div>
           </header>
           {publicPath ? (
