@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import type { EnvConfig } from "../../../utils/envConfig";
+import { createSupabaseBrowserClient, type SupabaseBrowserClient } from "../../supabaseClient";
 import type { AdminApiController } from "../controller/adminApiController";
 import { GatewayBackedAdminApiController } from "../controller/gatewayBackedAdminApiController";
 import { HttpAdminApiGateway } from "../service/gateway/httpAdminApiGateway";
@@ -7,7 +7,7 @@ import { SupabaseAdminApiGateway } from "../service/gateway/supabaseAdminApiGate
 import { SupabaseAdminStorageGateway } from "../service/gateway/supabaseAdminStorageGateway";
 import { AdminPayloadMapper } from "../service/mapper/adminPayloadMapper";
 
-export function createAdminApiRuntime(env: EnvConfig): AdminApiController {
+export function createAdminApiRuntime(env: EnvConfig, supabaseClient?: SupabaseBrowserClient): AdminApiController {
   if (env.apiMode === "http") {
     if (!env.apiBaseUrl) {
       throw new Error("VITE_ADMIN_API_BASE_URL is required when VITE_ADMIN_API_MODE=http.");
@@ -17,11 +17,10 @@ export function createAdminApiRuntime(env: EnvConfig): AdminApiController {
     return new GatewayBackedAdminApiController(gateway, createUnsupportedHttpStorageGateway(), new AdminPayloadMapper());
   }
 
-  if (!env.supabaseUrl || !env.supabaseAnonKey) {
+  const supabase = supabaseClient ?? createSupabaseBrowserClient(env);
+  if (!supabase) {
     throw new Error("VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are required.");
   }
-
-  const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey);
   const gateway = new SupabaseAdminApiGateway(supabase, env.storageBucket);
   const storageGateway = new SupabaseAdminStorageGateway({
     supabase,
