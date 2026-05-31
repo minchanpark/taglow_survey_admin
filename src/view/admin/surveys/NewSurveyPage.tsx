@@ -106,8 +106,8 @@ export function NewSurveyPage() {
           <label className="tg-new-survey-page__check">
             <input type="checkbox" {...form.register("collectBasicProfile")} />
             <span>
-              <strong>기본 정보 필터 사용</strong>
-              <small>분석 단계에서 성별, 학기, 학부, RC, 생활관 등 Global Filter Bar를 사용할 준비를 합니다.</small>
+              <strong>기본 정보로 응답 나눠보기</strong>
+              <small>분석 화면에서 성별, 학기, 학부, RC, 생활관 등으로 응답을 나눠 볼 수 있게 합니다.</small>
             </span>
           </label>
         </fieldset>

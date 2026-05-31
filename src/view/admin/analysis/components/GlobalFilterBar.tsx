@@ -15,7 +15,7 @@ export function GlobalFilterBar(props: {
   onReset: () => void;
 }) {
   return (
-    <section className="tg-analysis-filter" aria-label="Global Filter Bar">
+    <section className="tg-analysis-filter" aria-label="응답 조건 선택">
       <div className="tg-analysis-filter__fields">
         {props.fields.length ? (
           props.fields.map((field) => {
@@ -59,20 +59,24 @@ export function GlobalFilterBar(props: {
 
 function ActiveFilterSummary(props: { filters: AnalysisFilters; totalResponses?: number; filteredResponses?: number; lowSampleThreshold?: number }) {
   const active = Object.entries(props.filters).filter(([, value]) => typeof value === "string" && value.trim());
-  const responseText =
-    typeof props.totalResponses === "number" && typeof props.filteredResponses === "number"
-      ? `응답 ${props.filteredResponses}/${props.totalResponses}`
-      : "응답 집계 중";
+  const responseText = formatResponseSummary(active.length > 0, props.totalResponses, props.filteredResponses);
   const isLowSample =
     typeof props.filteredResponses === "number" &&
     props.filteredResponses > 0 &&
     props.filteredResponses < (props.lowSampleThreshold ?? 10);
   return (
     <span className="tg-analysis-filter__summary">
-      {active.length ? `필터 ${active.length}개 적용` : "전체 응답 기준"}
+      {active.length ? `조건 ${active.length}개 적용` : "모든 응답 기준"}
       {" · "}
       {responseText}
       {isLowSample ? <strong>해석 주의</strong> : null}
     </span>
   );
+}
+
+function formatResponseSummary(isFiltered: boolean, totalResponses: number | undefined, filteredResponses: number | undefined): string {
+  if (typeof totalResponses !== "number" || typeof filteredResponses !== "number") {
+    return "응답을 세는 중";
+  }
+  return isFiltered ? `조건 적용 ${filteredResponses}명 / 전체 ${totalResponses}명` : `제출 완료 ${totalResponses}명`;
 }

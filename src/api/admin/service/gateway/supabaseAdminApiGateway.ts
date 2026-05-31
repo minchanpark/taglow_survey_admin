@@ -104,6 +104,7 @@ const RPC = {
   borichSummary: "get_borich_summary",
   locusSummary: "get_locus_summary",
   heatmapPoints: "get_heatmap_points",
+  imageTagAnswers: "get_image_tag_answers",
   textGroups: "get_text_groups",
   textAnswers: "get_text_answers",
 } as const;
@@ -493,6 +494,21 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
 
   async listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawImageTagAnswer[]> {
     try {
+      const rows = await this.many<RawImageTagAnswer>(
+        this.supabase.rpc(RPC.imageTagAnswers, {
+          p_survey_id: args.surveyId,
+          p_filters: args.filters,
+        }),
+        "RPC_FAILED",
+      );
+      return Promise.all(rows.map((row) => this.withImageTagAnswerSignedUrl(row)));
+    } catch (error) {
+      if (!isMissingRpcError(error, RPC.imageTagAnswers)) {
+        throw error;
+      }
+    }
+
+    try {
       return await this.listImageTagAnswersWithResponseRelation(args, "responses!answers_response_same_survey_fk!inner");
     } catch (error) {
       if (!isMissingRelationshipError(error)) {
@@ -717,6 +733,12 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     };
   }
 
+  private async withImageTagAnswerSignedUrl(row: RawImageTagAnswer): Promise<RawImageTagAnswer> {
+    if (row.image_signed_url || !row.image_storage_bucket || !row.image_storage_path) return row;
+    const signedUrl = await this.createSignedUrl(row.image_storage_bucket, row.image_storage_path);
+    return signedUrl ? { ...row, image_signed_url: signedUrl } : row;
+  }
+
   private async createSignedUrl(bucket: string, path: string): Promise<string | undefined> {
     const storage = this.supabase.storage;
     if (!storage) return undefined;
@@ -774,7 +796,7 @@ function buildProfileOptionsByDimension(questions: readonly RawQuestion[]): Reco
 
   for (const question of sortedQuestions) {
     const config = getRelationRecord(question.config);
-    const dimension = normalizeProfileFieldKey(getString(config?.profileField));
+    const dimension = normalizeProfileFieldKey(getString(config?.profileField) ?? getString(config?.profile_field));
     if (!dimension || byDimension[dimension]) continue;
     const rawOptions = Array.isArray(config?.options) ? config.options : [];
     const options: ProfileOptionRow[] = [];
@@ -843,7 +865,16 @@ function buildProfileDistribution(
         percentage: percentage(n, total),
         isUnclassified: false,
       }));
-    return unclassifiedCount > 0 ? [...actualRows, rows[rows.length - 1]] : actualRows;
+    const unclassifiedRow = unclassifiedCount > 0
+      ? [{
+          key: "기타/미분류",
+          label: "기타/미분류",
+          n: unclassifiedCount,
+          percentage: percentage(unclassifiedCount, total),
+          isUnclassified: true,
+        }]
+      : [];
+    return [...actualRows, ...unclassifiedRow];
   }
 
   return rows;
@@ -875,14 +906,21 @@ function buildLowSampleGroups(
 
 function matchesResponseFilters(response: RawAnalysisResponseRow, filters: JsonRecord): boolean {
   return (
-    matchesFilter(getResponseDimensionValue(response, "gender"), filters.gender) &&
-    matchesFilter(getResponseDimensionValue(response, "semester_group"), filters.semester_group) &&
-    matchesFilter(getResponseDimensionValue(response, "department"), filters.department) &&
-    matchesFilter(getResponseDimensionValue(response, "rc"), filters.rc) &&
-    matchesFilter(getResponseDimensionValue(response, "dormitory"), filters.dormitory) &&
-    matchesFilter(getResponseDimensionValue(response, "room_type"), filters.room_type) &&
-    matchesFilter(getResponseDimensionValue(response, "dorm_experience"), filters.dorm_experience)
+    matchesFilter(getResponseDimensionValue(response, "gender"), getFilterValue(filters, "gender")) &&
+    matchesFilter(getResponseDimensionValue(response, "semester_group"), getFilterValue(filters, "semester_group")) &&
+    matchesFilter(getResponseDimensionValue(response, "department"), getFilterValue(filters, "department")) &&
+    matchesFilter(getResponseDimensionValue(response, "rc"), getFilterValue(filters, "rc")) &&
+    matchesFilter(getResponseDimensionValue(response, "dormitory"), getFilterValue(filters, "dormitory")) &&
+    matchesFilter(getResponseDimensionValue(response, "room_type"), getFilterValue(filters, "room_type")) &&
+    matchesFilter(getResponseDimensionValue(response, "dorm_experience"), getFilterValue(filters, "dorm_experience"))
   );
+}
+
+function getFilterValue(filters: JsonRecord, dimension: string): unknown {
+  if (dimension === "semester_group") return filters.semester_group ?? filters.semesterGroup;
+  if (dimension === "room_type") return filters.room_type ?? filters.roomType;
+  if (dimension === "dorm_experience") return filters.dorm_experience ?? filters.dormExperience;
+  return filters[dimension];
 }
 
 function matchesFilter(value: unknown, filter: unknown): boolean {

@@ -177,7 +177,7 @@ export class AdminPayloadMapper {
       topicKey: row.topic_key ?? undefined,
       metricType: normalizeMetricType(row.metric_type),
       averageScore: row.avg_score ?? row.average_score ?? null,
-      standardDeviation: row.stddev_score ?? row.standard_deviation ?? null,
+      standardDeviation: row.stddev_score ?? row.standard_deviation ?? (Number(row.n ?? 0) === 1 ? 0 : null),
       n: row.n,
     };
   }

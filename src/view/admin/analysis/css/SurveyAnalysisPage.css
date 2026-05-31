@@ -46,6 +46,11 @@
   background: var(--tg-bg-panel);
 }
 
+.tg-analysis-page__metric--warning {
+  border-color: var(--tg-warning);
+  background: var(--tg-warning-soft);
+}
+
 .tg-analysis-page__metric span {
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-caption);
@@ -58,6 +63,12 @@
   font-weight: var(--tg-weight-semibold);
   line-height: var(--tg-line-section-title);
   font-variant-numeric: tabular-nums;
+}
+
+.tg-analysis-page__metric small {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
 }
 
 .tg-analysis-page__sections {

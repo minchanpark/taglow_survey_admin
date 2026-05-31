@@ -353,6 +353,7 @@ describe("SurveyBuilderPage", () => {
       "단답형",
       "주관식",
       "선택후 주관식",
+      "주의 확인",
       "이미지 태깅",
       "태깅 건의",
     ]);
@@ -435,6 +436,46 @@ describe("SurveyBuilderPage", () => {
               { value: "inquiry", labelKo: "문의" },
               { value: "other", labelKo: "기타" },
             ],
+          },
+        }),
+      );
+    });
+  });
+
+  it("creates attention-check questions as scale-based exclusion checks", async () => {
+    const user = userEvent.setup();
+    const createQuestion = vi.fn<AdminApiController["createQuestion"]>(async (command: CreateQuestionCommand) => ({
+      ...question,
+      id: "question-attention-check",
+      questionKey: command.questionKey,
+      title: command.title,
+      questionType: command.questionType,
+      orderIndex: command.orderIndex,
+      metricType: command.metricType ?? "none",
+      config: command.config ?? {},
+    }));
+    renderBuilder({ createQuestion });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "침대 상태에 만족하시나요? 아래에 새 질문 추가" }));
+    const createEditor = screen.getByRole("complementary", { name: "질문 추가" });
+
+    await user.type(within(createEditor).getByLabelText("새 질문"), "3을 선택해주세요.");
+    await user.selectOptions(within(createEditor).getByLabelText("질문 유형"), "attention_check");
+    await user.click(within(createEditor).getByRole("button", { name: "질문 추가" }));
+
+    await waitFor(() => {
+      expect(createQuestion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          questionType: "attention_check",
+          title: { ko: "3을 선택해주세요." },
+          metricType: "none",
+          config: {
+            scaleMin: 1,
+            scaleMax: 5,
+            labelsKo: ["1점", "2점", "3점", "4점", "5점"],
+            expectedValue: "3",
+            excludeIfFailed: true,
           },
         }),
       );

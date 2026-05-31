@@ -55,7 +55,11 @@ export type ParticipantImageTagQuestionConfig = Readonly<{
 }>;
 
 export type AttentionCheckQuestionConfig = Readonly<{
-  expectedValue: string;
+  scaleMin: number;
+  scaleMax: number;
+  labelsKo: string[];
+  labelsEn?: string[];
+  expectedValue: string | number;
   excludeIfFailed: boolean;
 }>;
 

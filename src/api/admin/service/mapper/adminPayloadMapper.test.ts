@@ -65,6 +65,52 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
     });
   });
 
+  it("maps question scale summaries for satisfaction and importance rows", () => {
+    expect(
+      mapper.toQuestionSummary({
+        question_id: "question-importance",
+        question_title: "세탁실 중요도",
+        section_id: "section-1",
+        section_title: "생활관 시설",
+        topic_key: "laundry",
+        metric_type: "importance",
+        avg_score: 4.6,
+        stddev_score: 0.7,
+        n: 12,
+      }),
+    ).toEqual({
+      questionId: "question-importance",
+      questionTitle: "세탁실 중요도",
+      sectionId: "section-1",
+      sectionTitle: "생활관 시설",
+      topicKey: "laundry",
+      metricType: "importance",
+      averageScore: 4.6,
+      standardDeviation: 0.7,
+      n: 12,
+    });
+  });
+
+  it("keeps one-response question summaries computable when sample standard deviation is null", () => {
+    expect(
+      mapper.toQuestionSummary({
+        question_id: "question-one-response",
+        question_title: "세탁실 만족도",
+        section_id: "section-1",
+        section_title: "생활관 시설",
+        topic_key: "laundry",
+        metric_type: "satisfaction",
+        avg_score: 4,
+        stddev_score: null,
+        n: 1,
+      }),
+    ).toMatchObject({
+      averageScore: 4,
+      standardDeviation: 0,
+      n: 1,
+    });
+  });
+
   it("maps response summary distribution and low sample groups", () => {
     expect(
       mapper.toResponseSummary({
@@ -147,6 +193,38 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
       gap: 2.1,
       borichScore: 10.08,
       n: 8,
+    });
+  });
+
+  it("maps priority TOP 5 RPC rows", () => {
+    expect(
+      mapper.toPriorityIssue({
+        id: "facilities:restroom",
+        label: "화장실 청결",
+        source: "mixed",
+        topic_key: "facilities",
+        section_title: "생활관 시설",
+        avg_importance: 4.7,
+        avg_satisfaction: 2.4,
+        avg_gap: 2.3,
+        borich_score: 10.81,
+        text_count: 6,
+        tag_count: 3,
+        n: 9,
+      }),
+    ).toEqual({
+      id: "facilities:restroom",
+      label: "화장실 청결",
+      source: "mixed",
+      topicKey: "facilities",
+      sectionTitle: "생활관 시설",
+      averageImportance: 4.7,
+      averageSatisfaction: 2.4,
+      gap: 2.3,
+      borichScore: 10.81,
+      textCount: 6,
+      tagCount: 3,
+      n: 9,
     });
   });
 

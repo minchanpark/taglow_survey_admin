@@ -325,7 +325,7 @@ function QuestionControl(props: {
   answer: PreviewAnswer | undefined;
   onAnswerChange: (answer: PreviewAnswer | undefined) => void;
 }) {
-  if (props.question.questionType === "scale") {
+  if (props.question.questionType === "scale" || props.question.questionType === "attention_check") {
     return <ScaleControl {...props} />;
   }
 
@@ -355,18 +355,6 @@ function QuestionControl(props: {
 
   if (isChoiceTextQuestion(props.question)) {
     return <ChoiceTextControl {...props} options={getChoiceOptions(props.question)} />;
-  }
-
-  if (props.question.questionType === "attention_check") {
-    return (
-      <label className="tg-preview-field">
-        <span>확인 입력</span>
-        <input
-          value={typeof props.answer === "string" ? props.answer : ""}
-          onChange={(event) => props.onAnswerChange(event.target.value || undefined)}
-        />
-      </label>
-    );
   }
 
   return (
@@ -713,7 +701,7 @@ function getPreviewIssues(sections: SurveySection[], questions: Question[], asse
       issues.push({ id: `options-${question.id}`, tone: "danger", label: `${question.questionKey} 선택지가 없습니다.`, questionId: question.id });
     }
 
-    if (question.questionType === "scale" && (!getNumber(config.scaleMin) || !getNumber(config.scaleMax))) {
+    if ((question.questionType === "scale" || question.questionType === "attention_check") && (!getNumber(config.scaleMin) || !getNumber(config.scaleMax))) {
       issues.push({ id: `scale-${question.id}`, tone: "danger", label: `${question.questionKey} 척도 범위가 올바르지 않습니다.`, questionId: question.id });
     }
 
@@ -728,7 +716,7 @@ function getPreviewIssues(sections: SurveySection[], questions: Question[], asse
       issues.push({ id: `participant-tags-${question.id}`, tone: "danger", label: `${question.questionKey} 태깅 카테고리가 없습니다.`, questionId: question.id });
     }
 
-    if (question.questionType === "attention_check" && !getString(config.expectedValue)) {
+    if (question.questionType === "attention_check" && getString(config.expectedValue) === undefined && getNumber(config.expectedValue) === undefined) {
       issues.push({ id: `attention-${question.id}`, tone: "danger", label: `${question.questionKey} expectedValue가 없습니다.`, questionId: question.id });
     }
   }

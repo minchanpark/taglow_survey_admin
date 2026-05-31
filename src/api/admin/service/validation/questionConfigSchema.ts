@@ -34,8 +34,16 @@ export function validateQuestionConfig(question: Question): string[] {
     }
   }
 
-  if (question.questionType === "attention_check" && !config.expectedValue) {
+  if (question.questionType === "attention_check" && config.expectedValue === undefined) {
     issues.push("Attention check questions require expectedValue.");
+  }
+  if (question.questionType === "attention_check") {
+    if (typeof config.scaleMin !== "number" || typeof config.scaleMax !== "number") {
+      issues.push("Attention check questions require scaleMin and scaleMax.");
+    }
+    if (!Array.isArray(config.labelsKo) || config.labelsKo.length === 0) {
+      issues.push("Attention check questions require labelsKo.");
+    }
   }
 
   return issues;

@@ -828,6 +828,7 @@ function isChoiceTextAnswer(value: unknown): value is ChoiceTextAnswer {
 }
 
 function getParticipantQuestionKind(question: Question): "scale" | "single_choice" | "multi_select" | "text" | "short_text" | "choice_text" | Question["questionType"] {
+  if (question.questionType === "attention_check") return "scale";
   if (question.questionType === "profile") {
     const config = toRecord(question.config);
     return getString(config.inputType) === "single_choice" ? "single_choice" : "text";
