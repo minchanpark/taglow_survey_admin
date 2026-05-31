@@ -25,7 +25,7 @@ export function AdminAccessDeniedPage() {
     );
   }
 
-  if (sessionQuery.data?.admin?.isActive) {
+  if (sessionQuery.data?.admin?.isActive || sessionQuery.data?.hasSurveyAccess) {
     return <Navigate to="/admin/surveys" replace />;
   }
 

@@ -17,7 +17,7 @@ export function AdminLoginPage() {
     );
   }
 
-  if (sessionQuery.data?.isAuthenticated && sessionQuery.data.admin?.isActive) {
+  if (sessionQuery.data?.isAuthenticated && (sessionQuery.data.admin?.isActive || sessionQuery.data.hasSurveyAccess)) {
     return <Navigate to="/admin/surveys" replace />;
   }
 

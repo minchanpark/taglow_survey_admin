@@ -8,6 +8,7 @@ import {
   fakePendingAdminMember,
   nonMemberSession,
   pendingAdminSession,
+  sharedSurveySession,
 } from "../../../test/fakeAdminApiController";
 import { renderWithProviders } from "../../../test/renderWithProviders";
 import { AdminAccessDeniedPage } from "./AdminAccessDeniedPage";
@@ -47,6 +48,12 @@ describe("AdminAccessDeniedPage", () => {
 
     expect(await screen.findByRole("heading", { name: "관리자 승인 대기 중입니다." })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "관리자 승인 요청" })).not.toBeInTheDocument();
+  });
+
+  it("redirects shared survey users instead of asking for admin approval", async () => {
+    renderAccessDenied({ getAdminSessionState: async () => sharedSurveySession });
+
+    expect(await screen.findByText("survey route")).toBeInTheDocument();
   });
 
   it("does not request approval for the super-admin seed email", async () => {

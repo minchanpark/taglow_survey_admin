@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { AdminApiController } from "../../../api/admin/controller";
-import { createFakeAdminApiController, unauthenticatedSession } from "../../../test/fakeAdminApiController";
+import { createFakeAdminApiController, sharedSurveySession, unauthenticatedSession } from "../../../test/fakeAdminApiController";
 import { renderWithProviders } from "../../../test/renderWithProviders";
 import { AdminLoginPage } from "./AdminLoginPage";
 
@@ -13,6 +13,7 @@ function renderLogin(overrides: Partial<AdminApiController> = {}) {
       <Routes>
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/access-denied" element={<div>access request route</div>} />
+        <Route path="/admin/surveys" element={<div>survey route</div>} />
       </Routes>
     </MemoryRouter>,
     {
@@ -46,5 +47,13 @@ describe("AdminLoginPage", () => {
     });
 
     expect(await screen.findByText("access request route")).toBeInTheDocument();
+  });
+
+  it("redirects shared survey users to the admin survey list without admin approval", async () => {
+    renderLogin({
+      getAdminSessionState: async () => sharedSurveySession,
+    });
+
+    expect(await screen.findByText("survey route")).toBeInTheDocument();
   });
 });
