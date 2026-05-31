@@ -473,6 +473,7 @@ describe("GatewayBackedAdminApiController question set import", () => {
             importSource: "handong-dom-survey-2026-1",
             sourceNumber: 195,
             displayGroup: "'화장실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+            displayGroupEn: "What is your level of satisfaction with the following aspects of the 'Bathroom'?",
           }),
         }),
       ]),

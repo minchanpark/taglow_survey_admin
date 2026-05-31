@@ -28,6 +28,7 @@ export type QuestionSetQuestionPreview = Readonly<{
   isRequired: boolean;
   isExisting: boolean;
   displayGroup?: string;
+  displayGroupEn?: string;
 }>;
 
 export type QuestionSetImportPreview = Readonly<{
@@ -81,6 +82,7 @@ export type QuestionSetTemplateQuestion = Readonly<{
   validation?: JsonRecord;
   isRequired: boolean;
   displayGroup?: string;
+  displayGroupEn?: string;
 }>;
 
 export type QuestionSetTemplate = Readonly<{

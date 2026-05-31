@@ -647,6 +647,7 @@ function buildQuestionSetImportPreview(
       config: question.config,
       isRequired: question.isRequired,
       displayGroup: question.displayGroup,
+      displayGroupEn: question.displayGroupEn,
       isExisting: existingQuestionKeys.has(question.questionKey),
     })),
   );
@@ -720,6 +721,9 @@ function withQuestionImportMetadata(question: QuestionSetTemplateQuestion, templ
   };
   if (question.displayGroup) {
     config.displayGroup = question.displayGroup;
+  }
+  if (question.displayGroupEn) {
+    config.displayGroupEn = question.displayGroupEn;
   }
   return config;
 }

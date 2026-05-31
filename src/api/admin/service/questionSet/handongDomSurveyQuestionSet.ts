@@ -667,6 +667,7 @@ function toTemplateQuestion(
     validation: {},
     isRequired: true,
     displayGroup,
+    displayGroupEn,
   };
 }
 
@@ -686,6 +687,7 @@ function toExtraTemplateQuestion(
     validation: {},
     isRequired: true,
     displayGroup: source.displayGroup,
+    displayGroupEn: source.displayGroupEn,
   };
 }
 
