@@ -278,6 +278,7 @@ describe("SurveyAnalysisPage", () => {
     renderAnalysis({ listImageTagAnswers });
 
     await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "사진 표시" }));
     await user.selectOptions(screen.getByLabelText("거주 생활관"), "비전관");
 
     await waitFor(() => {

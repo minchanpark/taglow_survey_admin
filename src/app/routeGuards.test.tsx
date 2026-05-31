@@ -58,6 +58,7 @@ describe("RequireAdminShell", () => {
 
     expect(await screen.findByText("survey route")).toBeInTheDocument();
     expect(screen.getByText("viewer@example.com")).toBeInTheDocument();
+    expect(screen.getByText("공유 사용자")).toBeInTheDocument();
   });
 
   it("enables selected-survey navigation when a survey id is in the route", async () => {
@@ -94,5 +95,35 @@ describe("RequireAdminShell", () => {
     expect(await screen.findByText("survey dashboard route")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /빌더/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /설정/ })).not.toBeInTheDocument();
+  });
+
+  it("shows shared users with the shared account label even when the selected survey is editable", async () => {
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/admin/surveys/survey-1/dashboard"]}>
+        <Routes>
+          <Route path="/admin/login" element={<div>login route</div>} />
+          <Route path="/admin/access-denied" element={<div>denied route</div>} />
+          <Route path="/admin" element={<RequireAdminShell />}>
+            <Route path="surveys/:surveyId/dashboard" element={<div>survey dashboard route</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+      {
+        controller: createFakeAdminApiController({
+          getAdminSessionState: async () => sharedSurveySession,
+          getSurveyDetail: async () => ({
+            survey: { ...fakeSurvey, accessRole: "editor" },
+            sections: [],
+            questions: [],
+            assets: [],
+          }),
+        }),
+      },
+    );
+
+    expect(await screen.findByText("survey dashboard route")).toBeInTheDocument();
+    expect(screen.getByText("공유 사용자")).toBeInTheDocument();
+    expect(screen.queryByText("viewer")).not.toBeInTheDocument();
+    expect(screen.queryByText("editor")).not.toBeInTheDocument();
   });
 });

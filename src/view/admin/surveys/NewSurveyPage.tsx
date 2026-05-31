@@ -3,8 +3,8 @@ import { ArrowLeft, FilePlus2, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { useCreateSurveyMutation } from "../../../api/admin/query";
-import { Button, ErrorState, StatusBadge } from "../../../components";
+import { useAdminSessionQuery, useCreateSurveyMutation } from "../../../api/admin/query";
+import { Button, ErrorState, LoadingState, StatusBadge } from "../../../components";
 import "./css/NewSurveyPage.css";
 
 const newSurveySchema = z.object({
@@ -18,6 +18,7 @@ type NewSurveyFormValues = z.infer<typeof newSurveySchema>;
 
 export function NewSurveyPage() {
   const navigate = useNavigate();
+  const sessionQuery = useAdminSessionQuery();
   const createSurveyMutation = useCreateSurveyMutation();
   const form = useForm<NewSurveyFormValues>({
     resolver: zodResolver(newSurveySchema),
@@ -48,6 +49,36 @@ export function NewSurveyPage() {
       },
     );
   });
+
+  if (sessionQuery.isPending) {
+    return (
+      <section className="tg-new-survey-page" aria-labelledby="new-survey-title">
+        <LoadingState label="계정 권한을 확인하는 중" />
+      </section>
+    );
+  }
+
+  if (!sessionQuery.data?.admin?.isActive) {
+    return (
+      <section className="tg-new-survey-page" aria-labelledby="new-survey-title">
+        <header className="tg-new-survey-page__header">
+          <div>
+            <Link to="/admin/surveys" className="tg-new-survey-page__back">
+              <ArrowLeft size={16} aria-hidden="true" />
+              설문 목록
+            </Link>
+            <h1 id="new-survey-title">새 설문</h1>
+          </div>
+        </header>
+        <ErrorState
+          title="설문을 만들 수 없습니다."
+          description="공유받은 설문은 접근 권한에 따라 볼 수 있지만, 새 설문을 만들려면 관리자 승인이 필요합니다."
+          actionLabel="관리자 권한 요청"
+          onAction={() => navigate("/admin/profile")}
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="tg-new-survey-page" aria-labelledby="new-survey-title">

@@ -15,8 +15,9 @@ export type AdminMember = Readonly<{
 }>;
 
 export function getAdminRoleLabel(role: AdminRole): string {
-  if (role === "super_admin") return "super-admin";
-  return role;
+  if (role === "super_admin") return "최고 관리자";
+  if (role === "admin") return "관리자";
+  return "공유 사용자";
 }
 
 export function isAdminAccessRole(role: AdminRole): boolean {

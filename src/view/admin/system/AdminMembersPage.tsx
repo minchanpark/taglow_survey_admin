@@ -46,7 +46,7 @@ export function AdminMembersPage() {
       <section className="tg-admin-members-page" aria-labelledby="admin-members-title">
         <ErrorState
           title="최고 관리자만 접근할 수 있습니다."
-          description="관리자 승인 요청은 super-admin 권한 계정에서만 처리할 수 있습니다."
+          description="관리자 승인 요청은 최고 관리자 계정에서만 처리할 수 있습니다."
         />
       </section>
     );
@@ -93,7 +93,7 @@ export function AdminMembersPage() {
       {pendingMembersQuery.isError ? (
         <ErrorState
           title="승인 요청을 불러오지 못했습니다."
-          description="super-admin 권한과 Supabase 정책을 확인한 뒤 다시 시도해주세요."
+          description="최고 관리자 권한과 Supabase 정책을 확인한 뒤 다시 시도해주세요."
           actionLabel="다시 시도"
           onAction={() => void pendingMembersQuery.refetch()}
         />
@@ -102,7 +102,7 @@ export function AdminMembersPage() {
       {activeMembersQuery.isError ? (
         <ErrorState
           title="활성 권한을 불러오지 못했습니다."
-          description="super-admin 권한과 Supabase 정책을 확인한 뒤 다시 시도해주세요."
+          description="최고 관리자 권한과 Supabase 정책을 확인한 뒤 다시 시도해주세요."
           actionLabel="다시 시도"
           onAction={() => void activeMembersQuery.refetch()}
         />
@@ -213,7 +213,7 @@ export function AdminMembersPage() {
                                 disabled={isMemberActionPending}
                                 onClick={() => void upgradeMember(member)}
                               >
-                                super-admin으로 변경
+                                최고 관리자로 변경
                               </Button>
                             ) : null}
                             {canDelete ? (
@@ -256,7 +256,7 @@ export function AdminMembersPage() {
     setNotice(null);
     try {
       await updateRoleMutation.mutateAsync({ memberId: member.id, role: "super_admin" });
-      setNotice({ tone: "success", message: `${member.email} 계정을 super-admin으로 변경했습니다.` });
+      setNotice({ tone: "success", message: `${member.email} 계정을 최고 관리자로 변경했습니다.` });
     } catch {
       setNotice({ tone: "error", message: `${member.email} 계정 권한을 변경하지 못했습니다.` });
     }

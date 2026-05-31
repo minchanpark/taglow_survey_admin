@@ -23,19 +23,28 @@ describe("handongDomSurveyQuestionSet", () => {
     const questions = new Map(template.sections.flatMap((section) => section.questions.map((question) => [question.sourceNumber, question])));
 
     expect(questions.get(1)?.questionType).toBe("profile");
+    expect(questions.get(1)?.title.en).toBe("Gender");
     expect(questions.get(7)?.questionType).toBe("scale");
     expect(questions.get(7)?.title.ko).toBe("입주 업무 (택배 관리 및 정리, 차량 통제, 끌차 대여)");
+    expect(questions.get(7)?.title.en).toBe("Move-in Services (Package Management and Organization, Vehicle Control, Cart Rental)");
     expect(questions.get(7)?.displayGroup).toBe("다음 자치회 사업에 대한 만족도는 어떠합니까? (학생 복지 부문)");
+    expect(questions.get(7)?.config).toMatchObject({
+      displayGroupEn: "What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section)",
+    });
     expect(questions.get(31)?.questionType).toBe("text");
+    expect(questions.get(31)?.title.en).toBe("If there are any areas for improvement regarding the 'Dorm Union initiatives', please feel free to share.");
     expect(questions.get(51)?.questionType).toBe("attention_check");
     expect(questions.get(51)?.config).toMatchObject({
       scaleMin: 1,
       scaleMax: 5,
+      labelsEn: ["Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied"],
       expectedValue: "4",
       excludeIfFailed: true,
     });
+    expect(questions.get(51)?.title.en).toBe("Please select 'Satisfied'.");
     expect(questions.get(181)?.questionType).toBe("attention_check");
     expect(questions.get(181)?.config).toMatchObject({
+      labelsEn: ["Not important at all", "Not important", "Neutral", "Important", "Very important"],
       expectedValue: "5",
       excludeIfFailed: true,
     });
@@ -43,6 +52,7 @@ describe("handongDomSurveyQuestionSet", () => {
     expect(questions.get(172)?.questionType).toBe("single_choice");
     expect(questions.get(173)?.metricType).toBe("importance");
     expect(questions.get(195)?.questionType).toBe("participant_image_tag");
+    expect(questions.get(195)?.title.en).toBe("If you have any suggestions or inquiries regarding the bathroom, please upload an image and tag the relevant area.");
     expect(questions.get(207)?.title.ko).toBe("글로벌 라운지와 관련하여 건의/문의하고 싶은 내용이 있다면, 이미지를 올려서 태깅해주세요.");
   });
 
@@ -52,7 +62,7 @@ describe("handongDomSurveyQuestionSet", () => {
     expect(questions.get(1)?.config).toMatchObject({
       profileField: "gender",
       inputType: "single_choice",
-      options: genderOptions.map((value) => ({ value, labelKo: value })),
+      options: genderOptions.map((value) => ({ value, labelKo: value, labelEn: value === "남성" ? "Male" : "Female" })),
     });
     expect(questions.get(2)?.config).toMatchObject({
       profileField: "semester_group",
@@ -77,5 +87,18 @@ describe("handongDomSurveyQuestionSet", () => {
     });
     expect(JSON.stringify(questions.get(1)?.config)).not.toContain("기타");
     expect(JSON.stringify(questions.get(5)?.config)).not.toContain("기타");
+  });
+
+  it("provides English section and question text for the full template", () => {
+    expect(template.sections.map((section) => section.title.en)).toEqual([
+      "Basic Information",
+      "Dorm Union Initiatives",
+      "Entry, Exit, and Roll Call System",
+      "Dormitory Facilities",
+      "Washing Machines and Dryers",
+      "Other Living Conditions",
+      "Handong Global Lounge",
+    ]);
+    expect(template.sections.flatMap((section) => section.questions).filter((question) => !question.title.en)).toHaveLength(0);
   });
 });

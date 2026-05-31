@@ -5,7 +5,6 @@ import {
   rcOptions,
   roomTypeOptions,
   semesterGroupOptions,
-  toChoiceOptions,
 } from "../../model";
 import type {
   MetricType,
@@ -21,11 +20,13 @@ import type {
 type SourceQuestion = Readonly<{
   number: number;
   text: string;
+  textEn?: string;
 }>;
 
 type SectionDefinition = Readonly<{
   sectionKey: string;
   titleKo: string;
+  titleEn: string;
   sectionType: SectionType;
   start: number;
   end: number;
@@ -38,24 +39,26 @@ type ExtraQuestionDefinition = Readonly<{
   sourceNumber: number;
   questionKey: string;
   titleKo: string;
+  titleEn: string;
   questionType: QuestionType;
   metricType: MetricType;
   topicKey?: string;
   spaceKey?: string;
   config: QuestionConfig;
   displayGroup?: string;
+  displayGroupEn?: string;
 }>;
 
 const DORM_TEMPLATE_ID: QuestionSetTemplateId = "handong-dom-survey-2026-1";
 
 const sectionDefinitions: SectionDefinition[] = [
-  { sectionKey: "dorm_25_2_profile", titleKo: "기본 정보", sectionType: "profile", start: 1, end: 6, topicKey: "profile" },
-  { sectionKey: "dorm_25_2_council_programs", titleKo: "자치회 사업", sectionType: "satisfaction", start: 7, end: 32, topicKey: "council_programs" },
-  { sectionKey: "dorm_25_2_entry_check_system", titleKo: "입출입 및 점호 시스템", sectionType: "facility", start: 33, end: 58, topicKey: "entry_check_system" },
-  { sectionKey: "dorm_25_2_facilities", titleKo: "생활관 시설", sectionType: "facility", start: 59, end: 158, topicKey: "facilities" },
-  { sectionKey: "dorm_25_2_laundry", titleKo: "세탁 및 건조기", sectionType: "laundry", start: 159, end: 172, topicKey: "laundry" },
-  { sectionKey: "dorm_25_2_other_life", titleKo: "기타 생활", sectionType: "general", start: 173, end: 186, topicKey: "other_life" },
-  { sectionKey: "dorm_25_2_global_lounge", titleKo: "글로벌 라운지", sectionType: "global_lounge", start: 187, end: 193, topicKey: "global_lounge" },
+  { sectionKey: "dorm_25_2_profile", titleKo: "기본 정보", titleEn: "Basic Information", sectionType: "profile", start: 1, end: 6, topicKey: "profile" },
+  { sectionKey: "dorm_25_2_council_programs", titleKo: "자치회 사업", titleEn: "Dorm Union Initiatives", sectionType: "satisfaction", start: 7, end: 32, topicKey: "council_programs" },
+  { sectionKey: "dorm_25_2_entry_check_system", titleKo: "입출입 및 점호 시스템", titleEn: "Entry, Exit, and Roll Call System", sectionType: "facility", start: 33, end: 58, topicKey: "entry_check_system" },
+  { sectionKey: "dorm_25_2_facilities", titleKo: "생활관 시설", titleEn: "Dormitory Facilities", sectionType: "facility", start: 59, end: 158, topicKey: "facilities" },
+  { sectionKey: "dorm_25_2_laundry", titleKo: "세탁 및 건조기", titleEn: "Washing Machines and Dryers", sectionType: "laundry", start: 159, end: 172, topicKey: "laundry" },
+  { sectionKey: "dorm_25_2_other_life", titleKo: "기타 생활", titleEn: "Other Living Conditions", sectionType: "general", start: 173, end: 186, topicKey: "other_life" },
+  { sectionKey: "dorm_25_2_global_lounge", titleKo: "글로벌 라운지", titleEn: "Handong Global Lounge", sectionType: "global_lounge", start: 187, end: 193, topicKey: "global_lounge" },
 ];
 
 const timeSlotOptions = [
@@ -73,6 +76,7 @@ const timeSlotOptions = [
 const participantImageTagConfig = {
   maxTags: 3,
   tagTypes: ["불편", "수리 요청", "개선 제안", "기타"],
+  tagTypesEn: ["Inconvenience", "Repair Request", "Improvement Suggestion", "Other"],
   enableZoom: true,
   requireText: true,
   maxFileSizeMb: 10,
@@ -86,27 +90,124 @@ const extraQuestionDefinitions: ExtraQuestionDefinition[] = [
     sourceNumber: 194,
     questionKey: "question_mpqztb3f",
     titleKo: "학번",
+    titleEn: "Student ID",
     questionType: "text",
     metricType: "none",
     config: { textMode: "short", maxLength: 200, multiline: false },
   },
-  participantImageQuestion(195, 73.5, "question_mpqzy65n", "화장실과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "'화장실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(196, 80.5, "question_mpr07j52", "샤워실과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "'샤워실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(197, 85.5, "1", "1층 로비 공용 공간과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "'1층 로비 공용 공간'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(198, 91.5, "question_mpr05np9", "복도 공용 공간과 관련하여 건의/문의할 부분이 있다면 이미지를 올려 태깅해주세요.", "'복도 공용 공간'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(199, 97.5, "question_mpr04h83", "쓰레기통 및 분리수거 시설과 관련하여 건의/문의하고 싶은 부분이 있다면, 이미지를 올려 태깅해주세요.", "'쓰레기통 및 분리수거실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(200, 106.5, "question_mpr02eg3", "취사공간과 관련하여 건의/문의하고 싶은 부분이 있다면, 이미지를 올려 태깅해주세요.", "'취사 공간(휴게실 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(201, 114.5, "question_mpr01hnh", "'휴게 및 모임 공간'과 관련하여 건의/문의하고 싶은 부분이 있다면, 이미지를 올려 태깅해주세요.", "'휴게 및 모임 공간(코이노니아실, 휴게실, 회복실 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(202, 120.5, "question_mpr008n6", "'공부 공간 (그룹스터디실, 세미나실, 노트북실, 독서실 등)'과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "'공부 공간 (그룹스터디실, 세미나실, 노트북실, 독서실 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(203, 128.5, "question_mpqzwsvd", "운동 공간과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "운동 공간(헬스장, 탁구장, 포켓볼 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(204, 136.5, "question_mpqzv2pv", "기도실과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.", "'기도실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(205, 144.5, "question_mpqzvr9k", "엘리베이터와 관련하여 건의/문의하고 싳은 부분이 있다면, 이미지를 올려 태깅해주세요.", "'엘리베이터'와 관련된 다음 항목에 대한 만족도는 어떠합니까?"),
-  participantImageQuestion(206, 158.5, "question_mpqzpnc2", "'생활관 시설'과 관련하여 개선되어야 할 점이 있다면, 이미지를 업로드하고 태깅으로 건의해주세요."),
+  participantImageQuestion(
+    195,
+    73.5,
+    "question_mpqzy65n",
+    "화장실과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding the bathroom, please upload an image and tag the relevant area.",
+    "'화장실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the 'Bathroom'?",
+  ),
+  participantImageQuestion(
+    196,
+    80.5,
+    "question_mpr07j52",
+    "샤워실과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding the shower room, please upload an image and tag the relevant area.",
+    "'샤워실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the 'Shower Room'?",
+  ),
+  participantImageQuestion(
+    197,
+    85.5,
+    "1",
+    "1층 로비 공용 공간과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding the 1st floor lobby common area, please upload an image and tag the relevant area.",
+    "'1층 로비 공용 공간'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the '1st Floor Lobby Common Area'?",
+  ),
+  participantImageQuestion(
+    198,
+    91.5,
+    "question_mpr05np9",
+    "복도 공용 공간과 관련하여 건의/문의할 부분이 있다면 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding the hallway common area, please upload an image and tag the relevant area.",
+    "'복도 공용 공간'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the 'Hallway Common Area'?",
+  ),
+  participantImageQuestion(
+    199,
+    97.5,
+    "question_mpr04h83",
+    "쓰레기통 및 분리수거 시설과 관련하여 건의/문의하고 싶은 부분이 있다면, 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding trash bins and recycling facilities, please upload an image and tag the relevant area.",
+    "'쓰레기통 및 분리수거실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the 'Trash Bins and Recycling Room'?",
+  ),
+  participantImageQuestion(
+    200,
+    106.5,
+    "question_mpr02eg3",
+    "취사공간과 관련하여 건의/문의하고 싶은 부분이 있다면, 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding the cooking area, please upload an image and tag the relevant area.",
+    "'취사 공간(휴게실 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the 'Cooking Area (Lounge, etc.)'?",
+  ),
+  participantImageQuestion(
+    201,
+    114.5,
+    "question_mpr01hnh",
+    "'휴게 및 모임 공간'과 관련하여 건의/문의하고 싶은 부분이 있다면, 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding rest and meeting areas, please upload an image and tag the relevant area.",
+    "'휴게 및 모임 공간(코이노니아실, 휴게실, 회복실 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the 'Rest and Meeting Areas (Koinonia, Lounge, Recovery Room, etc.)'?",
+  ),
+  participantImageQuestion(
+    202,
+    120.5,
+    "question_mpr008n6",
+    "'공부 공간 (그룹스터디실, 세미나실, 노트북실, 독서실 등)'과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding study areas, please upload an image and tag the relevant area.",
+    "'공부 공간 (그룹스터디실, 세미나실, 노트북실, 독서실 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the 'Study Areas (Group Study Rooms, Seminar Rooms, Laptop Rooms, Reading Rooms, etc.)'?",
+  ),
+  participantImageQuestion(
+    203,
+    128.5,
+    "question_mpqzwsvd",
+    "운동 공간과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding sports areas, please upload an image and tag the relevant area.",
+    "운동 공간(헬스장, 탁구장, 포켓볼 등)'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the 'Sports Areas (Gym, Table Tennis Room, Pool Table, etc.)'?",
+  ),
+  participantImageQuestion(
+    204,
+    136.5,
+    "question_mpqzv2pv",
+    "기도실과 관련하여 건의/문의하고 싶은 부분이 있다면 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding the prayer room, please upload an image and tag the relevant area.",
+    "'기도실'과 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the 'Prayer Room'?",
+  ),
+  participantImageQuestion(
+    205,
+    144.5,
+    "question_mpqzvr9k",
+    "엘리베이터와 관련하여 건의/문의하고 싳은 부분이 있다면, 이미지를 올려 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding the elevator, please upload an image and tag the relevant area.",
+    "'엘리베이터'와 관련된 다음 항목에 대한 만족도는 어떠합니까?",
+    "What is your level of satisfaction with the following aspects of the 'Elevator'?",
+  ),
+  participantImageQuestion(
+    206,
+    158.5,
+    "question_mpqzpnc2",
+    "'생활관 시설'과 관련하여 개선되어야 할 점이 있다면, 이미지를 업로드하고 태깅으로 건의해주세요.",
+    "If there are any areas for improvement regarding dormitory facilities, please upload an image and tag the relevant area.",
+  ),
   participantImageQuestion(
     207,
     193.5,
     "question_mpqzsirp",
     "글로벌 라운지와 관련하여 건의/문의하고 싶은 내용이 있다면, 이미지를 올려서 태깅해주세요.",
+    "If you have any suggestions or inquiries regarding the Handong Global Lounge, please upload an image and tag the relevant area.",
+    undefined,
     undefined,
     "dorm_25_2_global_lounge",
   ),
@@ -310,12 +411,208 @@ const rawQuestionText = `
 193. 기타 글로벌 라운지와 관련하여 건의/문의하고 싶은 내용이 있다면, 자유롭게 적어주세요.
 `;
 
+const rawEnglishQuestionText = `
+1. 1. Gender
+2. 2. Semester
+3. 3. Department (1st Major)
+4. 4. Respective RC
+5. 5. Room type
+6. 6. Dormitory
+7. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(1) Move-in Services (Package Management and Organization, Vehicle Control, Cart Rental)]
+8. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(2) Office Hour]
+9. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(3) Weekly RC Newsletter]
+10. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(4) Restroom Advertisement]
+11. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(5) Roommates' Time Table]
+12. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(6) Room Checklist]
+13. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(7) Long-term Rental Service]
+14. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(8) Monthly RC Newsletter]
+15. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(9) Hayong-jo Hall Gym Application]
+16. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(10) Evacuation Drill]
+17. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(11) Showerhead filter supply]
+18. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(12) Blanket Storage Event]
+19. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(13) Installation of Dish Racks]
+20. 1. What is your level of satisfaction with the following Dorm Union events? (Student Welfare Section) [(14) Dormitory Hidden Camera Detection]
+21. 2. What is your level of satisfaction with the following Dorm Union initiatives? (Student Culture Section)   [(1) Handong Cup]
+22. 2. What is your level of satisfaction with the following Dorm Union initiatives? (Student Culture Section)   [(2) League of Legends Cup]
+23. 2. What is your level of satisfaction with the following Dorm Union initiatives? (Student Culture Section)   [(3) TFT Championship]
+24. 2. What is your level of satisfaction with the following Dorm Union initiatives? (Student Culture Section)   [(4) League of Legends Viewing Party]
+25. 2. What is your level of satisfaction with the following Dorm Union initiatives? (Student Culture Section)   [(5) Trip From Handong]
+26. 2. What is your level of satisfaction with the following Dorm Union initiatives? (Student Culture Section)   [(6) Room Mukbang Event]
+27. 2. What is your level of satisfaction with the following Dorm Union initiatives? (Student Culture Section)   [(7) Festival of Nations Korean Booth]
+28. 3. What is your level of satisfaction with the following Dorm Union initiatives? (Student Communication Section)   [(1) Communication Channel (Email Inquiries)]
+29. 3. What is your level of satisfaction with the following Dorm Union initiatives? (Student Communication Section)   [(2) Communication Channel (Chatbot Inquiries)]
+30. 3. What is your level of satisfaction with the following Dorm Union initiatives? (Student Communication Section)   [(3) Dorm Union Public Hearing]
+31. 4. If there are any areas for improvement regarding the 'Dorm Union initiatives', please feel free to share.
+32. 5. If there are any aspects of the 'Dorm Union initiatives' that you were satisfied with, please feel free to share.
+33. 1. What is your level of satisfaction with the following aspects related to 'Silent Hours'? [(1) Silent Hours Operating Hours]
+34. 1. What is your level of satisfaction with the following aspects related to 'Silent Hours'? [(2) Compliance with Silent Hours Rules]
+35. 1. What is your level of satisfaction with the following aspects related to 'Silent Hours'? [(3) Management of Silent Hours]
+36. 1. What is your level of satisfaction with the following aspects related to 'Silent Hours'? [(4) Effectiveness of Silent Hours]
+37. 2. What is your level of satisfaction with the following aspects related to the 'Lights Out System'? [(1) Lights Out Time]
+38. 2. What is your level of satisfaction with the following aspects related to the 'Lights Out System'? [(2) Lights Out Compliance]
+39. 2. What is your level of satisfaction with the following aspects related to the 'Lights Out System'? [(3) Convenience of Activities After Lights Out]
+40. 2. What is your level of satisfaction with the following aspects related to the 'Lights Out System'? [(4) Safety and Mobility Convenience After Lights Out]
+41. 2. What is your level of satisfaction with the following aspects related to the 'Lights Out System'? [(5) Management of the Lights Out System]
+42. 3. What is your level of satisfaction with the following aspects related to 'Roll Call'? [(1) Roll Call Time]
+43. 3. What is your level of satisfaction with the following aspects related to 'Roll Call'? [(2) Roll Call Method]
+44. 3. What is your level of satisfaction with the following aspects related to 'Roll Call'? [(3) Roll Call Frequency]
+45. 4. What is your level of satisfaction with the following aspects of the 'Roll Call Announcement'?   [(1) Roll Call Announcement Time]
+46. 4. What is your level of satisfaction with the following aspects of the 'Roll Call Announcement'?   [(2) Roll Call Announcement Content]
+47. 4. What is your level of satisfaction with the following aspects of the 'Roll Call Announcement'?   [(3) Roll Call Volume]
+48. 4. What is your level of satisfaction with the following aspects of the 'Roll Call Announcement'?   [(4) Roll Call Method]
+49. 4. What is your level of satisfaction with the following aspects of the 'Roll Call Announcement'?   [(5) Effectiveness of Information Delivery and Order Maintenance in the Roll Call Announcement]
+50. 4. What is your level of satisfaction with the following aspects of the 'Roll Call Announcement'?   [(6) Incorporation of Feedback in the Roll Call Announcement]
+51. 5. Please select 'Satisfied'.
+52. 6. What is your level of satisfaction with the following aspects of the 'Curfew Hours (01:00 AM - 04:00 AM)'?   [(1) Appropriateness of Curfew Hours]
+53. 6. What is your level of satisfaction with the following aspects of the 'Curfew Hours (01:00 AM - 04:00 AM)'?   [(2) Management and Implementation of Curfew Hours]
+54. 6. What is your level of satisfaction with the following aspects of the 'Curfew Hours (01:00 AM - 04:00 AM)'?   [(3) Safety and Order Maintenance Effectiveness During Curfew Hours]
+55. 7. What is your level of satisfaction with the following aspects of 'Overnight Stay Request' & 'Late Return Request'? [(1) Simplicity of the Procedure]
+56. 7. What is your level of satisfaction with the following aspects of 'Overnight Stay Request' & 'Late Return Request'? [(2) Available Application Times]
+57. 7. What is your level of satisfaction with the following aspects of 'Overnight Stay Request' & 'Late Return Request'? [(3) Record Management and Handling of Exceptions in Emergency Situations]
+58. 9. If there are any areas for improvement regarding the 'Entry/Exit and Roll Call System' (Silent Hours, Lights Out System, Roll Call, Roll Call Announcement, Curfew Hours, Overnight Stay Request), please feel free to share your thoughts.
+59. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(1) Room size]
+60. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(2) Room Storage Space (Wardrobe, Drawers, etc.)]
+61. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(3) Condition of Room Furniture (Desk, Chair, Bed, etc.)]
+62. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(4) Lighting Environment (Lighting, Natural Light Inflow)]
+63. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(5) Door (Soundproofing, Insulation, Security, etc.)]
+64. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(6) Walls (Soundproofing, Insulation)]
+65. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(7) Windows (Soundproofing, Insulation, Ventilation, etc.)]
+66. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(8) Fire safety equipment (fire alarms, etc.)]
+67. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(9) Internet Speed and Connection Stability]
+68. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(10) Electrical Supply (Number of Outlets, Location)]
+69. 1. What is your level of satisfaction with the following aspects of the 'Room'? [(11) Laundry Drying Rack]
+70. 2. What is your level of satisfaction with the following aspects of the 'Bathroom'? [(1) Condition of Facilities (Space Size, Toilet, Sink, etc.)]
+71. 2. What is your level of satisfaction with the following aspects of the 'Bathroom'? [(2) Ventilation]
+72. 2. What is your level of satisfaction with the following aspects of the 'Bathroom'? [(3) Availability of Supplies (Slippers, Toilet Paper, Soap, etc.)]
+73. 2. What is your level of satisfaction with the following aspects of the 'Bathroom'? [(4) Cleanliness and Hygiene]
+74. 3. What is your level of satisfaction with the following aspects of the 'Shower Room'?  [(1) Condition of Facilities (Space Size, Showerhead, etc.)]
+75. 3. What is your level of satisfaction with the following aspects of the 'Shower Room'?  [(2) Ventilation]
+76. 3. What is your level of satisfaction with the following aspects of the 'Shower Room'?  [(3) Convenience of Use]
+77. 3. What is your level of satisfaction with the following aspects of the 'Shower Room'?  [(4) Safety]
+78. 3. What is your level of satisfaction with the following aspects of the 'Shower Room'?  [(5) Water Quality]
+79. 3. What is your level of satisfaction with the following aspects of the 'Shower Room'?  [(6) Hot Water Supply]
+80. 3. What is your level of satisfaction with the following aspects of the 'Shower Room'?  [(7) Cleanliness and Hygiene]
+81. 4. What is your level of satisfaction with the following aspects of the '1st Floor Lobby Common Area'?   [(1) Adequacy of Space]
+82. 4. What is your level of satisfaction with the following aspects of the '1st Floor Lobby Common Area'?   [(2) Condition of Furniture and Facilities]
+83. 4. What is your level of satisfaction with the following aspects of the '1st Floor Lobby Common Area'?   [(3) Lighting Condition]
+84. 4. What is your level of satisfaction with the following aspects of the '1st Floor Lobby Common Area'?   [(4) Convenience]
+85. 4. What is your level of satisfaction with the following aspects of the '1st Floor Lobby Common Area'?   [(5) Cleanliness and Hygiene]
+86. 5. What is your level of satisfaction with the following aspects of the 'Hallway Common Area'? [(1) Condition of Facilities and Equipment]
+87. 5. What is your level of satisfaction with the following aspects of the 'Hallway Common Area'? [(2) Lighting Condition]
+88. 5. What is your level of satisfaction with the following aspects of the 'Hallway Common Area'? [(3) Ventilation]
+89. 5. What is your level of satisfaction with the following aspects of the 'Hallway Common Area'? [(4) Safety]
+90. 5. What is your level of satisfaction with the following aspects of the 'Hallway Common Area'? [(5) Ease of Passage]
+91. 5. What is your level of satisfaction with the following aspects of the 'Hallway Common Area'? [(6) Cleanliness and Hygiene]
+92. 6. What is your level of satisfaction with the following aspects of the 'Trash Bins and Recycling Room'? [(1) Location and Accessibility]
+93. 6. What is your level of satisfaction with the following aspects of the 'Trash Bins and Recycling Room'? [(2) Recycling System]
+94. 6. What is your level of satisfaction with the following aspects of the 'Trash Bins and Recycling Room'? [(3) Capacity and Size]
+95. 6. What is your level of satisfaction with the following aspects of the 'Trash Bins and Recycling Room'? [(4) Collection Cycle and Management]
+96. 6. What is your level of satisfaction with the following aspects of the 'Trash Bins and Recycling Room'? [(5) Ventilation]
+97. 6. What is your level of satisfaction with the following aspects of the 'Trash Bins and Recycling Room'? [(6) Cleanliness and Hygiene]
+98. 7. What is your level of satisfaction with the following aspects of the 'Cooking Area (Lounge, etc.)'?   [(1) Location and Accessibility]
+99. 7. What is your level of satisfaction with the following aspects of the 'Cooking Area (Lounge, etc.)'?   [(2) Condition of Facilities]
+100. 7. What is your level of satisfaction with the following aspects of the 'Cooking Area (Lounge, etc.)'?   [(3) Availability of Supplies]
+101. 7. What is your level of satisfaction with the following aspects of the 'Cooking Area (Lounge, etc.)'?   [(4) Management of Shared Refrigerators]
+102. 7. What is your level of satisfaction with the following aspects of the 'Cooking Area (Lounge, etc.)'?   [(5) Adequacy of Space]
+103. 7. What is your level of satisfaction with the following aspects of the 'Cooking Area (Lounge, etc.)'?   [(6) Ventilation]
+104. 7. What is your level of satisfaction with the following aspects of the 'Cooking Area (Lounge, etc.)'?   [(7) Safety]
+105. 7. What is your level of satisfaction with the following aspects of the 'Cooking Area (Lounge, etc.)'?   [(8) Convenience]
+106. 7. What is your level of satisfaction with the following aspects of the 'Cooking Area (Lounge, etc.)'?   [(9) Cleanliness and Hygiene]
+107. 8. What is your level of satisfaction with the following aspects of the 'Rest and Meeting Areas (Koinonia, Lounge, Recovery Room, etc.)'?   [(1) Adequacy of Space]
+108. 8. What is your level of satisfaction with the following aspects of the 'Rest and Meeting Areas (Koinonia, Lounge, Recovery Room, etc.)'?   [(2) Condition of Furniture]
+109. 8. What is your level of satisfaction with the following aspects of the 'Rest and Meeting Areas (Koinonia, Lounge, Recovery Room, etc.)'?   [(3) Lighting Condition]
+110. 8. What is your level of satisfaction with the following aspects of the 'Rest and Meeting Areas (Koinonia, Lounge, Recovery Room, etc.)'?   [(4) Ventilation]
+111. 8. What is your level of satisfaction with the following aspects of the 'Rest and Meeting Areas (Koinonia, Lounge, Recovery Room, etc.)'?   [(5) Convenience]
+112. 8. What is your level of satisfaction with the following aspects of the 'Rest and Meeting Areas (Koinonia, Lounge, Recovery Room, etc.)'?   [(6) Safety]
+113. 8. What is your level of satisfaction with the following aspects of the 'Rest and Meeting Areas (Koinonia, Lounge, Recovery Room, etc.)'?   [(7) Noise Management]
+114. 8. What is your level of satisfaction with the following aspects of the 'Rest and Meeting Areas (Koinonia, Lounge, Recovery Room, etc.)'?   [(8) Cleanliness and Hygiene]
+115. 9. What is your level of satisfaction with the following aspects of the 'Study Areas (Group Study Rooms, Seminar Rooms, Laptop Rooms, Reading Rooms, etc.)'? [(1) Adequacy of Space]
+116. 9. What is your level of satisfaction with the following aspects of the 'Study Areas (Group Study Rooms, Seminar Rooms, Laptop Rooms, Reading Rooms, etc.)'? [(2) Condition of Furniture (Desks, Chairs, etc.)]
+117. 9. What is your level of satisfaction with the following aspects of the 'Study Areas (Group Study Rooms, Seminar Rooms, Laptop Rooms, Reading Rooms, etc.)'? [(3) Lighting Condition]
+118. 9. What is your level of satisfaction with the following aspects of the 'Study Areas (Group Study Rooms, Seminar Rooms, Laptop Rooms, Reading Rooms, etc.)'? [(4) Guidance and Compliance with Usage Rules]
+119. 9. What is your level of satisfaction with the following aspects of the 'Study Areas (Group Study Rooms, Seminar Rooms, Laptop Rooms, Reading Rooms, etc.)'? [(5) Noise Management]
+120. 9. What is your level of satisfaction with the following aspects of the 'Study Areas (Group Study Rooms, Seminar Rooms, Laptop Rooms, Reading Rooms, etc.)'? [(6) Cleanliness and Hygiene]
+121. 10. What is your level of satisfaction with the following aspects of the 'Sports Areas (Gym, Table Tennis Room, Pool Table, etc.)'?   [(1) Adequacy of Space]
+122. 10. What is your level of satisfaction with the following aspects of the 'Sports Areas (Gym, Table Tennis Room, Pool Table, etc.)'?   [(2) Condition of Equipment and Facilities]
+123. 10. What is your level of satisfaction with the following aspects of the 'Sports Areas (Gym, Table Tennis Room, Pool Table, etc.)'?   [(3) Lighting Condition]
+124. 10. What is your level of satisfaction with the following aspects of the 'Sports Areas (Gym, Table Tennis Room, Pool Table, etc.)'?   [(4) Ventilation]
+125. 10. What is your level of satisfaction with the following aspects of the 'Sports Areas (Gym, Table Tennis Room, Pool Table, etc.)'?   [(5) Noise Management]
+126. 10. What is your level of satisfaction with the following aspects of the 'Sports Areas (Gym, Table Tennis Room, Pool Table, etc.)'?   [(6) Ease of Use]
+127. 10. What is your level of satisfaction with the following aspects of the 'Sports Areas (Gym, Table Tennis Room, Pool Table, etc.)'?   [(7) Usage Hours and Rules Guidance]
+128. 10. What is your level of satisfaction with the following aspects of the 'Sports Areas (Gym, Table Tennis Room, Pool Table, etc.)'?   [(8) Cleanliness and Hygiene]
+129. 11. What is your level of satisfaction with the following aspects of the 'Prayer Room'?   [(1) Adequacy of Space]
+130. 11. What is your level of satisfaction with the following aspects of the 'Prayer Room'?   [(2) Condition of Facilities]
+131. 11. What is your level of satisfaction with the following aspects of the 'Prayer Room'?   [(3) Lighting Condition]
+132. 11. What is your level of satisfaction with the following aspects of the 'Prayer Room'?   [(4) Ventilation]
+133. 11. What is your level of satisfaction with the following aspects of the 'Prayer Room'?   [(5) Atmosphere and Environment]
+134. 11. What is your level of satisfaction with the following aspects of the 'Prayer Room'?   [(6) Noise Blocking and Privacy Protection]
+135. 11. What is your level of satisfaction with the following aspects of the 'Prayer Room'?   [(7) Guidance and Compliance with Usage Rules]
+136. 11. What is your level of satisfaction with the following aspects of the 'Prayer Room'?   [(8) Cleanliness and Hygiene]
+137. 12. What is your level of satisfaction with the following aspects of the 'Elevator'? [(1) Waiting Time]
+138. 12. What is your level of satisfaction with the following aspects of the 'Elevator'? [(2) Condition of Equipment and Operational Safety]
+139. 12. What is your level of satisfaction with the following aspects of the 'Elevator'? [(3) Capacity and Efficiency]
+140. 12. What is your level of satisfaction with the following aspects of the 'Elevator'? [(4) Noise and Vibration]
+141. 12. What is your level of satisfaction with the following aspects of the 'Elevator'? [(5) Ventilation]
+142. 12. What is your level of satisfaction with the following aspects of the 'Elevator'? [(6) Location and Accessibility]
+143. 12. What is your level of satisfaction with the following aspects of the 'Elevator'? [(7) Operating Hours and Rules Guidance]
+144. 12. What is your level of satisfaction with the following aspects of the 'Elevator'? [(8) Cleanliness and Hygiene]
+145. 13. What is your level of satisfaction with the following aspects of the 'Cleaning Tools'?  [(1) Quantity of Available Tools]
+146. 13. What is your level of satisfaction with the following aspects of the 'Cleaning Tools'?  [(2) Quality of Available Tools]
+147. 13. What is your level of satisfaction with the following aspects of the 'Cleaning Tools'?  [(3) Variety of Available Tools]
+148. 13. What is your level of satisfaction with the following aspects of the 'Cleaning Tools'?  [(4) Location and Accessibility]
+149. 13. What is your level of satisfaction with the following aspects of the 'Cleaning Tools'?  [(5) Condition and Management]
+150. 14. What is your level of satisfaction with the following aspects of the 'Heating and Cooling Facilities'? [(1) Condition of Equipment and Operational Stability]
+151. 14. What is your level of satisfaction with the following aspects of the 'Heating and Cooling Facilities'? [(2) Set Temperature and Temperature Control]
+152. 14. What is your level of satisfaction with the following aspects of the 'Heating and Cooling Facilities'? [(3) Noise and Vibration]
+153. 14. What is your level of satisfaction with the following aspects of the 'Heating and Cooling Facilities'? [(4) Air Circulation and Ventilation]
+154. 14. What is your level of satisfaction with the following aspects of the 'Heating and Cooling Facilities'? [(5) Timing of Heating/Cooling Transition]
+155. 14. What is your level of satisfaction with the following aspects of the 'Heating and Cooling Facilities'? [(6) Operating Hours]
+156. 14. What is your level of satisfaction with the following aspects of the 'Heating and Cooling Facilities'? [(7) Energy Efficiency and Environmental Friendliness]
+157. 14. What is your level of satisfaction with the following aspects of the 'Heating and Cooling Facilities'? [(8) Cleanliness and Hygiene]
+158. 15. If there are any areas for improvement regarding the 'Dormitory Facilities', please feel free to share your thoughts.
+159. 1. Is the management of the washing machines and dryers being carried out effectively? [Washing Machine]
+160. 1. Is the management of the washing machines and dryers being carried out effectively? [Dryer]
+161. 1-1. If you selected 'Dissatisfied' or 'Very Dissatisfied', what is the reason?
+162. 1-2. What do you think is lacking in the cleaning and maintenance of the washing machines and dryers?
+163. 2. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [05:00~07:00]
+164. 2. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [07:00~09:00]
+165. 2. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [09:00~11:00]
+166. 2. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [11:00~13:00]
+167. 2. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [13:00~15:00]
+168. 2. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [15:00~17:00]
+169. 2. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [17:00~19:00]
+170. 2. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [19:00~21:00]
+171. 2. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [21:00~23:00]
+172. 2-1. What time of day would you prefer cleaning and inspections of the washing machines and dryers to be conducted, considering you do not use them? (Weekdays only, please select one option)
+173. 1. What is your opinion on the importance of the following aspects related to 'Other Living Conditions'?   [(1) Room Assignment]
+174. 1. What is your opinion on the importance of the following aspects related to 'Other Living Conditions'?   [(2) RC-specific Events and Programs]
+175. 1. What is your opinion on the importance of the following aspects related to 'Other Living Conditions'?   [(3) Reward Points System]
+176. 1. What is your opinion on the importance of the following aspects related to 'Other Living Conditions'?   [(4) Penalty Points System]
+177. 2. What is your opinion on the importance of the following aspects related to 'Room Assignment'? [(1) Team-based Criteria]
+178. 2. What is your opinion on the importance of the following aspects related to 'Room Assignment'? [(2) Major-based Criteria]
+179. 2. What is your opinion on the importance of the following aspects related to 'Room Assignment'? [(3) Wake-up Pattern-based Criteria]
+180. 2. What is your opinion on the importance of the following aspects related to 'Room Assignment'? [(4) Lifestyle Habits (Cleanliness)-based Criteria]
+181. 2. Please select 'Very Important'.
+182. 3. What is your level of satisfaction with the following aspects related to 'Other Living Conditions'? [(1) Room Assignment]
+183. 3. What is your level of satisfaction with the following aspects related to 'Other Living Conditions'? [(2) RC-specific Events and Programs]
+184. 3. What is your level of satisfaction with the following aspects related to 'Other Living Conditions'? [(3) Reward Points System]
+185. 3. What is your level of satisfaction with the following aspects related to 'Other Living Conditions'? [(4) Penalty Points System]
+186. 4. If there are any areas for improvement regarding 'Other Living Conditions' (Room Assignment, RC-specific Events and Programs, Reward and Penalty Points System), please feel free to share your thoughts.
+187. 1. What is your level of satisfaction with the following aspects of the Handong Global Lounge?   [Condition of Facilities]
+188. 1. What is your level of satisfaction with the following aspects of the Handong Global Lounge?   [Availability of Supplies]
+189. 1. What is your level of satisfaction with the following aspects of the Handong Global Lounge?   [Cleanliness and Hygiene]
+190. 1. What is your level of satisfaction with the following aspects of the Handong Global Lounge?   [Ventilation]
+191. 1. What is your level of satisfaction with the following aspects of the Handong Global Lounge?   [Operating Hours]
+192. 1. What is your level of satisfaction with the following aspects of the Handong Global Lounge?   [Safety]
+193. 2. If you have any suggestions or inquiries regarding the Handong Global Lounge, please feel free to share them.
+`;
+
 export function getQuestionSetTemplate(templateId: QuestionSetTemplateId): QuestionSetTemplate {
   if (templateId !== DORM_TEMPLATE_ID) {
     throw new Error(`Unknown question set template: ${templateId}`);
   }
 
-  const sourceQuestions = parseSourceQuestions(rawQuestionText);
+  const sourceQuestions = mergeSourceQuestions(parseSourceQuestions(rawQuestionText), parseSourceQuestions(rawEnglishQuestionText));
   return {
     templateId,
     title: "2026년도 1학기 생활관 정기 설문조사 질문 목록",
@@ -330,7 +627,7 @@ function toTemplateSection(
 ): QuestionSetTemplateSection {
   return {
     sectionKey: section.sectionKey,
-    title: { ko: section.titleKo },
+    title: { ko: section.titleKo, en: section.titleEn },
     sectionType: section.sectionType,
     settings: {
       sourceTemplateId: DORM_TEMPLATE_ID,
@@ -355,15 +652,18 @@ function toTemplateQuestion(
   const questionType = inferQuestionType(source);
   const metricType = inferMetricType(source, questionType);
   const displayGroup = inferDisplayGroup(source.text);
+  const englishText = source.textEn ? normalizeEnglishQuestionText(source.textEn) : undefined;
+  const displayGroupEn = englishText ? inferDisplayGroup(englishText) : undefined;
+  const titleEn = englishText ? inferQuestionTitle(englishText, displayGroupEn) : undefined;
   return {
     sourceNumber: source.number,
     questionKey: `dorm_25_2_q${source.number.toString().padStart(3, "0")}`,
-    title: { ko: inferQuestionTitle(source.text, displayGroup) },
+    title: titleEn ? { ko: inferQuestionTitle(source.text, displayGroup), en: titleEn } : { ko: inferQuestionTitle(source.text, displayGroup) },
     questionType,
     metricType,
     topicKey: section.topicKey,
     spaceKey: inferSpaceKey(source.text),
-    config: inferConfig(source, questionType, metricType),
+    config: withEnglishDisplayGroup(inferConfig(source, questionType, metricType), displayGroupEn),
     validation: {},
     isRequired: true,
     displayGroup,
@@ -377,12 +677,12 @@ function toExtraTemplateQuestion(
   return {
     sourceNumber: source.sourceNumber,
     questionKey: source.questionKey,
-    title: { ko: source.titleKo },
+    title: { ko: source.titleKo, en: source.titleEn },
     questionType: source.questionType,
     metricType: source.metricType,
     topicKey: source.topicKey ?? section.topicKey,
     spaceKey: source.spaceKey,
-    config: source.displayGroup ? { ...(source.config as Record<string, unknown>), displayGroup: source.displayGroup } : source.config,
+    config: withExtraDisplayGroups(source.config, source.displayGroup, source.displayGroupEn),
     validation: {},
     isRequired: true,
     displayGroup: source.displayGroup,
@@ -398,7 +698,9 @@ function participantImageQuestion(
   orderScore: number,
   questionKey: string,
   titleKo: string,
+  titleEn: string,
   displayGroup?: string,
+  displayGroupEn?: string,
   sectionKey = "dorm_25_2_facilities",
 ): ExtraQuestionDefinition {
   return {
@@ -407,10 +709,12 @@ function participantImageQuestion(
     sourceNumber,
     questionKey,
     titleKo,
+    titleEn,
     questionType: "participant_image_tag",
     metricType: "none",
     config: participantImageTagConfig,
     displayGroup,
+    displayGroupEn,
   };
 }
 
@@ -427,6 +731,38 @@ function parseSourceQuestions(value: string): SourceQuestion[] {
       };
     })
     .filter((question): question is SourceQuestion => Boolean(question));
+}
+
+function mergeSourceQuestions(koreanQuestions: SourceQuestion[], englishQuestions: SourceQuestion[]): SourceQuestion[] {
+  const englishTextByNumber = new Map(englishQuestions.map((question) => [question.number, question.text] as const));
+  return koreanQuestions.map((question) => ({
+    ...question,
+    textEn: englishTextByNumber.get(question.number),
+  }));
+}
+
+function normalizeEnglishQuestionText(value: string): string {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/^\d+(?:-\d+)?\.\s+/, "")
+    .trim();
+}
+
+function withEnglishDisplayGroup(config: QuestionConfig, displayGroupEn: string | undefined): QuestionConfig {
+  if (!displayGroupEn) return config;
+  return {
+    ...(config as Record<string, unknown>),
+    displayGroupEn,
+  };
+}
+
+function withExtraDisplayGroups(config: QuestionConfig, displayGroup: string | undefined, displayGroupEn: string | undefined): QuestionConfig {
+  if (!displayGroup && !displayGroupEn) return config;
+  return {
+    ...(config as Record<string, unknown>),
+    ...(displayGroup ? { displayGroup } : {}),
+    ...(displayGroupEn ? { displayGroupEn } : {}),
+  };
 }
 
 function inferQuestionType(source: SourceQuestion): QuestionType {
@@ -455,19 +791,23 @@ function inferConfig(source: SourceQuestion, questionType: QuestionType, metricT
           scaleMin: 1,
           scaleMax: 5,
           labelsKo: ["전혀 중요하지 않음", "중요하지 않음", "보통", "중요함", "매우 중요함"],
+          labelsEn: ["Not important at all", "Not important", "Neutral", "Important", "Very important"],
         }
       : {
           scaleMin: 1,
           scaleMax: 5,
           labelsKo: ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
+          labelsEn: ["Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied"],
         };
   }
 
   if (questionType === "attention_check") {
+    const isImportanceCheck = source.text.includes("중요");
     return {
       scaleMin: 1,
       scaleMax: 5,
-      labelsKo: source.text.includes("중요") ? ["전혀 중요하지 않음", "중요하지 않음", "보통", "중요함", "매우 중요함"] : ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
+      labelsKo: isImportanceCheck ? ["전혀 중요하지 않음", "중요하지 않음", "보통", "중요함", "매우 중요함"] : ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
+      labelsEn: isImportanceCheck ? ["Not important at all", "Not important", "Neutral", "Important", "Very important"] : ["Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied"],
       expectedValue: inferAttentionCheckExpectedValue(source.text),
       excludeIfFailed: true,
     };
@@ -487,9 +827,10 @@ function inferConfig(source: SourceQuestion, questionType: QuestionType, metricT
 
   if (questionType === "multi_select") {
     const label = inferBracketLabel(source.text) ?? "해당";
+    const labelEn = source.textEn ? inferBracketLabel(normalizeEnglishQuestionText(source.textEn)) : undefined;
     return {
       minSelect: 0,
-      options: [{ value: stableValue(label), labelKo: label }],
+      options: [{ value: stableValue(label), labelKo: label, ...(labelEn ? { labelEn: stripItemNumber(labelEn) } : {}) }],
     };
   }
 
@@ -519,13 +860,54 @@ function inferProfileConfig(source: SourceQuestion): QuestionConfig {
     195: "name",
   };
   const profileField = profileFieldByNumber[source.number] ?? `profile_${source.number}`;
-  const optionsByField: Record<string, Array<{ value: string; labelKo: string }>> = {
-    gender: toChoiceOptions(genderOptions),
-    semester_group: toChoiceOptions(semesterGroupOptions),
-    department: toChoiceOptions(departmentOptions),
-    rc: toChoiceOptions(rcOptions),
-    room_type: toChoiceOptions(roomTypeOptions),
-    dormitory: toChoiceOptions(dormitoryOptions),
+  const optionsByField: Record<string, Array<{ value: string; labelKo: string; labelEn?: string }>> = {
+    gender: toLocalizedChoiceOptions(genderOptions, {
+      남성: "Male",
+      여성: "Female",
+    }),
+    semester_group: toLocalizedChoiceOptions(semesterGroupOptions, {
+      "1학기": "1st semester",
+      "2학기": "2nd semester",
+      "3학기": "3rd semester",
+      "4학기": "4th semester",
+      "5학기이상": "5th semester or above",
+    }),
+    department: toLocalizedChoiceOptions(departmentOptions, {
+      AI컴퓨터전자공학부: "School of AI Computer and Electrical Engineering",
+      콘텐츠융합디자인학부: "School of Content Convergence Design",
+      법학부: "School of Law",
+      AI융합학부: "School of AI Convergence",
+      경영경제학부: "School of Management and Economics",
+      국제어문학부: "School of International Studies, Languages and Literature",
+      기계제어공학부: "School of Mechanical and Control Engineering",
+      생명과학부: "School of Life Science",
+      공간환경시스템공학부: "School of Spatial Environment System Engineering",
+      커뮤니케이션학부: "School of Communication",
+      상담심리사회복지학부: "School of Counseling Psychology and Social Welfare",
+      "글로벌리더십학부(1학년)": "Global Leadership School (Freshman)",
+    }),
+    rc: toLocalizedChoiceOptions(rcOptions, {
+      토레이RC: "Torrey RC",
+      장기려RC: "Jang Gi-ryo RC",
+      손양원RC: "Son Yang-won RC",
+      열송학사RC: "Yeolsong RC",
+      카이퍼RC: "Kuiper RC",
+      카마이클RC: "Carmichael RC",
+    }),
+    room_type: toLocalizedChoiceOptions(roomTypeOptions, {
+      "1인실": "Single room",
+      "2인실": "Double room",
+      "3인실": "Triple room",
+      "4인실": "Quad room",
+    }),
+    dormitory: toLocalizedChoiceOptions(dormitoryOptions, {
+      비전관: "Vision Hall",
+      은혜관: "Grace Hall",
+      로뎀관: "Rodem Hall",
+      벧엘관: "Bethel Hall",
+      하용조관: "Hayongjo Hall",
+      국제관: "International Hall",
+    }),
   };
   return {
     profileField,
@@ -582,19 +964,35 @@ function inferSpaceKey(text: string): string | undefined {
   return entries.find(([label]) => text.includes(label))?.[1];
 }
 
+function toLocalizedChoiceOptions(values: readonly string[], englishLabels: Record<string, string>) {
+  return values.map((value) => ({ value, labelKo: value, labelEn: englishLabels[value] }));
+}
+
 function yesNoOptions() {
   return [
-    { value: "yes", labelKo: "예" },
-    { value: "no", labelKo: "아니오" },
+    { value: "yes", labelKo: "예", labelEn: "Yes" },
+    { value: "no", labelKo: "아니오", labelEn: "No" },
   ];
 }
 
 function satisfactionScaleChoiceOptions() {
-  return ["매우 불만족", "불만족", "보통", "만족", "매우 만족"].map((label) => ({ value: stableValue(label), labelKo: label }));
+  return [
+    ["매우 불만족", "Very dissatisfied"],
+    ["불만족", "Dissatisfied"],
+    ["보통", "Neutral"],
+    ["만족", "Satisfied"],
+    ["매우 만족", "Very satisfied"],
+  ].map(([labelKo, labelEn]) => ({ value: stableValue(labelKo), labelKo, labelEn }));
 }
 
 function importanceScaleChoiceOptions() {
-  return ["전혀 중요하지 않음", "중요하지 않음", "보통", "중요함", "매우 중요함"].map((label) => ({ value: stableValue(label), labelKo: label }));
+  return [
+    ["전혀 중요하지 않음", "Not important at all"],
+    ["중요하지 않음", "Not important"],
+    ["보통", "Neutral"],
+    ["중요함", "Important"],
+    ["매우 중요함", "Very important"],
+  ].map(([labelKo, labelEn]) => ({ value: stableValue(labelKo), labelKo, labelEn }));
 }
 
 function inferAttentionCheckExpectedValue(text: string): string {

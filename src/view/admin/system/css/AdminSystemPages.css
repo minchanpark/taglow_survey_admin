@@ -95,6 +95,177 @@
   text-decoration: none;
 }
 
+.tg-admin-profile-page {
+  display: grid;
+  width: min(100%, var(--tg-page-max-width));
+  max-width: var(--tg-page-max-width);
+  gap: var(--tg-space-12);
+  padding: var(--tg-space-16);
+}
+
+.tg-admin-profile-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--tg-space-8);
+}
+
+.tg-admin-profile-page__header h1,
+.tg-admin-profile-page__header p,
+.tg-admin-profile-page__eyebrow,
+.tg-admin-profile-page__copy h2,
+.tg-admin-profile-page__copy p,
+.tg-admin-profile-page__status,
+.tg-admin-profile-page__status dt,
+.tg-admin-profile-page__status dd,
+.tg-admin-profile-page__notice,
+.tg-admin-profile-page__error {
+  margin: 0;
+}
+
+.tg-admin-profile-page__header h1 {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-page-title);
+  font-weight: var(--tg-weight-bold);
+  line-height: var(--tg-line-page-title);
+}
+
+.tg-admin-profile-page__eyebrow {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-admin-profile-page__panel {
+  display: grid;
+  width: min(100%, 760px);
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: var(--tg-space-10);
+  align-items: start;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-md);
+  padding: var(--tg-space-16);
+  background: var(--tg-bg-panel);
+}
+
+.tg-admin-profile-page__icon {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--tg-radius-md);
+  color: var(--tg-accent);
+  background: var(--tg-accent-soft);
+}
+
+.tg-admin-profile-page__copy {
+  display: grid;
+  gap: var(--tg-space-3);
+  min-width: 0;
+}
+
+.tg-admin-profile-page__copy h2 {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-section-title);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-section-title);
+}
+
+.tg-admin-profile-page__copy p {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-body);
+  line-height: var(--tg-line-body);
+}
+
+.tg-admin-profile-page__copy span {
+  color: var(--tg-text-faint);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-admin-profile-page__status {
+  display: grid;
+  grid-column: 1 / -1;
+  overflow: hidden;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+}
+
+.tg-admin-profile-page__status div {
+  display: grid;
+  min-height: 44px;
+  grid-template-columns: 140px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--tg-space-8);
+  border-top: 1px solid var(--tg-border-subtle);
+  padding: 0 var(--tg-space-10);
+}
+
+.tg-admin-profile-page__status div:first-child {
+  border-top: 0;
+}
+
+.tg-admin-profile-page__status dt {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-admin-profile-page__status dd {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-admin-profile-page__notice,
+.tg-admin-profile-page__error {
+  grid-column: 1 / -1;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  padding: var(--tg-space-6) var(--tg-space-8);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-admin-profile-page__notice {
+  color: var(--tg-success);
+  background: var(--tg-bg-raised);
+}
+
+.tg-admin-profile-page__error {
+  color: var(--tg-danger);
+  background: var(--tg-danger-soft);
+}
+
+.tg-admin-profile-page__actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: var(--tg-space-6);
+  padding-bottom: var(--tg-space-4);
+}
+
+@media (max-width: 640px) {
+  .tg-admin-profile-page {
+    padding: var(--tg-space-10);
+  }
+
+  .tg-admin-profile-page__panel {
+    grid-template-columns: 1fr;
+    padding: var(--tg-space-12);
+  }
+
+  .tg-admin-profile-page__status div {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: var(--tg-space-2);
+    padding: var(--tg-space-6) var(--tg-space-8);
+  }
+}
+
 .tg-admin-members-page {
   display: grid;
   max-width: var(--tg-page-max-width);

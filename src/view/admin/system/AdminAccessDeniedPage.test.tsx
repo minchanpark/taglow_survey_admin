@@ -56,7 +56,7 @@ describe("AdminAccessDeniedPage", () => {
     expect(await screen.findByText("survey route")).toBeInTheDocument();
   });
 
-  it("does not request approval for the super-admin seed email", async () => {
+  it("does not request approval for the super admin seed email", async () => {
     renderAccessDenied({
       getAdminSessionState: async () => ({
         isAuthenticated: true,
@@ -64,7 +64,7 @@ describe("AdminAccessDeniedPage", () => {
       }),
     });
 
-    expect(await screen.findByText("super-admin 계정은 Supabase에서 직접 등록해야 합니다.")).toBeInTheDocument();
+    expect(await screen.findByText("최고 관리자 계정은 Supabase에서 직접 등록해야 합니다.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "관리자 승인 요청" })).not.toBeInTheDocument();
   });
 

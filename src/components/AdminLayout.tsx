@@ -1,13 +1,19 @@
-import { BarChart3, Eye, FileText, LayoutDashboard, ListChecks, LogOut, Settings, UserCheck } from "lucide-react";
+import { BarChart3, Eye, FileText, LayoutDashboard, ListChecks, LogOut, Settings, UserCheck, UserCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { canEditSurvey, canManageSurvey, getAdminRoleLabel, type AdminRole, type SurveyAccessRole } from "../api/admin/model";
+import {
+  canEditSurvey,
+  canManageSurvey,
+  getAdminRoleLabel,
+  type AdminRole,
+  type SurveyAccessRole,
+} from "../api/admin/model";
 import { Button } from "./Button";
 import "./css/AdminLayout.css";
 
 type AdminLayoutProps = Readonly<{
   adminEmail: string;
-  adminRole: AdminRole;
+  adminRole?: AdminRole;
   onSignOut: () => void;
   isSigningOut?: boolean;
   selectedSurveyAccessRole?: SurveyAccessRole;
@@ -16,6 +22,7 @@ type AdminLayoutProps = Readonly<{
 
 const primaryLinks = [
   { to: "/admin/surveys", label: "설문", icon: <ListChecks size={16} aria-hidden="true" /> },
+  { to: "/admin/profile", label: "내 계정", icon: <UserCircle size={16} aria-hidden="true" /> },
 ];
 
 const surveyLinks: ReadonlyArray<{
@@ -33,6 +40,7 @@ const surveyLinks: ReadonlyArray<{
 export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, selectedSurveyAccessRole, children }: AdminLayoutProps) {
   const location = useLocation();
   const selectedSurveyId = getSelectedSurveyId(location.pathname);
+  const accountAccessLabel = getAccountAccessLabel(adminRole);
   const visiblePrimaryLinks =
     adminRole === "super_admin"
       ? [
@@ -87,7 +95,7 @@ export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, se
         <div className="tg-admin-layout__account">
           <div className="tg-admin-layout__account-copy">
             <p>{adminEmail}</p>
-            <span>{getAdminRoleLabel(adminRole)}</span>
+            <span>{accountAccessLabel}</span>
           </div>
           <Button
             aria-label="로그아웃"
@@ -118,4 +126,9 @@ function shouldShowSurveyLink(segment: (typeof surveyLinks)[number]["segment"], 
   if (segment === "builder") return canEditSurvey(accessRole);
   if (segment === "settings") return canManageSurvey(accessRole);
   return true;
+}
+
+function getAccountAccessLabel(adminRole: AdminRole | undefined): string {
+  if (adminRole) return getAdminRoleLabel(adminRole);
+  return "공유 사용자";
 }

@@ -59,6 +59,11 @@ export function SurveyAnalysisPage() {
   const [groupTargetValue, setGroupTargetValue] = useState("survey");
   const [textKeyword, setTextKeyword] = useState("");
   const activeFilters = filterSurveyId === surveyId ? filters : {};
+  const isOverviewTab = activeTab === "overview";
+  const isScaleTab = activeTab === "scale";
+  const isGroupsTab = activeTab === "groups";
+  const isTextTab = activeTab === "text";
+  const isHeatmapTab = activeTab === "heatmap";
   const textFilters: TextAnswerFilters = useMemo(
     () => ({ ...activeFilters, keyword: textKeyword.trim() || undefined }),
     [activeFilters, textKeyword],
@@ -80,16 +85,16 @@ export function SurveyAnalysisPage() {
     [activeFilters, groupBy, groupTargetFilter],
   );
   const responseSummaryQuery = useResponseSummaryQuery(surveyId, activeFilters);
-  const sectionSummaryQuery = useSectionSatisfactionSummaryQuery(surveyId, activeFilters);
-  const questionSummaryQuery = useQuestionSatisfactionSummaryQuery(surveyId, activeFilters);
-  const choiceDistributionQuery = useChoiceDistributionQuery(surveyId, activeFilters);
-  const priorityTop5Query = usePriorityTop5Query(surveyId, activeFilters);
-  const groupCompareQuery = useGroupCompareSummaryQuery(surveyId, groupCompareFilters);
-  const textGroupsQuery = useTextGroupsQuery(surveyId, textFilters);
-  const textAnswersQuery = useTextAnswersQuery(surveyId, textFilters);
+  const sectionSummaryQuery = useSectionSatisfactionSummaryQuery(surveyId, activeFilters, { enabled: isOverviewTab || isScaleTab });
+  const questionSummaryQuery = useQuestionSatisfactionSummaryQuery(surveyId, activeFilters, { enabled: isScaleTab });
+  const choiceDistributionQuery = useChoiceDistributionQuery(surveyId, activeFilters, { enabled: isScaleTab });
+  const priorityTop5Query = usePriorityTop5Query(surveyId, activeFilters, { enabled: isOverviewTab });
+  const groupCompareQuery = useGroupCompareSummaryQuery(surveyId, groupCompareFilters, { enabled: isGroupsTab });
+  const textGroupsQuery = useTextGroupsQuery(surveyId, textFilters, { enabled: isTextTab });
+  const textAnswersQuery = useTextAnswersQuery(surveyId, textFilters, { enabled: isTextTab });
   const imageTagFilters = activeFilters as HeatmapFilters;
-  const heatmapPointsQuery = useHeatmapPointsQuery(surveyId, imageTagFilters);
-  const imageTagAnswersQuery = useImageTagAnswersQuery(surveyId, imageTagFilters);
+  const heatmapPointsQuery = useHeatmapPointsQuery(surveyId, imageTagFilters, { enabled: isHeatmapTab });
+  const imageTagAnswersQuery = useImageTagAnswersQuery(surveyId, imageTagFilters, { enabled: isHeatmapTab });
 
   useEffect(() => {
     setSurveyId(surveyId || undefined);
@@ -134,6 +139,19 @@ export function SurveyAnalysisPage() {
     () => (questionSummaryQuery.data ?? []).filter((question) => question.metricType !== "importance"),
     [questionSummaryQuery.data],
   );
+  const activeAnalysisQueries = [
+    filterOptionsQuery,
+    responseSummaryQuery,
+    sectionSummaryQuery,
+    questionSummaryQuery,
+    choiceDistributionQuery,
+    priorityTop5Query,
+    groupCompareQuery,
+    textGroupsQuery,
+    textAnswersQuery,
+    heatmapPointsQuery,
+    imageTagAnswersQuery,
+  ].filter((query) => query.fetchStatus !== "idle" || query.isError);
 
   if (!surveyId) {
     return (
@@ -230,17 +248,7 @@ export function SurveyAnalysisPage() {
           description="결과 계산 또는 응답 조회 권한을 확인해주세요."
           actionLabel="다시 시도"
           onAction={() => {
-            void filterOptionsQuery.refetch();
-            void responseSummaryQuery.refetch();
-            void sectionSummaryQuery.refetch();
-            void questionSummaryQuery.refetch();
-            void choiceDistributionQuery.refetch();
-            void priorityTop5Query.refetch();
-            void groupCompareQuery.refetch();
-            void textGroupsQuery.refetch();
-            void textAnswersQuery.refetch();
-            void heatmapPointsQuery.refetch();
-            void imageTagAnswersQuery.refetch();
+            activeAnalysisQueries.forEach((query) => void query.refetch());
           }}
         />
       ) : null}

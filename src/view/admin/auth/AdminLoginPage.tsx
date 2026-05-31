@@ -34,7 +34,7 @@ export function AdminLoginPage() {
         <div className="tg-admin-login__copy">
           <p className="tg-admin-login__eyebrow">Taglow Survey Admin</p>
           <h1 id="admin-login-title">관리자 로그인</h1>
-          <p>Google 계정 로그인 후 등록된 관리자 권한을 확인합니다.</p>
+          <p>공유받은 설문은 로그인 후 바로 열 수 있고, 새 설문 생성은 관리자 승인 후 가능합니다.</p>
         </div>
         <Button
           variant="primary"

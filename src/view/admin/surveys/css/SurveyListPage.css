@@ -1,5 +1,6 @@
 .tg-survey-list-page {
   display: grid;
+  width: min(100%, var(--tg-page-max-width));
   max-width: var(--tg-page-max-width);
   gap: var(--tg-space-12);
   padding: var(--tg-space-16);
@@ -41,10 +42,11 @@
 .tg-survey-list-page__toolbar {
   display: inline-flex;
   width: fit-content;
+  gap: var(--tg-space-1);
   border: 1px solid var(--tg-border-subtle);
   border-radius: var(--tg-radius-sm);
   padding: var(--tg-space-2);
-  background: var(--tg-bg-panel);
+  background: var(--tg-bg-inset);
 }
 
 .tg-survey-list-page__toolbar button {
@@ -55,7 +57,7 @@
   gap: var(--tg-space-4);
   border: 0;
   border-radius: var(--tg-radius-xs);
-  padding: 0 var(--tg-space-7);
+  padding: 0 var(--tg-space-8);
   color: var(--tg-text-muted);
   background: transparent;
   font-size: var(--tg-font-size-caption);
@@ -69,23 +71,33 @@
 }
 
 .tg-survey-list-page__toolbar button.is-active {
+  box-shadow: var(--tg-shadow-xs);
   color: var(--tg-text-strong);
-  background: var(--tg-bg-raised);
+  background: var(--tg-bg-panel);
 }
 
 .tg-survey-list-page__toolbar span {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-pill);
   color: var(--tg-text-muted);
+  background: var(--tg-bg-panel);
   font-size: var(--tg-font-size-caption);
+  font-variant-numeric: tabular-nums;
 }
 
 .tg-survey-list-page__row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 112px 128px 80px 120px 240px;
-  min-height: 56px;
+  grid-template-columns: minmax(360px, 1fr) 96px 148px 56px 112px minmax(96px, auto);
+  min-height: 48px;
   align-items: center;
   gap: var(--tg-space-8);
   border-top: 1px solid var(--tg-border-subtle);
-  padding: 0 var(--tg-space-10);
+  padding: var(--tg-space-4) var(--tg-space-10);
   color: var(--tg-text-body);
 }
 
@@ -96,6 +108,8 @@
 .tg-survey-list-page__row--head {
   min-height: 40px;
   border-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
   color: var(--tg-text-muted);
   background: var(--tg-bg-raised);
   font-size: var(--tg-font-size-caption);
@@ -109,13 +123,14 @@
 
 .tg-survey-list-page__survey-link {
   display: grid;
-  gap: var(--tg-space-2);
+  gap: var(--tg-space-1);
   min-width: 0;
   text-decoration: none;
 }
 
 .tg-survey-list-page__survey strong,
-.tg-survey-list-page__survey small {
+.tg-survey-list-page__survey small,
+.tg-survey-list-page__survey-meta {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -127,16 +142,25 @@
 }
 
 .tg-survey-list-page__survey small {
+  min-width: 0;
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-caption);
   line-height: var(--tg-line-caption);
 }
 
-.tg-survey-list-page__access {
+.tg-survey-list-page__survey-meta {
   display: flex;
   min-width: 0;
+  align-items: center;
+  gap: var(--tg-space-5);
+}
+
+.tg-survey-list-page__access {
+  display: flex;
+  flex: 0 0 auto;
+  min-width: 0;
   flex-wrap: wrap;
-  gap: var(--tg-space-3);
+  gap: var(--tg-space-2);
 }
 
 .tg-survey-list-page__access-badge {
@@ -146,7 +170,7 @@
   align-items: center;
   border: 1px solid var(--tg-border-subtle);
   border-radius: var(--tg-radius-pill);
-  padding: 0 var(--tg-space-5);
+  padding: 0 var(--tg-space-4);
   color: var(--tg-text-muted);
   background: var(--tg-bg-raised);
   font-size: var(--tg-font-size-caption);
@@ -177,6 +201,7 @@
   display: flex;
   gap: var(--tg-space-4);
   justify-content: flex-end;
+  white-space: nowrap;
 }
 
 .tg-survey-list-page__edit-link {
@@ -211,7 +236,7 @@
   margin: 0;
   border: 1px solid var(--tg-border-subtle);
   border-radius: var(--tg-radius-sm);
-  padding: var(--tg-space-7) var(--tg-space-8);
+  padding: var(--tg-space-6) var(--tg-space-8);
   color: var(--tg-text-body);
   background: var(--tg-bg-panel);
   font-size: var(--tg-font-size-dense);
@@ -242,6 +267,13 @@
     grid-template-columns: 1fr;
     align-items: start;
     padding: var(--tg-space-8);
+  }
+
+  .tg-survey-list-page__survey-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--tg-space-3);
+    white-space: normal;
   }
 
   .tg-survey-list-page__row--head {

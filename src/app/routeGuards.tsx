@@ -51,7 +51,7 @@ export function RequireAdminShell() {
   return (
     <AdminLayout
       adminEmail={session.admin?.email ?? session.email ?? ""}
-      adminRole={session.admin?.role ?? "viewer"}
+      adminRole={session.admin?.role}
       selectedSurveyAccessRole={selectedSurveyQuery.data?.survey.accessRole}
       isSigningOut={signOutMutation.isPending}
       onSignOut={() => {

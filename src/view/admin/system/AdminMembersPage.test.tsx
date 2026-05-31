@@ -40,7 +40,7 @@ describe("AdminMembersPage", () => {
     expect(await screen.findByText("pending@example.com 계정을 관리자로 승인했습니다.")).toBeInTheDocument();
   });
 
-  it("upgrades active admin members to super-admin", async () => {
+  it("upgrades active admin members to super admin", async () => {
     const user = userEvent.setup();
     const updateAdminMemberRole = vi.fn<AdminApiController["updateAdminMemberRole"]>(async (command) => ({
       ...fakeActiveAdminMember,
@@ -51,13 +51,13 @@ describe("AdminMembersPage", () => {
 
     expect(await screen.findByRole("table", { name: "활성 관리자 권한" })).toBeInTheDocument();
     expect(await screen.findByText("member@example.com")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "super-admin으로 변경" }));
+    await user.click(screen.getByRole("button", { name: "최고 관리자로 변경" }));
 
     expect(updateAdminMemberRole).toHaveBeenCalledWith({
       memberId: "admin-member-active",
       role: "super_admin",
     });
-    expect(await screen.findByText("member@example.com 계정을 super-admin으로 변경했습니다.")).toBeInTheDocument();
+    expect(await screen.findByText("member@example.com 계정을 최고 관리자로 변경했습니다.")).toBeInTheDocument();
   });
 
   it("deletes active admin member permissions after confirmation", async () => {
@@ -76,7 +76,7 @@ describe("AdminMembersPage", () => {
     confirm.mockRestore();
   });
 
-  it("blocks non-super-admin admins from handling requests", async () => {
+  it("blocks non-super-admin members from handling requests", async () => {
     renderMembers({
       getAdminSessionState: async () => ({
         ...activeAdminSession,

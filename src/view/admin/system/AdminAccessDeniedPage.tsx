@@ -37,7 +37,7 @@ export function AdminAccessDeniedPage() {
   const description = pendingAdmin
     ? "최고 관리자가 요청을 승인하면 관리자 페이지에 접속할 수 있습니다."
     : isSuperAdminSeedEmail
-      ? "super-admin 계정은 Supabase에서 직접 등록해야 합니다."
+      ? "최고 관리자 계정은 Supabase에서 직접 등록해야 합니다."
     : isAuthenticated
       ? "현재 Google 계정은 아직 관리자 권한을 받지 않았습니다."
       : "Google 계정으로 로그인한 뒤 관리자 승인을 요청할 수 있습니다.";
@@ -58,7 +58,7 @@ export function AdminAccessDeniedPage() {
 
         {isSuperAdminSeedEmail ? (
           <p className="tg-admin-system-page__notice" role="status">
-            Supabase admin_members에 role super_admin, is_active true로 등록한 뒤 다시 로그인해주세요.
+            Supabase admin_members에 최고 관리자 권한과 활성 상태를 등록한 뒤 다시 로그인해주세요.
           </p>
         ) : null}
 
@@ -138,7 +138,7 @@ function getRequestAccessErrorMessage(error: unknown): string {
     return "승인 요청 RPC가 아직 Supabase에 없습니다. 017 migration을 DB에 적용한 뒤 다시 시도해주세요.";
   }
   if (/Super-admin access must be registered directly in Supabase|itisnewdawn/i.test(message)) {
-    return "super-admin 계정은 승인 요청 대상이 아닙니다. Supabase에서 직접 등록해주세요.";
+    return "최고 관리자 계정은 승인 요청 대상이 아닙니다. Supabase에서 직접 등록해주세요.";
   }
   if (/row-level security|permission denied|not authorized/i.test(message)) {
     return "승인 요청 권한 정책에서 거절되었습니다. Supabase RLS와 017 migration 적용 상태를 확인해주세요.";

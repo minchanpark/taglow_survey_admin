@@ -7,6 +7,7 @@ import { SurveySettingsPage } from "../view/admin/settings/SurveySettingsPage";
 import { AdminAccessDeniedPage } from "../view/admin/system/AdminAccessDeniedPage";
 import { AdminMembersPage } from "../view/admin/system/AdminMembersPage";
 import { AdminNotFoundPage } from "../view/admin/system/AdminNotFoundPage";
+import { AdminProfilePage } from "../view/admin/system/AdminProfilePage";
 import { NewSurveyPage } from "../view/admin/surveys/NewSurveyPage";
 import { SurveyDashboardPage } from "../view/admin/surveys/SurveyDashboardPage";
 import { SurveyListPage } from "../view/admin/surveys/SurveyListPage";
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/admin/surveys" replace /> },
       { path: "surveys", element: <SurveyListPage /> },
+      { path: "profile", element: <AdminProfilePage /> },
       { path: "admin-members", element: <AdminMembersPage /> },
       { path: "surveys/new", element: <NewSurveyPage /> },
       { path: "surveys/:surveyId/dashboard", element: <SurveyDashboardPage /> },
