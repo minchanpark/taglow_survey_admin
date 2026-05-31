@@ -2,12 +2,11 @@ import { ImageIcon, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  useBorichSummaryQuery,
   useChoiceDistributionQuery,
+  useFilterOptionsQuery,
   useGroupCompareSummaryQuery,
   useHeatmapPointsQuery,
   useImageTagAnswersQuery,
-  useLocusSummaryQuery,
   usePriorityTop5Query,
   useQuestionSatisfactionSummaryQuery,
   useResponseSummaryQuery,
@@ -20,45 +19,44 @@ import {
   areAnalysisFiltersEqual,
   buildProfileFilterDefinitions,
   getGroupCompareDefinitions,
+  mergeProfileFilterDefinitionsWithOptions,
   pruneAnalysisFilters,
 } from "../../../api/admin/model";
 import type {
   GroupCompareDimension,
+  GroupCompareFilters,
   HeatmapFilters,
   ImageTagAnswer,
   ImageTagAnswerImage,
   JsonRecord,
   Question,
+  SurveySection,
   SurveyAsset,
   TextAnswerFilters,
 } from "../../../api/admin/model";
-import { ErrorState, LoadingState } from "../../../components";
+import { ErrorState, LoadingState, StatusBadge } from "../../../components";
 import { useAdminFilterStore } from "../../../store";
 import {
-  BorichCard,
   ChoiceDistributionCard,
   GroupCompareCard,
   HeatmapPointCard,
-  LocusCard,
   PriorityTop5Card,
   ProfileDistributionCard,
   QuestionAverageCard,
   ResponseSummaryCard,
   SectionAverageCard,
   TextEvidenceCard,
+  type GroupCompareTargetOption,
 } from "./components/AnalysisWorkbenchCards";
 import { GlobalFilterBar } from "./components/GlobalFilterBar";
-import {
-  countUniqueImageTagResponses,
-  ImageTagAnswerSection,
-  type ImageTagAnswerGroup,
-} from "./components/ImageTagAnswerSection";
+import { ImageTagAnswerSection, type ImageTagAnswerGroup } from "./components/ImageTagAnswerSection";
 import "./css/SurveyAnalysisPage.css";
 
 export function SurveyAnalysisPage() {
   const { surveyId = "" } = useParams();
   const { surveyId: filterSurveyId, filters, activeTab, setSurveyId, setFilters, setActiveTab, resetFilters } = useAdminFilterStore();
   const [groupBy, setGroupBy] = useState<GroupCompareDimension>("dormitory");
+  const [groupTargetValue, setGroupTargetValue] = useState("survey");
   const [textKeyword, setTextKeyword] = useState("");
   const activeFilters = filterSurveyId === surveyId ? filters : {};
   const textFilters: TextAnswerFilters = useMemo(
@@ -66,16 +64,27 @@ export function SurveyAnalysisPage() {
     [activeFilters, textKeyword],
   );
   const detailQuery = useSurveyDetailQuery(surveyId);
-  const profileFilterDefinitions = useMemo(() => buildProfileFilterDefinitions(detailQuery.data?.questions ?? []), [detailQuery.data?.questions]);
+  const filterOptionsQuery = useFilterOptionsQuery(surveyId);
+  const profileFilterDefinitions = useMemo(
+    () => mergeProfileFilterDefinitionsWithOptions(buildProfileFilterDefinitions(detailQuery.data?.questions ?? []), filterOptionsQuery.data),
+    [detailQuery.data?.questions, filterOptionsQuery.data],
+  );
   const groupCompareDefinitions = useMemo(() => getGroupCompareDefinitions(profileFilterDefinitions), [profileFilterDefinitions]);
+  const groupTargetOptions = useMemo(
+    () => buildGroupCompareTargetOptions(detailQuery.data?.sections ?? [], detailQuery.data?.questions ?? []),
+    [detailQuery.data?.questions, detailQuery.data?.sections],
+  );
+  const groupTargetFilter = useMemo(() => getGroupCompareTargetFilter(groupTargetValue, groupTargetOptions), [groupTargetOptions, groupTargetValue]);
+  const groupCompareFilters = useMemo<GroupCompareFilters>(
+    () => ({ ...activeFilters, groupBy, metricType: "satisfaction", ...groupTargetFilter }),
+    [activeFilters, groupBy, groupTargetFilter],
+  );
   const responseSummaryQuery = useResponseSummaryQuery(surveyId, activeFilters);
   const sectionSummaryQuery = useSectionSatisfactionSummaryQuery(surveyId, activeFilters);
   const questionSummaryQuery = useQuestionSatisfactionSummaryQuery(surveyId, activeFilters);
   const choiceDistributionQuery = useChoiceDistributionQuery(surveyId, activeFilters);
   const priorityTop5Query = usePriorityTop5Query(surveyId, activeFilters);
-  const borichQuery = useBorichSummaryQuery(surveyId, activeFilters);
-  const locusQuery = useLocusSummaryQuery(surveyId, activeFilters);
-  const groupCompareQuery = useGroupCompareSummaryQuery(surveyId, { ...activeFilters, groupBy });
+  const groupCompareQuery = useGroupCompareSummaryQuery(surveyId, groupCompareFilters);
   const textGroupsQuery = useTextGroupsQuery(surveyId, textFilters);
   const textAnswersQuery = useTextAnswersQuery(surveyId, textFilters);
   const imageTagFilters = activeFilters as HeatmapFilters;
@@ -101,6 +110,12 @@ export function SurveyAnalysisPage() {
     }
   }, [groupBy, groupCompareDefinitions]);
 
+  useEffect(() => {
+    if (!groupTargetOptions.some((option) => option.value === groupTargetValue)) {
+      setGroupTargetValue("survey");
+    }
+  }, [groupTargetOptions, groupTargetValue]);
+
   const questionById = useMemo(
     () => new Map((detailQuery.data?.questions ?? []).map((question) => [question.id, question] as const)),
     [detailQuery.data?.questions],
@@ -115,6 +130,10 @@ export function SurveyAnalysisPage() {
   );
   const adminImageGroups = groups.filter((group) => group.kind === "admin_image");
   const participantUploadGroups = groups.filter((group) => group.kind === "participant_upload");
+  const satisfactionQuestions = useMemo(
+    () => (questionSummaryQuery.data ?? []).filter((question) => question.metricType !== "importance"),
+    [questionSummaryQuery.data],
+  );
 
   if (!surveyId) {
     return (
@@ -127,7 +146,7 @@ export function SurveyAnalysisPage() {
   if (detailQuery.isPending) {
     return (
       <section className="tg-analysis-page">
-        <LoadingState label="분석 워크벤치를 불러오는 중" />
+        <LoadingState label="분석 화면을 불러오는 중" />
       </section>
     );
   }
@@ -136,8 +155,8 @@ export function SurveyAnalysisPage() {
     return (
       <section className="tg-analysis-page">
         <ErrorState
-          title="분석 워크벤치를 불러오지 못했습니다."
-          description="설문 데이터 또는 분석 조회 권한을 확인해주세요."
+          title="분석 화면을 불러오지 못했습니다."
+          description="설문 데이터 또는 조회 권한을 확인해주세요."
           actionLabel="다시 시도"
           onAction={() => {
             void detailQuery.refetch();
@@ -147,28 +166,31 @@ export function SurveyAnalysisPage() {
     );
   }
 
-  const totalAnswers = imageTagAnswersQuery.data?.length ?? 0;
-  const submittedResponseCount = countUniqueImageTagResponses(imageTagAnswersQuery.data ?? []);
   const responseSummary = responseSummaryQuery.data;
+  const isFiltered = hasActiveFilters(activeFilters);
+  const responseMetricLabel = isFiltered ? "조건 적용 응답" : "제출 완료";
+  const responseMetricValue = formatCount(isFiltered ? responseSummary?.filteredResponses : responseSummary?.submittedResponses);
+  const comparisonMetricLabel = isFiltered ? "전체 제출" : "전체 응답";
+  const comparisonMetricValue = formatCount(isFiltered ? responseSummary?.submittedResponses : responseSummary?.totalResponses);
 
   return (
     <section className="tg-analysis-page" aria-labelledby="survey-analysis-title">
       <header className="tg-analysis-page__header">
         <div>
-          <p>분석 워크벤치</p>
+          <p>분석 화면</p>
           <h1 id="survey-analysis-title">{detailQuery.data.survey.title}</h1>
         </div>
-        <div className="tg-analysis-page__metrics" aria-label="태깅 답변 요약">
-          <Metric label="응답 수" value={`${responseSummary?.filteredResponses ?? submittedResponseCount}`} />
-          <Metric label="태그" value={`${totalAnswers}`} />
-          <Metric label="버전" value={`v${detailQuery.data.survey.versionNumber}`} />
+        <div className="tg-analysis-page__metrics" aria-label="응답 현황">
+          <Metric label={responseMetricLabel} value={responseMetricValue} tone={responseSummary?.isLowSample ? "warning" : undefined} />
+          <Metric label={comparisonMetricLabel} value={comparisonMetricValue} />
+          <Metric label="설문 버전" value={`v${detailQuery.data.survey.versionNumber}`} helper="현재 설문" />
         </div>
       </header>
 
       <GlobalFilterBar
         filters={activeFilters}
         fields={profileFilterDefinitions}
-        isLoading={detailQuery.isFetching}
+        isLoading={detailQuery.isFetching || filterOptionsQuery.isFetching || responseSummaryQuery.isFetching}
         totalResponses={responseSummary?.submittedResponses}
         filteredResponses={responseSummary?.filteredResponses}
         lowSampleThreshold={responseSummary?.lowSampleThreshold}
@@ -179,10 +201,10 @@ export function SurveyAnalysisPage() {
       <nav className="tg-analysis-tabs" aria-label="분석 보기">
         {[
           ["overview", "개요"],
-          ["scale", "척도"],
-          ["groups", "집단 비교"],
-          ["text", "주관식"],
-          ["heatmap", "공간 태깅"],
+          ["scale", "점수 문항"],
+          ["groups", "그룹별 비교"],
+          ["text", "서술형"],
+          ["heatmap", "사진 표시"],
         ].map(([tab, label]) => (
           <button key={tab} type="button" className={activeTab === tab ? "tg-analysis-tabs__item--active" : ""} onClick={() => setActiveTab(tab as typeof activeTab)}>
             {label}
@@ -191,13 +213,12 @@ export function SurveyAnalysisPage() {
       </nav>
 
       {hasAnalysisError([
+        filterOptionsQuery,
         responseSummaryQuery,
         sectionSummaryQuery,
         questionSummaryQuery,
         choiceDistributionQuery,
         priorityTop5Query,
-        borichQuery,
-        locusQuery,
         groupCompareQuery,
         textGroupsQuery,
         textAnswersQuery,
@@ -206,16 +227,15 @@ export function SurveyAnalysisPage() {
       ]) ? (
         <ErrorState
           title="일부 분석 데이터를 불러오지 못했습니다."
-          description="분석 RPC 또는 응답 조회 권한을 확인해주세요."
+          description="결과 계산 또는 응답 조회 권한을 확인해주세요."
           actionLabel="다시 시도"
           onAction={() => {
+            void filterOptionsQuery.refetch();
             void responseSummaryQuery.refetch();
             void sectionSummaryQuery.refetch();
             void questionSummaryQuery.refetch();
             void choiceDistributionQuery.refetch();
             void priorityTop5Query.refetch();
-            void borichQuery.refetch();
-            void locusQuery.refetch();
             void groupCompareQuery.refetch();
             void textGroupsQuery.refetch();
             void textAnswersQuery.refetch();
@@ -239,12 +259,11 @@ export function SurveyAnalysisPage() {
         </div>
       ) : null}
 
-      {activeTab === "scale" || activeTab === "borich" ? (
+      {activeTab === "scale" ? (
         <div className="tg-analysis-page__grid">
-          <QuestionAverageCard surveyId={surveyId} questions={questionSummaryQuery.data ?? []} filters={activeFilters} />
+          <SectionAverageCard surveyId={surveyId} sections={sectionSummaryQuery.data ?? []} filters={activeFilters} />
+          <QuestionAverageCard surveyId={surveyId} questions={satisfactionQuestions} filters={activeFilters} />
           <ChoiceDistributionCard surveyId={surveyId} distributions={choiceDistributionQuery.data ?? []} filters={activeFilters} />
-          <BorichCard surveyId={surveyId} rows={borichQuery.data ?? []} filters={activeFilters} />
-          <LocusCard surveyId={surveyId} rows={locusQuery.data ?? []} filters={activeFilters} />
         </div>
       ) : null}
 
@@ -255,8 +274,11 @@ export function SurveyAnalysisPage() {
             rows={groupCompareQuery.data ?? []}
             filters={activeFilters}
             groupBy={groupBy}
+            targetValue={groupTargetValue}
+            targetOptions={groupTargetOptions}
             fields={groupCompareDefinitions}
             onGroupByChange={setGroupBy}
+            onTargetValueChange={setGroupTargetValue}
           />
         </div>
       ) : null}
@@ -277,24 +299,24 @@ export function SurveyAnalysisPage() {
       {activeTab === "heatmap" ? (
         <div className="tg-analysis-page__sections">
           <HeatmapPointCard surveyId={surveyId} points={heatmapPointsQuery.data ?? []} filters={activeFilters} />
-          {imageTagAnswersQuery.isPending ? <LoadingState label="태깅 답변을 불러오는 중" /> : null}
+          {imageTagAnswersQuery.isPending ? <LoadingState label="사진 표시 답변을 불러오는 중" /> : null}
           <ImageTagAnswerSection
             headingId="analysis-admin-image-tags"
-            title="관리자 이미지 태깅"
-            description="관리자가 미리 올려둔 이미지 위에 기록된 태깅 답변입니다."
+            title="준비된 사진 위 표시"
+            description="관리자가 미리 올려둔 사진 위에 남겨진 표시입니다."
             icon={<ImageIcon size={16} aria-hidden="true" />}
             groups={adminImageGroups}
-            emptyTitle="관리자 이미지 태깅 답변이 없습니다."
-            emptyDescription="image_tag 질문에 제출된 좌표 답변이 있으면 여기에 표시됩니다."
+            emptyTitle="준비된 사진 위 표시가 없습니다."
+            emptyDescription="사진 위에 표시한 답변이 있으면 여기에 표시됩니다."
           />
           <ImageTagAnswerSection
             headingId="analysis-participant-upload-tags"
-            title="참여자 업로드 태깅"
-            description="참여자가 직접 올린 사진 위에 남긴 태깅 답변입니다."
+            title="참여자가 올린 사진 위 표시"
+            description="참여자가 직접 올린 사진 위에 남긴 표시입니다."
             icon={<Upload size={16} aria-hidden="true" />}
             groups={participantUploadGroups}
-            emptyTitle="참여자 업로드 태깅 답변이 없습니다."
-            emptyDescription="participant_image_tag 질문에 제출된 사진과 좌표 답변이 있으면 여기에 표시됩니다."
+            emptyTitle="참여자가 올린 사진 위 표시가 없습니다."
+            emptyDescription="참여자가 올린 사진과 표시 답변이 있으면 여기에 표시됩니다."
           />
         </div>
       ) : null}
@@ -302,17 +324,82 @@ export function SurveyAnalysisPage() {
   );
 }
 
-function Metric(props: { label: string; value: string }) {
+function Metric(props: { label: string; value: string; helper?: string; tone?: "warning" }) {
   return (
-    <div className="tg-analysis-page__metric">
+    <div className={`tg-analysis-page__metric ${props.tone ? `tg-analysis-page__metric--${props.tone}` : ""}`}>
       <span>{props.label}</span>
       <strong>{props.value}</strong>
+      {props.tone === "warning" ? <StatusBadge tone="warning">해석 주의</StatusBadge> : null}
+      {props.helper ? <small>{props.helper}</small> : null}
     </div>
   );
 }
 
 function hasAnalysisError(queries: Array<{ isError: boolean }>): boolean {
   return queries.some((query) => query.isError);
+}
+
+function hasActiveFilters(filters: Record<string, unknown>): boolean {
+  return Object.values(filters).some((value) => typeof value === "string" && value.trim().length > 0);
+}
+
+function formatCount(value: number | undefined): string {
+  return typeof value === "number" ? String(value) : "-";
+}
+
+type GroupCompareTargetFilter = Pick<GroupCompareFilters, "targetKind" | "targetId">;
+
+type ResolvedGroupCompareTargetOption = GroupCompareTargetOption &
+  Readonly<{
+    targetKind?: GroupCompareFilters["targetKind"];
+    targetId?: string;
+  }>;
+
+function buildGroupCompareTargetOptions(sections: SurveySection[], questions: Question[]): ResolvedGroupCompareTargetOption[] {
+  const options: ResolvedGroupCompareTargetOption[] = [{ value: "survey", label: "전체 설문" }];
+  const scaleQuestions = questions.filter((question) => question.questionType === "scale" && question.metricType !== "importance");
+  const topicKeys = new Set<string>();
+
+  for (const section of sections) {
+    options.push({
+      value: `section:${section.id}`,
+      label: `주제 · ${formatLocalizedTitle(section.title, section.sectionKey)}`,
+      targetKind: "section",
+      targetId: section.id,
+    });
+  }
+
+  for (const question of scaleQuestions) {
+    options.push({
+      value: `question:${question.id}`,
+      label: `질문 · ${formatLocalizedTitle(question.title, question.questionKey)}`,
+      targetKind: "question",
+      targetId: question.id,
+    });
+    const topicKey = question.topicKey?.trim();
+    if (topicKey) topicKeys.add(topicKey);
+  }
+
+  for (const topicKey of [...topicKeys].sort((a, b) => a.localeCompare(b, "ko"))) {
+    options.push({
+      value: `topic:${topicKey}`,
+      label: `같은 항목 · ${topicKey}`,
+      targetKind: "topic",
+      targetId: topicKey,
+    });
+  }
+
+  return options;
+}
+
+function getGroupCompareTargetFilter(value: string, options: ResolvedGroupCompareTargetOption[]): GroupCompareTargetFilter {
+  const option = options.find((item) => item.value === value);
+  if (!option?.targetKind || !option.targetId) return {};
+  return { targetKind: option.targetKind, targetId: option.targetId };
+}
+
+function formatLocalizedTitle(title: { ko?: string; en?: string }, fallback: string): string {
+  return title.ko?.trim() || title.en?.trim() || fallback;
 }
 
 function groupImageTagAnswers(

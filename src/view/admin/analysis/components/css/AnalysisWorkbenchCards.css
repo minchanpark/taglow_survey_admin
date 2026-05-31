@@ -7,6 +7,10 @@
   background: var(--tg-bg-panel);
 }
 
+.tg-analysis-card--wide {
+  grid-column: 1 / -1;
+}
+
 .tg-analysis-card__header {
   display: flex;
   align-items: flex-start;
@@ -22,6 +26,10 @@
   gap: var(--tg-space-4);
 }
 
+.tg-analysis-card__header > div:first-child > div {
+  min-width: 0;
+}
+
 .tg-analysis-card__header svg {
   color: var(--tg-accent);
 }
@@ -30,7 +38,6 @@
 .tg-analysis-card__header p,
 .tg-analysis-distribution-block h3,
 .tg-analysis-choice-group h3,
-.tg-analysis-locus-grid h3,
 .tg-analysis-text-node h3,
 .tg-analysis-priority-list p {
   margin: 0;
@@ -55,6 +62,23 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--tg-space-4);
+}
+
+.tg-analysis-group-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--tg-space-4);
+}
+
+.tg-analysis-card-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--tg-space-4);
+  min-width: 0;
 }
 
 .tg-analysis-card__body {
@@ -85,7 +109,6 @@
 .tg-analysis-score-list small,
 .tg-analysis-priority-list small,
 .tg-analysis-text-node li,
-.tg-analysis-locus-grid small,
 .tg-analysis-muted {
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-caption);
@@ -94,6 +117,13 @@
 
 .tg-analysis-muted {
   margin: 0;
+}
+
+.tg-analysis-card-summary {
+  margin: 0;
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
 }
 
 .tg-analysis-metric strong {
@@ -112,7 +142,6 @@
 .tg-analysis-low-list,
 .tg-analysis-priority-list,
 .tg-analysis-score-list,
-.tg-analysis-locus-grid ul,
 .tg-analysis-text-node ul {
   display: grid;
   gap: var(--tg-space-4);
@@ -135,7 +164,8 @@
 }
 
 .tg-analysis-priority-list li {
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(96px, max-content);
+  align-items: flex-start;
 }
 
 .tg-analysis-priority-list > li > strong {
@@ -152,7 +182,6 @@
 .tg-analysis-priority-list p,
 .tg-analysis-score-list strong,
 .tg-analysis-text-node h3,
-.tg-analysis-locus-grid h3,
 .tg-analysis-choice-group h3,
 .tg-analysis-distribution-block h3 {
   color: var(--tg-text-strong);
@@ -161,19 +190,128 @@
   line-height: var(--tg-line-dense);
 }
 
+.tg-analysis-priority-list li > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--tg-space-2);
+}
+
+.tg-analysis-priority-list p,
+.tg-analysis-priority-list small {
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
 .tg-analysis-distribution-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
   gap: var(--tg-space-10);
 }
 
 .tg-analysis-distribution-block,
 .tg-analysis-choice-group,
-.tg-analysis-text-node,
-.tg-analysis-locus-grid section {
+.tg-analysis-text-node {
   display: grid;
   gap: var(--tg-space-5);
   min-width: 0;
+}
+
+.tg-analysis-distribution-block {
+  container-type: inline-size;
+}
+
+.tg-analysis-pie-block {
+  display: grid;
+  grid-template-columns: minmax(112px, 148px) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--tg-space-8);
+  min-width: 0;
+}
+
+.tg-analysis-pie {
+  position: relative;
+  display: grid;
+  width: clamp(112px, 34cqw, 148px);
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: var(--tg-radius-pill);
+  background: var(--tg-pie-gradient, var(--tg-bg-inset));
+  box-shadow: inset 0 0 0 1px var(--tg-border-subtle);
+}
+
+.tg-analysis-pie::after {
+  position: absolute;
+  width: 58%;
+  height: 58%;
+  border-radius: inherit;
+  background: var(--tg-bg-panel);
+  content: "";
+}
+
+.tg-analysis-pie span {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-analysis-pie strong {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-section-title);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-section-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.tg-analysis-pie small {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-analysis-pie-legend {
+  display: grid;
+  max-height: 184px;
+  gap: var(--tg-space-4);
+  min-width: 0;
+  margin: 0;
+  overflow: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.tg-analysis-pie-legend li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: var(--tg-space-4);
+  min-width: 0;
+  color: var(--tg-text-body);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-analysis-pie-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--tg-radius-pill);
+}
+
+.tg-analysis-pie-legend span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tg-analysis-pie-legend strong {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .tg-analysis-bar-rows {
@@ -183,7 +321,7 @@
 
 .tg-analysis-bar-row {
   display: grid;
-  grid-template-columns: minmax(96px, 1.1fr) minmax(120px, 2fr) minmax(72px, auto);
+  grid-template-columns: minmax(112px, 1.1fr) minmax(96px, 1.4fr) minmax(48px, max-content);
   align-items: center;
   gap: var(--tg-space-5);
   min-width: 0;
@@ -217,6 +355,7 @@
 }
 
 .tg-analysis-bar-row strong {
+  justify-self: end;
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-caption);
   font-weight: var(--tg-weight-medium);
@@ -247,7 +386,7 @@
 
 .tg-analysis-table {
   width: 100%;
-  min-width: 680px;
+  min-width: 560px;
   border-collapse: collapse;
   font-size: var(--tg-font-size-dense);
   line-height: var(--tg-line-dense);
@@ -272,14 +411,12 @@
 }
 
 .tg-analysis-choice-groups,
-.tg-analysis-text-grid,
-.tg-analysis-locus-grid {
+.tg-analysis-text-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--tg-space-10);
 }
 
-.tg-analysis-locus-grid section,
 .tg-analysis-text-node {
   border: 1px solid var(--tg-border-subtle);
   border-radius: var(--tg-radius-sm);
@@ -287,19 +424,19 @@
   background: var(--tg-bg-raised);
 }
 
-.tg-analysis-locus-grid li,
 .tg-analysis-text-node li {
   display: grid;
   gap: var(--tg-space-2);
 }
 
-.tg-analysis-locus-grid li span {
-  color: var(--tg-text-body);
-  font-size: var(--tg-font-size-dense);
-  line-height: var(--tg-line-dense);
+.tg-analysis-text-node header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tg-space-4);
 }
 
-.tg-analysis-text-node header {
+.tg-analysis-choice-group__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -319,11 +456,26 @@
 .tg-analysis-inline-select select,
 .tg-analysis-search input {
   height: 32px;
+  min-width: 120px;
   border: 1px solid var(--tg-border-strong);
   border-radius: var(--tg-radius-sm);
   padding: 0 var(--tg-space-5);
   color: var(--tg-text-strong);
   background: var(--tg-bg-panel);
+}
+
+.tg-analysis-search input {
+  width: min(260px, 44vw);
+}
+
+.tg-analysis-inline-select--wide select {
+  max-width: 240px;
+}
+
+.tg-analysis-score-list__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tg-space-2);
 }
 
 .tg-analysis-heatmap-mini {
@@ -354,8 +506,7 @@
   .tg-analysis-stat-grid,
   .tg-analysis-distribution-grid,
   .tg-analysis-choice-groups,
-  .tg-analysis-text-grid,
-  .tg-analysis-locus-grid {
+  .tg-analysis-text-grid {
     grid-template-columns: 1fr;
   }
 
@@ -366,7 +517,29 @@
     grid-template-columns: 1fr;
   }
 
+  .tg-analysis-card-controls,
+  .tg-analysis-group-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .tg-analysis-card__header {
     flex-direction: column;
+  }
+}
+
+@container (max-width: 430px) {
+  .tg-analysis-pie-block {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .tg-analysis-bar-row {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    row-gap: var(--tg-space-3);
+  }
+
+  .tg-analysis-bar-row > i {
+    grid-column: 1 / -1;
   }
 }

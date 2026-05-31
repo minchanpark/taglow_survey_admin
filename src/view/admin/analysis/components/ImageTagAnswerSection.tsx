@@ -33,12 +33,12 @@ export function ImageTagAnswerSection(props: {
           <h2 id={props.headingId}>{props.title}</h2>
         </div>
         <p>{props.description}</p>
-        <strong>N={countUniqueImageTagResponses(props.groups.flatMap((group) => group.answers))} · 태그 {answerCount}</strong>
+        <strong>응답 수 {countUniqueImageTagResponses(props.groups.flatMap((group) => group.answers))}명 · 표시 {answerCount}개</strong>
       </header>
       {answerCount > 0 && answerCount < 5 ? (
         <div className="tg-analysis-warning">
           <AlertTriangle size={15} aria-hidden="true" />
-          <span>N={answerCount}라 해석에 주의가 필요합니다.</span>
+          <span>표시가 {answerCount}개라 해석에 주의가 필요합니다.</span>
         </div>
       ) : null}
 
@@ -65,14 +65,14 @@ function ImageTagAnswerCard(props: { group: ImageTagAnswerGroup }) {
     <article className="tg-analysis-tag-card">
       <header className="tg-analysis-tag-card__header">
         <div>
-          <p>{props.group.sectionTitle ?? "섹션 미지정"}</p>
+          <p>{props.group.sectionTitle ?? "주제 없음"}</p>
           <h3>{props.group.questionTitle}</h3>
         </div>
-        <span>{props.group.questionType === "participant_image_tag" ? "참여자 사진" : "관리자 이미지"}</span>
+        <span>{props.group.questionType === "participant_image_tag" ? "참여자가 올린 사진" : "준비된 사진"}</span>
       </header>
 
-      <div className="tg-analysis-tag-card__visual" aria-label={`${props.group.questionTitle} 태깅 분포`}>
-        {imageUrl ? <img src={imageUrl} alt="" /> : <span>{props.group.image?.storagePath ?? "이미지 미리보기가 없습니다."}</span>}
+      <div className="tg-analysis-tag-card__visual" aria-label={`${props.group.questionTitle} 표시 위치`}>
+        {imageUrl ? <img src={imageUrl} alt="" /> : <span>{props.group.image?.storagePath ?? "사진 미리보기가 없습니다."}</span>}
         {props.group.answers.map((answer, index) => (
           <i key={answer.id} style={{ left: `${answer.xRatio * 100}%`, top: `${answer.yRatio * 100}%` }}>
             {index + 1}
@@ -83,9 +83,9 @@ function ImageTagAnswerCard(props: { group: ImageTagAnswerGroup }) {
       <div className="tg-analysis-tag-card__meta">
         <span>
           <MousePointer2 size={14} aria-hidden="true" />
-          태그 {props.group.answers.length}
+          표시 {props.group.answers.length}개
         </span>
-        <span>응답 수 {countUniqueImageTagResponses(props.group.answers)}</span>
+        <span>응답 수 {countUniqueImageTagResponses(props.group.answers)}명</span>
       </div>
 
       <ol className="tg-analysis-tag-list">
@@ -93,12 +93,12 @@ function ImageTagAnswerCard(props: { group: ImageTagAnswerGroup }) {
           <li key={answer.id}>
             <strong>{index + 1}</strong>
             <div>
-              <p>{answer.tagType ?? "태그"}</p>
+              <p>{answer.tagType ?? "표시"}</p>
               {answer.textValue ? <span>{answer.textValue}</span> : null}
               <small>
                 {formatProfile(answer.responseProfile)}
                 {" · "}
-                x {formatRatio(answer.xRatio)}, y {formatRatio(answer.yRatio)}
+                가로 {formatRatio(answer.xRatio)} · 세로 {formatRatio(answer.yRatio)}
               </small>
             </div>
           </li>
@@ -109,11 +109,11 @@ function ImageTagAnswerCard(props: { group: ImageTagAnswerGroup }) {
 }
 
 function formatProfile(profile: JsonRecord | undefined): string {
-  if (!profile) return "프로필 없음";
+  if (!profile) return "기본 정보 없음";
   const parts = [profile.dormitory, profile.roomType, profile.rc, profile.department].filter(
     (value): value is string => typeof value === "string" && value.trim().length > 0,
   );
-  return parts.length ? parts.join(" · ") : "프로필 없음";
+  return parts.length ? parts.join(" · ") : "기본 정보 없음";
 }
 
 function formatRatio(value: number): string {

@@ -3,6 +3,7 @@ import type { Question } from "./question";
 import {
   buildFilterOptionsFromQuestions,
   buildProfileFilterDefinitions,
+  mergeProfileFilterDefinitionsWithOptions,
   pruneAnalysisFilters,
 } from "./profileOptions";
 
@@ -102,6 +103,34 @@ describe("profile filter definitions", () => {
       roomTypes: ["single", "double"],
       dormitories: [],
     });
+  });
+
+  it("narrows filter definitions to analysis option values while preserving configured labels", () => {
+    const definitions = buildProfileFilterDefinitions(profileQuestions);
+
+    expect(
+      mergeProfileFilterDefinitionsWithOptions(definitions, {
+        genders: ["female"],
+        semesterGroups: [],
+        departments: [],
+        rcs: [],
+        dormitories: [],
+        roomTypes: ["triple", "double"],
+        dormExperiences: [],
+      }),
+    ).toMatchObject([
+      {
+        key: "gender",
+        options: [{ value: "female", label: "여성" }],
+      },
+      {
+        key: "roomType",
+        options: [
+          { value: "triple", label: "triple" },
+          { value: "double", label: "2인실" },
+        ],
+      },
+    ]);
   });
 
   it("drops active filters that no longer exist in the builder config", () => {

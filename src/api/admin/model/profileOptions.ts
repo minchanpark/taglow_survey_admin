@@ -137,6 +137,35 @@ export function buildFilterOptionsFromQuestions(questions: readonly Question[]):
   };
 }
 
+export function mergeProfileFilterDefinitionsWithOptions(
+  definitions: readonly ProfileFilterDefinition[],
+  filterOptions: FilterOptions | undefined,
+): ProfileFilterDefinition[] {
+  if (!filterOptions) return [...definitions];
+
+  const optionsByKey: Record<ProfileDistributionKey, readonly string[]> = {
+    gender: filterOptions.genders,
+    semesterGroup: filterOptions.semesterGroups,
+    department: filterOptions.departments,
+    rc: filterOptions.rcs,
+    dormitory: filterOptions.dormitories,
+    roomType: filterOptions.roomTypes,
+    dormExperience: filterOptions.dormExperiences,
+  };
+
+  return definitions.map((definition) => {
+    const optionValues = optionsByKey[definition.key].filter((value) => value.trim());
+    if (!optionValues.length) return definition;
+
+    const configuredOptions = new Map(definition.options.map((option) => [option.value, option] as const));
+    const mergedOptions = optionValues.map((value) => configuredOptions.get(value) ?? { value, label: value });
+    return {
+      ...definition,
+      options: mergedOptions,
+    };
+  });
+}
+
 export function getGroupCompareDefinitions(
   definitions: readonly ProfileFilterDefinition[],
 ): Array<ProfileFilterDefinition & { key: GroupCompareDimension }> {

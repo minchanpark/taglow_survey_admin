@@ -327,7 +327,7 @@ function parseSourceQuestions(value: string): SourceQuestion[] {
 
 function inferQuestionType(source: SourceQuestion): QuestionType {
   const text = source.text;
-  if (text.includes("선택해주세요")) return "single_choice";
+  if (text.includes("선택해주세요")) return "attention_check";
   if (source.number <= 6 || source.number >= 194) return "profile";
   if (hasAny(text, ["자유롭게", "이유", "부족", "건의/문의"])) return "text";
   if (text.includes("중복 선택 가능")) return "multi_select";
@@ -361,7 +361,10 @@ function inferConfig(source: SourceQuestion, questionType: QuestionType, metricT
 
   if (questionType === "attention_check") {
     return {
-      expectedValue: source.text.includes("매우 중요하다") ? "매우 중요하다" : "만족",
+      scaleMin: 1,
+      scaleMax: 5,
+      labelsKo: source.text.includes("중요") ? ["전혀 중요하지 않음", "중요하지 않음", "보통", "중요함", "매우 중요함"] : ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
+      expectedValue: inferAttentionCheckExpectedValue(source.text),
       excludeIfFailed: true,
     };
   }
@@ -488,6 +491,21 @@ function satisfactionScaleChoiceOptions() {
 
 function importanceScaleChoiceOptions() {
   return ["전혀 중요하지 않음", "중요하지 않음", "보통", "중요함", "매우 중요함"].map((label) => ({ value: stableValue(label), labelKo: label }));
+}
+
+function inferAttentionCheckExpectedValue(text: string): string {
+  const quotedValue = text.match(/['"“”‘’]([^'"“”‘’]+)['"“”‘’]/)?.[1]?.trim();
+  if (quotedValue) {
+    if (/^[1-5]$/.test(quotedValue)) return quotedValue;
+    if (quotedValue.includes("매우 불만족") || quotedValue.includes("전혀 중요하지")) return "1";
+    if (quotedValue.includes("불만족") || quotedValue.includes("중요하지")) return "2";
+    if (quotedValue.includes("매우 중요")) return "5";
+    if (quotedValue.includes("매우 만족")) return "5";
+    if (quotedValue.includes("중요")) return "4";
+    if (quotedValue.includes("만족")) return "4";
+    if (quotedValue.includes("보통")) return "3";
+  }
+  return "3";
 }
 
 function hasAny(value: string, needles: string[]): boolean {

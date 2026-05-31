@@ -238,6 +238,108 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     ]);
   });
 
+  it("uses profile_json and raw_payload values consistently when building the response summary fallback", async () => {
+    const responsesQuery = createTableQuery([
+      {
+        status: "submitted",
+        gender: "",
+        dormitory: "",
+        room_type: "",
+        profile_json: { profile: { dormitory: "비전관" }, roomType: "2인실" },
+        raw_payload: {},
+      },
+      {
+        status: "submitted",
+        gender: "",
+        dormitory: "",
+        room_type: "",
+        profile_json: {},
+        raw_payload: { profile: { dormitory: "은혜관" }, room_type: "3인실" },
+      },
+      {
+        status: "submitted",
+        gender: "",
+        dormitory: "비전관",
+        room_type: "2인실",
+        profile_json: {},
+        raw_payload: {},
+      },
+    ]);
+    const questionsQuery = createTableQuery([
+      {
+        id: "question-dormitory",
+        survey_id: "survey-1",
+        section_id: "section-1",
+        question_key: "profile_dormitory",
+        question_type: "profile",
+        title_ko: "거주 생활관",
+        title_en: null,
+        description_ko: null,
+        description_en: null,
+        order_index: 0,
+        is_required: true,
+        metric_type: null,
+        topic_key: null,
+        space_key: null,
+        config: {
+          profileField: "dormitory",
+          options: [
+            { value: "비전관", labelKo: "비전관" },
+            { value: "은혜관", labelKo: "은혜관" },
+          ],
+        },
+        validation: {},
+      },
+      {
+        id: "question-room-type",
+        survey_id: "survey-1",
+        section_id: "section-1",
+        question_key: "profile_room_type",
+        question_type: "profile",
+        title_ko: "인실",
+        title_en: null,
+        description_ko: null,
+        description_en: null,
+        order_index: 1,
+        is_required: true,
+        metric_type: null,
+        topic_key: null,
+        space_key: null,
+        config: {
+          profileField: "room_type",
+          options: [
+            { value: "2인실", labelKo: "2인실" },
+            { value: "3인실", labelKo: "3인실" },
+          ],
+        },
+        validation: {},
+      },
+    ]);
+    const supabase = {
+      auth: {
+        getSession: vi.fn(),
+        getUser: vi.fn(),
+        signInWithOAuth: vi.fn(),
+        signOut: vi.fn(),
+      },
+      from: vi.fn((table: string) => (table === "responses" ? responsesQuery : questionsQuery)),
+      rpc: vi.fn(missingResponseSummaryRpc),
+    };
+
+    const gateway = new SupabaseAdminApiGateway(supabase as never);
+    const summary = await gateway.getResponseSummary({ surveyId: "survey-1", filters: { dormitory: "비전관", roomType: "2인실" } });
+
+    expect(summary.filtered_responses).toBe(2);
+    expect(summary.profile_distribution?.dormitory).toEqual([
+      { key: "비전관", label: "비전관", n: 2, percentage: 100, isUnclassified: false },
+      { key: "은혜관", label: "은혜관", n: 0, percentage: 0, isUnclassified: false },
+    ]);
+    expect(summary.profile_distribution?.roomType).toEqual([
+      { key: "2인실", label: "2인실", n: 2, percentage: 100, isUnclassified: false },
+      { key: "3인실", label: "3인실", n: 0, percentage: 0, isUnclassified: false },
+    ]);
+  });
+
   it("does not hide non-schema response summary failures behind a fallback query", async () => {
     const responsesQuery = createErrorTableQuery({ message: "permission denied for table responses" });
     const questionsQuery = createTableQuery([]);
@@ -336,7 +438,63 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     });
   });
 
-  it("disambiguates the answers to responses relationship for image tag answers", async () => {
+  it("loads image tag answers through the analysis RPC first", async () => {
+    const createSignedUrl = vi.fn(async () => ({ data: { signedUrl: "https://example.com/signed.png" }, error: null }));
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          id: "answer-rpc-1",
+          response_id: "response-rpc-1",
+          section_id: "section-1",
+          section_title: "시설",
+          question_id: "question-1",
+          question_title: "사진에 표시해주세요.",
+          question_type: "participant_image_tag",
+          asset_id: null,
+          answer_type: "participant_image_tag",
+          x_ratio: 0.42,
+          y_ratio: 0.24,
+          tag_type: "불편",
+          severity: 3,
+          text_value: "사진 설명",
+          value_json: {},
+          image_storage_bucket: "survey-assets",
+          image_storage_path: "participant-uploads/survey-1/image.png",
+          image_signed_url: null,
+          created_at: "2026-05-29T00:00:00.000Z",
+        },
+      ],
+      error: null,
+    }));
+    const supabase = {
+      auth: {
+        getSession: vi.fn(),
+        getUser: vi.fn(),
+        signInWithOAuth: vi.fn(),
+        signOut: vi.fn(),
+      },
+      storage: {
+        from: vi.fn(() => ({ createSignedUrl })),
+      },
+      from: vi.fn(),
+      rpc,
+    };
+
+    const gateway = new SupabaseAdminApiGateway(supabase as never);
+    const rows = await gateway.listImageTagAnswers({ surveyId: "survey-1", filters: { dormitory: "비전관" } });
+
+    expect(rpc).toHaveBeenCalledWith("get_image_tag_answers", {
+      p_survey_id: "survey-1",
+      p_filters: { dormitory: "비전관" },
+    });
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(createSignedUrl).toHaveBeenCalledWith("participant-uploads/survey-1/image.png", 60 * 60);
+    expect(rows[0]).toMatchObject({
+      image_signed_url: "https://example.com/signed.png",
+    });
+  });
+
+  it("disambiguates the answers to responses relationship for image tag answers when the RPC is unavailable", async () => {
     const calls: { select?: string; eq: Array<[string, unknown]> } = { eq: [] };
     const query = {
       select: vi.fn((value: string) => {
@@ -360,7 +518,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
         signOut: vi.fn(),
       },
       from: vi.fn(() => query),
-      rpc: vi.fn(),
+      rpc: vi.fn(missingImageTagAnswersRpc),
     };
 
     const gateway = new SupabaseAdminApiGateway(supabase as never);
@@ -389,7 +547,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
         signOut: vi.fn(),
       },
       from: vi.fn(() => answerQueries.shift()),
-      rpc: vi.fn(),
+      rpc: vi.fn(missingImageTagAnswersRpc),
     };
 
     const gateway = new SupabaseAdminApiGateway(supabase as never);
@@ -442,7 +600,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
         from: vi.fn(() => ({ createSignedUrl })),
       },
       from: vi.fn(() => query),
-      rpc: vi.fn(),
+      rpc: vi.fn(missingImageTagAnswersRpc),
     };
 
     const gateway = new SupabaseAdminApiGateway(supabase as never, "survey-assets");
@@ -564,7 +722,7 @@ function createSupabaseStub(query: unknown, createSignedUrl: unknown) {
       from: vi.fn(() => ({ createSignedUrl })),
     },
     from: vi.fn(() => query),
-    rpc: vi.fn(),
+    rpc: vi.fn(missingImageTagAnswersRpc),
   };
 }
 
@@ -573,6 +731,15 @@ async function missingResponseSummaryRpc() {
     data: null,
     error: {
       message: "Could not find the function public.get_response_summary in the schema cache",
+    },
+  };
+}
+
+async function missingImageTagAnswersRpc() {
+  return {
+    data: null,
+    error: {
+      message: "Could not find the function public.get_image_tag_answers in the schema cache",
     },
   };
 }

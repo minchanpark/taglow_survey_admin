@@ -81,6 +81,7 @@ const visibleQuestionTypes: Array<{ value: QuestionKind; label: string }> = [
   { value: shortTextQuestionKind, label: "단답형" },
   { value: "text", label: "주관식" },
   { value: choiceTextQuestionKind, label: "선택후 주관식" },
+  { value: "attention_check", label: "주의 확인" },
   { value: "image_tag", label: "이미지 태깅" },
   { value: "participant_image_tag", label: "태깅 건의" },
 ];
@@ -89,7 +90,6 @@ const legacyQuestionTypes: Array<{ value: QuestionType; label: string }> = [
   { value: "profile", label: "기본 정보" },
   { value: "experience", label: "경험 여부" },
   { value: "ranking", label: "순위" },
-  { value: "attention_check", label: "주의력 확인" },
 ];
 
 const allQuestionKinds: Array<{ value: QuestionKind; label: string }> = [...visibleQuestionTypes, ...legacyQuestionTypes];
@@ -1494,15 +1494,62 @@ function QuestionConfigFields(props: {
   }
 
   if (props.questionType === "attention_check") {
+    const scaleMin = typeof config.scaleMin === "number" ? config.scaleMin : 1;
+    const scaleMax = typeof config.scaleMax === "number" ? config.scaleMax : 5;
+    const expectedValue = typeof config.expectedValue === "number" || typeof config.expectedValue === "string" ? String(config.expectedValue) : "3";
     return (
       <div className="tg-builder-config-panel">
         {displayGroupField}
+        <div className="tg-builder-config-note">
+          <FileText size={16} aria-hidden="true" />
+          <span>참여자는 척도로 답합니다. 지정한 값을 선택하지 않은 응답은 분석에서 자동 제외됩니다.</span>
+        </div>
+        <div className="tg-builder-two-col">
+          <label className="tg-builder-field">
+            <span>최소 점수</span>
+            <input
+              type="number"
+              min={1}
+              value={scaleMin}
+              disabled={props.disabled}
+              onChange={(event) => setConfig({ scaleMin: Number(event.target.value), excludeIfFailed: true })}
+            />
+          </label>
+          <label className="tg-builder-field">
+            <span>최대 점수</span>
+            <input
+              type="number"
+              min={scaleMin}
+              value={scaleMax}
+              disabled={props.disabled}
+              onChange={(event) => setConfig({ scaleMax: Number(event.target.value), excludeIfFailed: true })}
+            />
+          </label>
+        </div>
         <label className="tg-builder-field">
-          <span>정답으로 선택해야 할 값</span>
+          <span>정답 점수</span>
           <input
-            value={typeof config.expectedValue === "string" ? config.expectedValue : ""}
+            type="number"
+            min={scaleMin}
+            max={scaleMax}
+            value={expectedValue}
             disabled={props.disabled}
             onChange={(event) => setConfig({ expectedValue: event.target.value, excludeIfFailed: true })}
+          />
+        </label>
+        <label className="tg-builder-field">
+          <span>점수 라벨</span>
+          <textarea
+            rows={3}
+            value={Array.isArray(config.labelsKo) ? config.labelsKo.filter((label): label is string => typeof label === "string").join("\n") : ""}
+            disabled={props.disabled}
+            placeholder={"1점\n2점\n3점\n4점\n5점"}
+            onChange={(event) =>
+              setConfig({
+                labelsKo: splitLines(event.target.value),
+                excludeIfFailed: true,
+              })
+            }
           />
         </label>
       </div>
@@ -1871,7 +1918,10 @@ function defaultQuestionConfig(questionType: QuestionKind): QuestionConfig {
   }
   if (questionType === "attention_check") {
     return {
-      expectedValue: "확인",
+      scaleMin: 1,
+      scaleMax: 5,
+      labelsKo: ["1점", "2점", "3점", "4점", "5점"],
+      expectedValue: "3",
       excludeIfFailed: true,
     };
   }
@@ -1905,6 +1955,16 @@ function normalizeQuestionConfigForKind(questionType: QuestionKind, config: Json
       textMode: "choice_then_text",
       multiline: typeof config.multiline === "boolean" ? config.multiline : true,
       options: options.length ? options : defaultChoiceTextOptions,
+    } as QuestionConfig;
+  }
+  if (questionType === "attention_check") {
+    return {
+      ...config,
+      scaleMin: typeof config.scaleMin === "number" ? config.scaleMin : 1,
+      scaleMax: typeof config.scaleMax === "number" ? config.scaleMax : 5,
+      labelsKo: Array.isArray(config.labelsKo) ? config.labelsKo : ["1점", "2점", "3점", "4점", "5점"],
+      expectedValue: typeof config.expectedValue === "number" || typeof config.expectedValue === "string" ? String(config.expectedValue) : "3",
+      excludeIfFailed: true,
     } as QuestionConfig;
   }
   return config as QuestionConfig;
