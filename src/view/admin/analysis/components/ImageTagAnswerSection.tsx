@@ -1,7 +1,7 @@
 import { AlertTriangle, MousePointer2 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { ImageTagAnswer, ImageTagAnswerImage, JsonRecord } from "../../../../api/admin/model";
-import { EmptyState } from "../../../../components";
+import { Button, EmptyState } from "../../../../components";
 import "./css/ImageTagAnswerSection.css";
 
 export type ImageTagAnswerGroup = Readonly<{
@@ -23,6 +23,9 @@ export function ImageTagAnswerSection(props: {
   groups: ImageTagAnswerGroup[];
   emptyTitle: string;
   emptyDescription: string;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }) {
   const answerCount = props.groups.reduce((sum, group) => sum + group.answers.length, 0);
   return (
@@ -51,6 +54,13 @@ export function ImageTagAnswerSection(props: {
       ) : (
         <EmptyState title={props.emptyTitle} description={props.emptyDescription} />
       )}
+      {props.hasMore ? (
+        <div className="tg-analysis-load-more">
+          <Button variant="secondary" onClick={props.onLoadMore} disabled={props.isLoadingMore}>
+            {props.isLoadingMore ? "불러오는 중" : "더 보기"}
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }

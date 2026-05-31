@@ -255,19 +255,21 @@ export class HttpAdminApiGateway implements AdminApiGateway {
     return this.request<RawHeatmapPoint[]>(`/api/admin/surveys/${args.surveyId}/analysis/heatmap`, { method: "POST", body: args.filters });
   }
 
-  listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawImageTagAnswer[]> {
-    return this.request<RawImageTagAnswer[]>(`/api/admin/surveys/${args.surveyId}/analysis/image-tag-answers`, {
+  async listImageTagAnswers(args: HeatmapQueryArgs) {
+    const rows = await this.request<RawImageTagAnswer[]>(`/api/admin/surveys/${args.surveyId}/analysis/image-tag-answers`, {
       method: "POST",
       body: args.filters,
     });
+    return { items: rows, next_cursor: rows.find((row) => row.next_cursor)?.next_cursor ?? null };
   }
 
   getTextGroups(args: TextAnswerQueryArgs): Promise<RawTextGroup[]> {
     return this.request<RawTextGroup[]>(`/api/admin/surveys/${args.surveyId}/analysis/text-groups`, { method: "POST", body: args.filters });
   }
 
-  listTextAnswers(args: TextAnswerQueryArgs): Promise<RawTextAnswer[]> {
-    return this.request<RawTextAnswer[]>(`/api/admin/surveys/${args.surveyId}/analysis/text-answers`, { method: "POST", body: args.filters });
+  async listTextAnswers(args: TextAnswerQueryArgs) {
+    const rows = await this.request<RawTextAnswer[]>(`/api/admin/surveys/${args.surveyId}/analysis/text-answers`, { method: "POST", body: args.filters });
+    return { items: rows, next_cursor: rows.find((row) => row.next_cursor)?.next_cursor ?? null };
   }
 
   private async request<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {

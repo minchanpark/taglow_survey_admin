@@ -16,6 +16,8 @@ export function toAnalysisFilterPayload(filters: AnalysisFilters | HeatmapFilter
     asset_id: "assetId" in filters ? filters.assetId ?? null : null,
     tag_type: "tagType" in filters ? filters.tagType ?? null : null,
     keyword: "keyword" in filters ? filters.keyword ?? null : null,
+    cursor: "cursor" in filters ? filters.cursor ?? null : null,
+    limit: "limit" in filters ? filters.limit ?? null : null,
     group_by: "groupBy" in filters ? toGroupByColumn(filters.groupBy) : null,
     target_kind: "targetKind" in filters ? filters.targetKind ?? null : null,
     target_id: "targetId" in filters ? filters.targetId ?? null : null,

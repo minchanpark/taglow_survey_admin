@@ -37,8 +37,12 @@ export const adminQueryKeys = {
     ["admin", "survey", surveyId, "analysis", "heatmap", filters] as const,
   imageTagAnswers: (surveyId: string, filters: HeatmapFilters) =>
     ["admin", "survey", surveyId, "analysis", "imageTagAnswers", filters] as const,
+  imageTagAnswersInfinite: (surveyId: string, filters: HeatmapFilters) =>
+    ["admin", "survey", surveyId, "analysis", "imageTagAnswersInfinite", filters] as const,
   textAnswers: (surveyId: string, filters: TextAnswerFilters) =>
     ["admin", "survey", surveyId, "analysis", "textAnswers", filters] as const,
+  textAnswersInfinite: (surveyId: string, filters: TextAnswerFilters) =>
+    ["admin", "survey", surveyId, "analysis", "textAnswersInfinite", filters] as const,
   textGroups: (surveyId: string, filters: TextAnswerFilters) =>
     ["admin", "survey", surveyId, "analysis", "textGroups", filters] as const,
 };

@@ -222,7 +222,7 @@ function renderAnalysis(overrides: Partial<AdminApiController> = {}) {
           questions,
           assets,
         }),
-        listImageTagAnswers: async () => imageTagAnswers,
+        listImageTagAnswers: async () => ({ items: imageTagAnswers }),
         ...overrides,
       }),
     },
@@ -274,7 +274,7 @@ describe("SurveyAnalysisPage", () => {
 
   it("requests image tag answers again when a global filter changes", async () => {
     const user = userEvent.setup();
-    const listImageTagAnswers = vi.fn<AdminApiController["listImageTagAnswers"]>(async () => imageTagAnswers);
+    const listImageTagAnswers = vi.fn<AdminApiController["listImageTagAnswers"]>(async () => ({ items: imageTagAnswers }));
     renderAnalysis({ listImageTagAnswers });
 
     await screen.findByRole("heading", { name: "생활관 만족도 조사" });
@@ -282,7 +282,7 @@ describe("SurveyAnalysisPage", () => {
     await user.selectOptions(screen.getByLabelText("거주 생활관"), "비전관");
 
     await waitFor(() => {
-      expect(listImageTagAnswers).toHaveBeenLastCalledWith({ surveyId: "survey-1", filters: { dormitory: "비전관" } });
+      expect(listImageTagAnswers).toHaveBeenLastCalledWith({ surveyId: "survey-1", filters: { dormitory: "비전관", cursor: undefined, limit: 50 } });
     });
   });
 

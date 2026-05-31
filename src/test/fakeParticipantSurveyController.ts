@@ -57,6 +57,12 @@ export function createFakeParticipantSurveyController(
       signedUrl: "https://example.com/uploaded.png",
       metadata: {},
     }),
+    submitSurveyResponse: async () => ({
+      responseId: "response-1",
+      submittedAt: "2026-05-28T00:00:00.000Z",
+      alreadySubmitted: false,
+      passedAttentionCheck: true,
+    }),
     ...overrides,
   };
 }

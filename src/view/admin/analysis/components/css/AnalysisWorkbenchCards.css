@@ -410,6 +410,13 @@
   color: var(--tg-text-body);
 }
 
+.tg-analysis-load-more {
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid var(--tg-border-subtle);
+  padding-top: var(--tg-space-6);
+}
+
 .tg-analysis-choice-groups,
 .tg-analysis-text-grid {
   display: grid;

@@ -6,13 +6,13 @@ import {
   useFilterOptionsQuery,
   useGroupCompareSummaryQuery,
   useHeatmapPointsQuery,
-  useImageTagAnswersQuery,
+  useImageTagAnswersInfiniteQuery,
   usePriorityTop5Query,
   useQuestionSatisfactionSummaryQuery,
   useResponseSummaryQuery,
   useSectionSatisfactionSummaryQuery,
   useSurveyDetailQuery,
-  useTextAnswersQuery,
+  useTextAnswersInfiniteQuery,
   useTextGroupsQuery,
 } from "../../../api/admin/query";
 import {
@@ -91,10 +91,10 @@ export function SurveyAnalysisPage() {
   const priorityTop5Query = usePriorityTop5Query(surveyId, activeFilters, { enabled: isOverviewTab });
   const groupCompareQuery = useGroupCompareSummaryQuery(surveyId, groupCompareFilters, { enabled: isGroupsTab });
   const textGroupsQuery = useTextGroupsQuery(surveyId, textFilters, { enabled: isTextTab });
-  const textAnswersQuery = useTextAnswersQuery(surveyId, textFilters, { enabled: isTextTab });
+  const textAnswersQuery = useTextAnswersInfiniteQuery(surveyId, textFilters, { enabled: isTextTab });
   const imageTagFilters = activeFilters as HeatmapFilters;
   const heatmapPointsQuery = useHeatmapPointsQuery(surveyId, imageTagFilters, { enabled: isHeatmapTab });
-  const imageTagAnswersQuery = useImageTagAnswersQuery(surveyId, imageTagFilters, { enabled: isHeatmapTab });
+  const imageTagAnswersQuery = useImageTagAnswersInfiniteQuery(surveyId, imageTagFilters, { enabled: isHeatmapTab });
 
   useEffect(() => {
     setSurveyId(surveyId || undefined);
@@ -130,8 +130,12 @@ export function SurveyAnalysisPage() {
     [detailQuery.data?.assets],
   );
   const groups = useMemo(
-    () => groupImageTagAnswers(imageTagAnswersQuery.data ?? [], questionById, assetById),
+    () => groupImageTagAnswers(imageTagAnswersQuery.data?.pages.flatMap((page) => page.items) ?? [], questionById, assetById),
     [assetById, imageTagAnswersQuery.data, questionById],
+  );
+  const textAnswers = useMemo(
+    () => textAnswersQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [textAnswersQuery.data],
   );
   const adminImageGroups = groups.filter((group) => group.kind === "admin_image");
   const participantUploadGroups = groups.filter((group) => group.kind === "participant_upload");
@@ -296,10 +300,15 @@ export function SurveyAnalysisPage() {
           <TextEvidenceCard
             surveyId={surveyId}
             groups={textGroupsQuery.data ?? []}
-            answers={textAnswersQuery.data ?? []}
+            answers={textAnswers}
             filters={activeFilters}
             keyword={textKeyword}
             onKeywordChange={setTextKeyword}
+            hasMore={Boolean(textAnswersQuery.hasNextPage)}
+            isLoadingMore={textAnswersQuery.isFetchingNextPage}
+            onLoadMore={() => {
+              void textAnswersQuery.fetchNextPage();
+            }}
           />
         </div>
       ) : null}
@@ -316,6 +325,11 @@ export function SurveyAnalysisPage() {
             groups={adminImageGroups}
             emptyTitle="준비된 사진 위 표시가 없습니다."
             emptyDescription="사진 위에 표시한 답변이 있으면 여기에 표시됩니다."
+            hasMore={Boolean(imageTagAnswersQuery.hasNextPage)}
+            isLoadingMore={imageTagAnswersQuery.isFetchingNextPage}
+            onLoadMore={() => {
+              void imageTagAnswersQuery.fetchNextPage();
+            }}
           />
           <ImageTagAnswerSection
             headingId="analysis-participant-upload-tags"
@@ -325,6 +339,11 @@ export function SurveyAnalysisPage() {
             groups={participantUploadGroups}
             emptyTitle="참여자가 올린 사진 위 표시가 없습니다."
             emptyDescription="참여자가 올린 사진과 표시 답변이 있으면 여기에 표시됩니다."
+            hasMore={Boolean(imageTagAnswersQuery.hasNextPage)}
+            isLoadingMore={imageTagAnswersQuery.isFetchingNextPage}
+            onLoadMore={() => {
+              void imageTagAnswersQuery.fetchNextPage();
+            }}
           />
         </div>
       ) : null}

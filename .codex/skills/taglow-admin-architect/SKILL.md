@@ -26,6 +26,7 @@ rg -n "구현 순서|완료 기준|프로젝트 구조|핵심 아키텍처|API B
 | 프로젝트 구조, phase 계획, 우선순위 결정 | `taglow-admin:architect` | 현재 스킬에서 직접 처리 |
 | API boundary, model/gateway/mapper/controller/query hook | `taglow-admin:api-boundary` | View가 Supabase나 raw DTO를 알면 안 되는 작업 |
 | Supabase DDL, RLS, Storage, SQL/RPC 분석 | `taglow-admin:supabase` | DB, auth, storage, 분석 쿼리 작업 |
+| API/DB/분석 성능, 대규모 응답, 캐시/페이지네이션 | `taglow-performance-first` | 메모리, 네트워크, 정규화, 인덱스, RLS, API shape 점검 |
 | 설문/섹션/질문 빌더, 질문 config, 다국어, 버전 보호 | `taglow-admin:builder` | 관리자 작성 플로우와 편집 UI |
 | 참여자 미리보기, 게시 검증, public URL/QR | `taglow-admin:preview-publish` | preview mode와 publish workflow |
 | 응답 요약, Global Filter Bar, 분석 워크벤치 | `taglow-admin:analysis` | RPC 기반 분석과 evidence UI |
@@ -49,6 +50,7 @@ rg -n "구현 순서|완료 기준|프로젝트 구조|핵심 아키텍처|API B
 - Preview input never creates `responses` or `answers`.
 - Every analysis result shows `N`, active filters, and low-sample warning when relevant.
 - Admin access is Google login and an active `admin_members` row. Do not restrict admin access by email domain.
+- API/DB work must treat memory, network, normalization, query/index/RLS cost, caching, pagination, and API payload shape as first-class requirements.
 
 ## Subagent Handoff
 
@@ -56,6 +58,7 @@ If subagent tools are available and a review can run in parallel, use these file
 
 - `.codex/agents/taglow-admin-boundary-reviewer.toml`
 - `.codex/agents/taglow-admin-analysis-auditor.toml`
+- `.codex/agents/taglow-admin-performance-auditor.toml`
 - `.codex/agents/taglow-admin-preview-publish-auditor.toml`
 - `.codex/agents/taglow-admin-test-qa-auditor.toml`
 

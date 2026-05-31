@@ -164,6 +164,44 @@ describe("ParticipantSurveyPage", () => {
     expect(screen.getByLabelText("태그 1 카테고리")).toHaveValue("수리 요청");
   });
 
+  it("submits collected answers from the complete step", async () => {
+    const user = userEvent.setup();
+    const submitSurveyResponse = vi.fn(async () => ({
+      responseId: "response-1",
+      submittedAt: "2026-05-28T00:00:00.000Z",
+      alreadySubmitted: false,
+      passedAttentionCheck: true,
+    }));
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/survey/handong-dorm-2026"]}>
+        <Routes>
+          <Route path="/survey/:publicIdentifier" element={<ParticipantSurveyPage />} />
+        </Routes>
+      </MemoryRouter>,
+      {
+        participantController: createFakeParticipantSurveyController({
+          submitSurveyResponse,
+        }),
+      },
+    );
+
+    await startSurveyFlow(user);
+    await user.click(screen.getByRole("button", { name: /5/ }));
+    await user.click(screen.getByRole("button", { name: "완료" }));
+    await user.click(screen.getByRole("button", { name: "응답 제출" }));
+
+    expect(await screen.findByRole("heading", { name: "응답을 제출했습니다." })).toBeInTheDocument();
+    expect(submitSurveyResponse).toHaveBeenCalledWith(expect.objectContaining({
+      surveyId: "survey-1",
+      answers: [
+        expect.objectContaining({
+          questionId: "question-1",
+          scoreValue: 5,
+        }),
+      ],
+    }));
+  });
+
   it("renders scale, single choice, multi choice, short text, plain text, and choice-first text controls", async () => {
     const user = userEvent.setup();
     const detail: ParticipantSurveyDetail = {

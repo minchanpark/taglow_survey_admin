@@ -22,7 +22,9 @@ Review goals:
 7. Locus quadrants use an explicit baseline and deterministic labels.
 8. Heatmap uses normalized x_ratio/y_ratio and never pixel-only coordinates.
 9. Text summaries keep representative original evidence.
-10. TDD v2 does not add persistent report/analysis tables unless requested.
+10. Text/image/evidence lists are paginated and signed URLs are generated only for visible rows.
+11. Repeated heavy aggregations use indexed SQL/RPC or explicitly scoped facts tables, not browser-side raw answer scans.
+12. TDD v2 does not add persistent report/analysis tables unless requested.
 
 Output format:
 - Findings first, ordered by severity.

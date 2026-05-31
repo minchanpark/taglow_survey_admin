@@ -15,6 +15,7 @@ import type {
   RawHeatmapPoint,
   RawImageTagAnswer,
   RawLocusPoint,
+  RawPaginatedResult,
   RawQuestion,
   RawQuestionSummary,
   RawPriorityIssue,
@@ -91,7 +92,7 @@ export interface AdminApiGateway {
   getBorichSummary(args: AnalysisQueryArgs): Promise<RawBorichResult[]>;
   getLocusSummary(args: AnalysisQueryArgs): Promise<RawLocusPoint[]>;
   getHeatmapPoints(args: HeatmapQueryArgs): Promise<RawHeatmapPoint[]>;
-  listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawImageTagAnswer[]>;
+  listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawPaginatedResult<RawImageTagAnswer>>;
   getTextGroups(args: TextAnswerQueryArgs): Promise<RawTextGroup[]>;
-  listTextAnswers(args: TextAnswerQueryArgs): Promise<RawTextAnswer[]>;
+  listTextAnswers(args: TextAnswerQueryArgs): Promise<RawPaginatedResult<RawTextAnswer>>;
 }

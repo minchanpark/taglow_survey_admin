@@ -8,6 +8,8 @@ user-invocable: true
 
 테스트는 PRD/TDD 완료 기준을 깨지 않도록 하는 안전망이다. 위험도와 계층에 맞춰 좁고 강한 테스트를 추가한다.
 
+For API/DB/analysis performance-sensitive validation, also use `taglow-performance-first` and include checks for memory, network round trips, caching, pagination, indexes, and RLS cost.
+
 ## Read First
 
 ```sh
@@ -35,6 +37,7 @@ rg -n "테스트 전략|Database Policy Test|구현 순서|Error Handling|완료
 - Analysis: filter options, filtered averages, Borich, heatmap points, low-N warning.
 - Boundary: no Supabase SDK in views/query/store, no mapper/gateway imports in views.
 - Database policy: non-admin denied, viewer cannot mutate, admin only edits own survey, participant cannot read draft or another response, published question update fails.
+- Performance: narrow selects, stable query keys, explicit stale times for expensive queries, paginated evidence lists, idempotent submit flows, and indexes for new hot filters.
 
 ## Useful Checks
 
@@ -67,3 +70,4 @@ If no issues are found, say so and list residual risks or unrun checks.
 ## Subagent
 
 For independent final review, use `.codex/agents/taglow-admin-test-qa-auditor.toml`. Keep it read-only.
+For performance-specific final review, use `.codex/agents/taglow-admin-performance-auditor.toml`. Keep it read-only.

@@ -6,8 +6,9 @@ import {
   useParticipantQuestionImageUploadMutation,
   useParticipantSessionQuery,
   useParticipantSurveyQuery,
+  useSubmitSurveyResponseMutation,
 } from "../../../api/participant/query";
-import type { JsonRecord, ParticipantSurvey, Question, SurveyAsset, SurveySection } from "../../../api/participant/model";
+import type { JsonRecord, ParticipantSurvey, Question, SubmitSurveyResponseCommand, SubmitSurveyResponseResult, SurveyAsset, SurveySection } from "../../../api/participant/model";
 import { Button, EmptyState, ErrorState, LoadingState } from "../../../components";
 import "./css/ParticipantSurveyPage.css";
 
@@ -48,10 +49,14 @@ export function ParticipantSurveyPage() {
   const { publicIdentifier = "" } = useParams();
   const sessionQuery = useParticipantSessionQuery();
   const signInMutation = useParticipantGoogleSignInMutation();
+  const submitMutation = useSubmitSurveyResponseMutation();
   const surveyQuery = useParticipantSurveyQuery(publicIdentifier, Boolean(sessionQuery.data?.isAuthenticated));
   const signInRedirectTo = useMemo(() => new URL(`/survey/${encodeURIComponent(publicIdentifier)}`, window.location.origin).toString(), [publicIdentifier]);
   const [step, setStep] = useState<ParticipantFlowStep>({ type: "login" });
   const [answers, setAnswers] = useState<ParticipantAnswers>({});
+  const [startedAt, setStartedAt] = useState(() => new Date().toISOString());
+  const [clientSubmissionId, setClientSubmissionId] = useState(() => crypto.randomUUID());
+  const [submittedResult, setSubmittedResult] = useState<SubmitSurveyResponseResult | undefined>();
   const questionsBySection = useMemo(
     () => groupQuestionsBySection(surveyQuery.data?.questions ?? []),
     [surveyQuery.data?.questions],
@@ -68,6 +73,10 @@ export function ParticipantSurveyPage() {
   useEffect(() => {
     setStep({ type: "login" });
     setAnswers({});
+    setStartedAt(new Date().toISOString());
+    setClientSubmissionId(crypto.randomUUID());
+    setSubmittedResult(undefined);
+    submitMutation.reset();
   }, [publicIdentifier]);
 
   return (
@@ -149,7 +158,26 @@ export function ParticipantSurveyPage() {
 
           {step.type === "complete" ? (
             <ParticipantCompleteStep
+              isSubmitting={submitMutation.isPending}
+              isSubmitted={Boolean(submittedResult)}
+              errorMessage={submitMutation.isError ? "응답을 제출하지 못했습니다. 필수 문항과 네트워크 상태를 확인한 뒤 다시 시도해주세요." : undefined}
+              result={submittedResult}
               onBack={() => setStep(answerSections.length ? { type: "section", sectionIndex: answerSections.length - 1 } : { type: "intro" })}
+              onSubmit={() => {
+                if (submittedResult || !surveyQuery.data) return;
+                submitMutation.mutate(
+                  buildSubmitSurveyResponseCommand({
+                    surveyId: surveyQuery.data.survey.id,
+                    clientSubmissionId,
+                    startedAt,
+                    questions: surveyQuery.data.questions,
+                    answers,
+                  }),
+                  {
+                    onSuccess: (result) => setSubmittedResult(result),
+                  },
+                );
+              }}
             />
           ) : null}
         </>
@@ -338,15 +366,37 @@ function ParticipantSectionStep(props: {
   );
 }
 
-function ParticipantCompleteStep(props: { onBack: () => void }) {
+function ParticipantCompleteStep(props: {
+  isSubmitting: boolean;
+  isSubmitted: boolean;
+  errorMessage?: string;
+  result?: SubmitSurveyResponseResult;
+  onBack: () => void;
+  onSubmit: () => void;
+}) {
   return (
     <section className="tg-participant-flow-card" aria-labelledby="participant-survey-title">
       <p className="tg-participant-survey-page__eyebrow">완료</p>
-      <h1 id="participant-survey-title">모든 섹션을 확인했습니다.</h1>
-      <p>응답 제출 단계가 연결되면 이 화면에서 최종 확인 후 제출할 수 있습니다.</p>
+      <h1 id="participant-survey-title">{props.isSubmitted ? "응답을 제출했습니다." : "응답을 제출해주세요."}</h1>
+      <p>{props.isSubmitted ? "참여해주셔서 감사합니다. 제출된 응답은 분석에 반영됩니다." : "마지막으로 제출 버튼을 누르면 응답이 저장됩니다."}</p>
+      {props.result ? (
+        <div className="tg-participant-flow-card__status">
+          <CheckCircle2 size={14} aria-hidden="true" />
+          <span>{props.result.alreadySubmitted ? "이미 제출된 응답을 확인했습니다." : "제출 완료"}</span>
+        </div>
+      ) : null}
+      {props.errorMessage ? (
+        <div className="tg-participant-flow-card__status tg-participant-flow-card__status--danger" role="alert">
+          <AlertCircle size={14} aria-hidden="true" />
+          <span>{props.errorMessage}</span>
+        </div>
+      ) : null}
       <div className="tg-participant-flow-card__actions">
-        <Button variant="secondary" icon={<ArrowLeft size={16} aria-hidden="true" />} onClick={props.onBack}>
+        <Button variant="secondary" icon={<ArrowLeft size={16} aria-hidden="true" />} onClick={props.onBack} disabled={props.isSubmitting || props.isSubmitted}>
           이전 섹션
+        </Button>
+        <Button variant="primary" icon={<CheckCircle2 size={16} aria-hidden="true" />} onClick={props.onSubmit} disabled={props.isSubmitting || props.isSubmitted}>
+          {props.isSubmitting ? "제출 중" : props.isSubmitted ? "제출 완료" : "응답 제출"}
         </Button>
       </div>
     </section>
@@ -817,6 +867,153 @@ function getStringArray(value: unknown): string[] {
 function getAssetUrl(asset: SurveyAsset | undefined): string | undefined {
   if (!asset) return undefined;
   return getString(asset.metadata.signedUrl) ?? getString(asset.metadata.publicUrl) ?? getString(asset.metadata.public_url);
+}
+
+function buildSubmitSurveyResponseCommand(args: {
+  surveyId: string;
+  clientSubmissionId: string;
+  startedAt: string;
+  questions: Question[];
+  answers: ParticipantAnswers;
+}): SubmitSurveyResponseCommand {
+  const submittedAnswers = args.questions.flatMap((question) => toSubmittedAnswers(question, args.answers[question.id]));
+  const profile = buildSubmittedProfile(args.questions, args.answers);
+
+  return {
+    surveyId: args.surveyId,
+    clientSubmissionId: args.clientSubmissionId,
+    locale: "ko",
+    startedAt: args.startedAt,
+    profile,
+    rawPayload: {
+      profile,
+      answeredQuestionIds: submittedAnswers.map((answer) => answer.questionId),
+    },
+    answers: submittedAnswers,
+  };
+}
+
+function toSubmittedAnswers(question: Question, answer: ParticipantAnswer): SubmitSurveyResponseCommand["answers"] {
+  if (answer === undefined) return [];
+  const base = {
+    questionId: question.id,
+    sectionId: question.sectionId,
+    answerType: question.questionType,
+    metricType: question.metricType ?? "none",
+    topicKey: question.topicKey,
+    spaceKey: question.spaceKey,
+  };
+
+  if (typeof answer === "number") {
+    return [{ ...base, scoreValue: answer, valueJson: { value: answer } }];
+  }
+
+  if (typeof answer === "string") {
+    const questionKind = getParticipantQuestionKind(question);
+    if (questionKind === "single_choice" || question.questionType === "profile" || question.questionType === "experience") {
+      return [{ ...base, choiceValue: answer, valueJson: { value: answer } }];
+    }
+    return [{ ...base, textValue: answer, valueJson: { value: answer } }];
+  }
+
+  if (Array.isArray(answer)) {
+    return answer.map((value) => ({ ...base, choiceValue: value, valueJson: { value, selectedValues: answer } }));
+  }
+
+  if (isChoiceTextAnswer(answer)) {
+    return [
+      {
+        ...base,
+        choiceValue: answer.choiceValue,
+        textValue: answer.text,
+        valueJson: compactJsonRecord({
+          choiceValue: answer.choiceValue,
+          text: answer.text,
+        }),
+      },
+    ];
+  }
+
+  if (isImageTagAnswer(answer)) {
+    const config = toRecord(question.config);
+    const configuredAssetId = getString(config.assetId) ?? getString(config.asset_id);
+    return answer.tags.map((tag) => ({
+      ...base,
+      assetId: configuredAssetId,
+      xRatio: tag.xRatio,
+      yRatio: tag.yRatio,
+      tagType: tag.tagType,
+      textValue: tag.text,
+      valueJson: compactJsonRecord({
+        tagId: tag.id,
+        image: answer.image
+          ? {
+              storageBucket: answer.image.storageBucket,
+              storagePath: answer.image.storagePath,
+            }
+          : undefined,
+      }),
+    }));
+  }
+
+  return [];
+}
+
+function buildSubmittedProfile(questions: Question[], answers: ParticipantAnswers): JsonRecord {
+  const profile: JsonRecord = {};
+  for (const question of questions) {
+    if (question.questionType !== "profile") continue;
+    const config = toRecord(question.config);
+    const field = normalizeProfileField(getString(config.profileField));
+    if (!field) continue;
+    const value = getProfileAnswerValue(answers[question.id]);
+    if (value) profile[field] = value;
+  }
+  return profile;
+}
+
+function normalizeProfileField(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  if (value === "semesterGroup") return "semester_group";
+  if (value === "roomType") return "room_type";
+  if (value === "dormExperience") return "dorm_experience";
+  if (
+    value === "gender" ||
+    value === "semester_group" ||
+    value === "department" ||
+    value === "rc" ||
+    value === "dormitory" ||
+    value === "room_type" ||
+    value === "dorm_experience"
+  ) {
+    return value;
+  }
+  return undefined;
+}
+
+function getProfileAnswerValue(answer: ParticipantAnswer): string | undefined {
+  if (typeof answer === "string") return answer.trim() || undefined;
+  if (isChoiceTextAnswer(answer)) return answer.choiceValue?.trim() || answer.text?.trim();
+  return undefined;
+}
+
+function compactJsonRecord(values: Record<string, unknown>): JsonRecord {
+  const record: JsonRecord = {};
+  for (const [key, value] of Object.entries(values)) {
+    if (value === undefined) continue;
+    if (isRecord(value)) {
+      record[key] = compactJsonRecord(value);
+      continue;
+    }
+    if (Array.isArray(value)) {
+      record[key] = value.filter((item): item is string | number | boolean => ["string", "number", "boolean"].includes(typeof item));
+      continue;
+    }
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
+      record[key] = value;
+    }
+  }
+  return record;
 }
 
 function isImageTagAnswer(value: unknown): value is ImageTagAnswer {

@@ -549,7 +549,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     });
     expect(supabase.from).not.toHaveBeenCalled();
     expect(createSignedUrl).toHaveBeenCalledWith("participant-uploads/survey-1/image.png", 60 * 60);
-    expect(rows[0]).toMatchObject({
+    expect(rows.items[0]).toMatchObject({
       image_signed_url: "https://example.com/signed.png",
     });
   });
@@ -668,7 +668,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
 
     expect(supabase.storage.from).toHaveBeenCalledWith("survey-assets");
     expect(createSignedUrl).toHaveBeenCalledWith("participant-uploads/survey-1/user-1/question-1/image.png", 60 * 60);
-    expect(rows[0]).toMatchObject({
+    expect(rows.items[0]).toMatchObject({
       image_storage_bucket: "survey-assets",
       image_storage_path: "participant-uploads/survey-1/user-1/question-1/image.png",
       image_signed_url: "https://example.com/signed.png",
@@ -716,7 +716,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     const rows = await gateway.listImageTagAnswers({ surveyId: "survey-1", filters: {} });
 
     expect(createSignedUrl).toHaveBeenCalledWith("participant-uploads/survey-1/user-1/question-1/nested.png", 60 * 60);
-    expect(rows[0]).toMatchObject({
+    expect(rows.items[0]).toMatchObject({
       image_storage_bucket: "survey-assets",
       image_storage_path: "participant-uploads/survey-1/user-1/question-1/nested.png",
       image_signed_url: "https://example.com/nested.png",
@@ -761,7 +761,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     const rows = await gateway.listImageTagAnswers({ surveyId: "survey-1", filters: {} });
 
     expect(createSignedUrl).toHaveBeenCalledWith("participant-uploads/survey-1/user-1/question-1/asset.png", 60 * 60);
-    expect(rows[0]).toMatchObject({
+    expect(rows.items[0]).toMatchObject({
       asset_id: "asset-upload-1",
       image_storage_bucket: "survey-assets",
       image_storage_path: "participant-uploads/survey-1/user-1/question-1/asset.png",

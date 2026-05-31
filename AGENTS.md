@@ -57,6 +57,12 @@ Rules:
 - Preview mode must never create `responses` or `answers`.
 - Admin access is backed by active `admin_members`, not an email domain guard or frontend-only email list.
 
+## Performance-First API/DB Work
+
+For any API, Supabase, database, migration, query hook, gateway, controller, RPC, Edge Function, Storage, RLS, or analysis work, use the `taglow-performance-first` skill when available. Treat memory use, network round trips, database normalization, index/RLS cost, payload size, batching, caching, and API shape as first-class constraints before implementing.
+
+Prefer normalized schema changes, minimal selected columns, stable query keys, explicit cache windows, batched signed URL/status requests, and RPCs for analysis aggregation or multi-table transactional work. When the change is broad or performance-sensitive, use a sub-agent if available for a read-only performance review before final handoff.
+
 ## Core Data Model
 
 Keep the v2 database centered on one permission table and six product tables:

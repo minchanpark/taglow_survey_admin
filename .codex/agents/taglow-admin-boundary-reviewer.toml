@@ -19,12 +19,14 @@ Review goals:
 4. Mapper owns raw DTO/row to domain conversion and has no React/Supabase dependency.
 5. Controller composes gateway + mapper and returns domain models.
 6. Runtime/provider allows Supabase gateway to be replaced by HTTP gateway without view changes.
-7. Tests cover mapper/controller/query invalidation for changed behavior.
+7. API shape avoids unbounded payloads, unnecessary network round trips, unstable query keys, and over-broad invalidation.
+8. Tests cover mapper/controller/query invalidation and performance-sensitive behavior for changed flows.
 
 Use shell/search for boundary scans such as:
 - rg -n '@supabase|supabase\\.from|supabase\\.storage' src/view src/store src/api/admin/query
 - rg -n 'AdminPayloadMapper|AdminApiGateway' src/view src/store src/api/admin/query
 - rg -n 'Raw[A-Z]' src/view src/store src/api/admin/query
+- rg -n 'staleTime|useInfiniteQuery|limit|cursor|select\\("\\*"\\)' src/api src/view
 
 Output format:
 - Findings first, ordered by severity.

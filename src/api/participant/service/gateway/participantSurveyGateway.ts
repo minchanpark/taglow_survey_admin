@@ -1,5 +1,6 @@
 import type { RawQuestion, RawSection, RawSurvey, RawSurveyAsset } from "../../../admin/service/gateway/rawTypes";
 import type { JsonRecord } from "../../../admin/model";
+import type { SubmitSurveyResponseCommand, SubmitSurveyResponseResult } from "../../model";
 
 export type RawParticipantAuthUser = Readonly<{
   id: string;
@@ -21,4 +22,5 @@ export interface ParticipantSurveyGateway {
   listQuestions(surveyId: string): Promise<RawQuestion[]>;
   listAssets(surveyId: string): Promise<RawSurveyAsset[]>;
   uploadQuestionImage(command: { surveyId: string; questionId: string; file: File }): Promise<RawParticipantQuestionImageUpload>;
+  submitSurveyResponse(command: SubmitSurveyResponseCommand): Promise<SubmitSurveyResponseResult>;
 }

@@ -8,6 +8,8 @@ user-invocable: true
 
 TDD의 핵심 원칙은 View가 Supabase SDK, 서버 DTO, endpoint 세부사항을 직접 알지 않는 것이다.
 
+For API, gateway, query hook, or large payload work, also use `taglow-performance-first`. API shape includes memory use, network round trips, cache behavior, pagination, and idempotent write semantics.
+
 ## Read First
 
 필요한 범위만 읽는다.
@@ -64,6 +66,14 @@ Expected result: no direct SDK/gateway/mapper/raw DTO usage outside allowed laye
 - Upload mutation separates Storage failure from metadata row failure.
 - Hooks expose domain models and mutation status, not raw rows.
 
+## Performance Rules
+
+- Keep gateway selects narrow and mapper outputs domain-focused.
+- Use `staleTime` for expensive/read-mostly queries and invalidate the smallest key set.
+- Use pagination or `useInfiniteQuery` for text, image, evidence, and answer-detail lists.
+- Prefer one controller method backed by one RPC for transactional or aggregation-heavy flows.
+- Do not copy large server results into stores or component state when TanStack Query already owns them.
+
 ## Tests
 
 Prefer focused tests:
@@ -76,3 +86,4 @@ Prefer focused tests:
 ## Subagent
 
 For independent review, use `.codex/agents/taglow-admin-boundary-reviewer.toml`. Ask it to report only file/line findings and residual risks.
+For performance-sensitive API changes, use `.codex/agents/taglow-admin-performance-auditor.toml` as an additional read-only pass.

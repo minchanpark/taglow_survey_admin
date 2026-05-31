@@ -18,6 +18,7 @@ import type {
   RawHeatmapPoint,
   RawImageTagAnswer,
   RawLocusPoint,
+  RawPaginatedResult,
   RawPriorityIssue,
   RawInsertSurveyPayload,
   RawQuestion,
@@ -516,7 +517,7 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     );
   }
 
-  async listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawImageTagAnswer[]> {
+  async listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawPaginatedResult<RawImageTagAnswer>> {
     try {
       const rows = await this.many<RawImageTagAnswer>(
         this.supabase.rpc(RPC.imageTagAnswers, {
@@ -525,7 +526,8 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
         }),
         "RPC_FAILED",
       );
-      return Promise.all(rows.map((row) => this.withImageTagAnswerSignedUrl(row)));
+      const signedRows = await Promise.all(rows.map((row) => this.withImageTagAnswerSignedUrl(row)));
+      return toRawPage(signedRows);
     } catch (error) {
       if (!isMissingRpcError(error, RPC.imageTagAnswers)) {
         throw error;
@@ -533,12 +535,12 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     }
 
     try {
-      return await this.listImageTagAnswersWithResponseRelation(args, "responses!answers_response_same_survey_fk!inner");
+      return toRawPage(await this.listImageTagAnswersWithResponseRelation(args, "responses!answers_response_same_survey_fk!inner"));
     } catch (error) {
       if (!isMissingRelationshipError(error)) {
         throw error;
       }
-      return this.listImageTagAnswersWithResponseRelation(args, "responses!inner");
+      return toRawPage(await this.listImageTagAnswersWithResponseRelation(args, "responses!inner"));
     }
   }
 
@@ -620,14 +622,15 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     );
   }
 
-  async listTextAnswers(args: TextAnswerQueryArgs): Promise<RawTextAnswer[]> {
-    return this.many<RawTextAnswer>(
+  async listTextAnswers(args: TextAnswerQueryArgs): Promise<RawPaginatedResult<RawTextAnswer>> {
+    const rows = await this.many<RawTextAnswer>(
       this.supabase.rpc(RPC.textAnswers, {
         p_survey_id: args.surveyId,
         p_filters: args.filters,
       }),
       "RPC_FAILED",
     );
+    return toRawPage(rows);
   }
 
   private async one<T>(
@@ -779,6 +782,14 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
 
 function applyMaybeEq(query: any, column: string, value: unknown): any {
   return typeof value === "string" && value.trim() ? query.eq(column, value) : query;
+}
+
+function toRawPage<T extends { next_cursor?: string | null }>(rows: T[]): RawPaginatedResult<T> {
+  const nextCursor = rows.find((row) => typeof row.next_cursor === "string" && row.next_cursor.trim())?.next_cursor ?? null;
+  return {
+    items: rows.map(({ next_cursor: _nextCursor, ...row }) => row as T),
+    next_cursor: nextCursor,
+  };
 }
 
 function buildRawResponseSummary(

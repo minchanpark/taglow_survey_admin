@@ -8,6 +8,8 @@ user-invocable: true
 
 분석 워크벤치는 관리자가 "무엇을 개선해야 하는가"를 빠르게 판단하게 해야 한다. 통계 화면이 아니라 의사결정 워크벤치다.
 
+For analysis RPCs, query hooks, cache behavior, pagination, or large response data, also use `taglow-performance-first`. Analysis should be fast without moving raw answer tables into the browser.
+
 ## Read First
 
 ```sh
@@ -21,6 +23,7 @@ rg -n "분석 API|Filter Options|Section Satisfaction Summary|Borich Summary|Hea
 - Analysis queries must join `responses` for filters and status.
 - Include `survey_id` or version scope. Version aggregation requires explicit `version_group_id` intent.
 - Every result card shows active filters, `N`, and low-sample warning where relevant.
+- Heavy repeated aggregations should use indexed RPC/facts paths when explicitly scoped.
 
 ## Global Filter Bar
 
@@ -63,6 +66,8 @@ AI summaries are evidence-linked, not standalone truth. Always provide:
 
 Allow manual rename/merge/split/exclude only when that feature is in scope.
 
+For original text/image evidence lists, use pagination and fetch signed URLs only for the visible page.
+
 ## Heatmap Rules
 
 - Render from `x_ratio` and `y_ratio`, not pixel coordinates.
@@ -88,3 +93,4 @@ Cover:
 ## Subagent
 
 For formula/SQL/RPC correctness review, use `.codex/agents/taglow-admin-analysis-auditor.toml`.
+For performance-sensitive analysis changes, use `.codex/agents/taglow-admin-performance-auditor.toml`.

@@ -164,6 +164,11 @@ export type AnalysisQueryArgs = Readonly<{
 export type HeatmapQueryArgs = AnalysisQueryArgs;
 export type TextAnswerQueryArgs = AnalysisQueryArgs;
 
+export type RawPaginatedResult<T> = Readonly<{
+  items: T[];
+  next_cursor?: string | null;
+}>;
+
 export type RawSectionSummary = Readonly<{
   section_id: string;
   section_title: string | null;
@@ -302,6 +307,7 @@ export type RawImageTagAnswer = Readonly<{
   department?: string | null;
   response_profile?: JsonRecord | null;
   created_at: string;
+  next_cursor?: string | null;
 }>;
 
 export type RawTextAnswer = Readonly<{
@@ -320,6 +326,7 @@ export type RawTextAnswer = Readonly<{
   department?: string | null;
   profile?: JsonRecord | null;
   created_at: string;
+  next_cursor?: string | null;
 }>;
 
 export type RawTextGroup = Readonly<{

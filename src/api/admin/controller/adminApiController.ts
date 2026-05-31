@@ -19,6 +19,7 @@ import type {
   ImageTagAnswerFilterCommand,
   InviteSurveyCollaboratorCommand,
   LocusPoint,
+  PaginatedResult,
   PreviewSurvey,
   PreviewSurveyCommand,
   PriorityIssue,
@@ -106,7 +107,7 @@ export interface AdminApiController {
   getBorichSummary(command: AnalysisFilterCommand): Promise<BorichResult[]>;
   getLocusSummary(command: AnalysisFilterCommand): Promise<LocusPoint[]>;
   getHeatmapPoints(command: HeatmapFilterCommand): Promise<HeatmapPoint[]>;
-  listImageTagAnswers(command: ImageTagAnswerFilterCommand): Promise<ImageTagAnswer[]>;
+  listImageTagAnswers(command: ImageTagAnswerFilterCommand): Promise<PaginatedResult<ImageTagAnswer>>;
   getTextGroups(command: TextAnswerFilterCommand): Promise<TextGroup[]>;
-  listTextAnswers(command: TextAnswerFilterCommand): Promise<TextAnswer[]>;
+  listTextAnswers(command: TextAnswerFilterCommand): Promise<PaginatedResult<TextAnswer>>;
 }

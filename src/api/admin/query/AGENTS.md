@@ -22,3 +22,11 @@ Owns TanStack Query integration for admin data.
   - publish/close -> surveys and survey detail,
   - filter changes -> analysis queries through query key changes.
 - Keep hooks thin; business behavior belongs in controller or validation.
+
+## Performance Rules
+
+- Use the `taglow-performance-first` skill when adding or changing query hooks.
+- Every query key must include all result-changing inputs and avoid unstable object identities.
+- Set explicit `staleTime` for read-mostly or expensive analysis queries, and invalidate the smallest useful key after mutations.
+- Use `useInfiniteQuery` for text, image, or evidence lists that can grow with response volume.
+- Do not duplicate large server results into Zustand or local component state unless the UI specifically needs a derived lightweight view.

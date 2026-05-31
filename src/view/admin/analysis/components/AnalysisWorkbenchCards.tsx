@@ -388,6 +388,9 @@ export function TextEvidenceCard(props: {
   filters: AnalysisFilters;
   keyword: string;
   onKeywordChange: (keyword: string) => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }) {
   return (
     <AnalysisCard
@@ -433,7 +436,7 @@ export function TextEvidenceCard(props: {
             </tr>
           </thead>
           <tbody>
-            {props.answers.slice(0, 12).map((answer) => (
+            {props.answers.map((answer) => (
               <tr key={answer.id}>
                 <td>{answer.textValue}</td>
                 <td>{answer.topicKey ?? answer.spaceKey ?? "미분류"}</td>
@@ -443,6 +446,13 @@ export function TextEvidenceCard(props: {
           </tbody>
         </table>
       </div>
+      {props.hasMore ? (
+        <div className="tg-analysis-load-more">
+          <Button variant="secondary" onClick={props.onLoadMore} disabled={props.isLoadingMore}>
+            {props.isLoadingMore ? "불러오는 중" : "더 보기"}
+          </Button>
+        </div>
+      ) : null}
     </AnalysisCard>
   );
 }

@@ -314,9 +314,9 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
     getBorichSummary: async (): Promise<BorichResult[]> => [],
     getLocusSummary: async (): Promise<LocusPoint[]> => [],
     getHeatmapPoints: async (): Promise<HeatmapPoint[]> => [],
-    listImageTagAnswers: async (): Promise<ImageTagAnswer[]> => [],
+    listImageTagAnswers: async () => ({ items: [] as ImageTagAnswer[] }),
     getTextGroups: async (): Promise<TextGroup[]> => [],
-    listTextAnswers: async (): Promise<TextAnswer[]> => [],
+    listTextAnswers: async () => ({ items: [] as TextAnswer[] }),
   };
 
   return { ...controller, ...overrides };

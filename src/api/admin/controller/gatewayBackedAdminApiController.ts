@@ -38,6 +38,7 @@ import type {
   InviteSurveyCollaboratorCommand,
   JsonRecord,
   LocusPoint,
+  PaginatedResult,
   PreviewSurvey,
   PreviewSurveyCommand,
   PriorityIssue,
@@ -501,12 +502,15 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     return rows.map((row) => this.mapper.toHeatmapPoint(row));
   }
 
-  async listImageTagAnswers(command: ImageTagAnswerFilterCommand): Promise<ImageTagAnswer[]> {
-    const rows = await this.gateway.listImageTagAnswers({
+  async listImageTagAnswers(command: ImageTagAnswerFilterCommand): Promise<PaginatedResult<ImageTagAnswer>> {
+    const page = await this.gateway.listImageTagAnswers({
       surveyId: command.surveyId,
       filters: toAnalysisFilterPayload(command.filters),
     });
-    return rows.map((row) => this.mapper.toImageTagAnswer(row));
+    return {
+      items: page.items.map((row) => this.mapper.toImageTagAnswer(row)),
+      nextCursor: page.next_cursor ?? undefined,
+    };
   }
 
   async getTextGroups(command: TextAnswerFilterCommand): Promise<TextGroup[]> {
@@ -517,12 +521,15 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     return rows.map((row) => this.mapper.toTextGroup(row));
   }
 
-  async listTextAnswers(command: TextAnswerFilterCommand): Promise<TextAnswer[]> {
-    const rows = await this.gateway.listTextAnswers({
+  async listTextAnswers(command: TextAnswerFilterCommand): Promise<PaginatedResult<TextAnswer>> {
+    const page = await this.gateway.listTextAnswers({
       surveyId: command.surveyId,
       filters: toAnalysisFilterPayload(command.filters),
     });
-    return rows.map((row) => this.mapper.toTextAnswer(row));
+    return {
+      items: page.items.map((row) => this.mapper.toTextAnswer(row)),
+      nextCursor: page.next_cursor ?? undefined,
+    };
   }
 }
 

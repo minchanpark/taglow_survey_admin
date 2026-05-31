@@ -8,6 +8,8 @@ user-invocable: true
 
 Supabase는 현재 백엔드지만, 앱 계층은 나중에 HTTP API로 교체 가능해야 한다. DB와 SDK 세부사항은 gateway와 migration에 가둔다.
 
+For schema, migration, RLS, RPC, Storage, index, or large data work, also use `taglow-performance-first`. Treat query plans, index coverage, RLS cost, normalization, payload size, and backfill safety as implementation requirements.
+
 ## Read First
 
 ```sh
@@ -98,6 +100,14 @@ At minimum cover:
 - partial heatmap index where `answer_type = 'image_tag'`.
 - GIN index for `answers.value_json`.
 
+## Performance Checklist
+
+- Prefer normalized relational columns for hot filters and joins; use JSONB for flexible extras only.
+- Avoid unbounded RPC result sets; require `limit` and cursor for detail/evidence lists.
+- Use transactional RPCs for multi-table writes such as response submission.
+- Keep analysis aggregation inside indexed SQL/RPC paths instead of moving raw answers to the client.
+- When using `security definer`, set `search_path` and avoid expensive per-row RLS helper recursion.
+
 ## Validation
 
 Use SQL tests or seed fixtures when possible:
@@ -114,3 +124,4 @@ Use SQL tests or seed fixtures when possible:
 ## Subagent
 
 For SQL or analysis correctness review, use `.codex/agents/taglow-admin-analysis-auditor.toml`.
+For broad DB/API performance review, use `.codex/agents/taglow-admin-performance-auditor.toml`.

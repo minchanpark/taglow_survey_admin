@@ -4,6 +4,8 @@ import type {
   ParticipantSessionState,
   ParticipantSignInCommand,
   ParticipantSurveyDetail,
+  SubmitSurveyResponseCommand,
+  SubmitSurveyResponseResult,
 } from "../model";
 import type { ParticipantSurveyGateway } from "../service/gateway";
 import { ParticipantSurveyMapper } from "../service/mapper";
@@ -50,5 +52,9 @@ export class GatewayBackedParticipantSurveyController implements ParticipantSurv
       signedUrl: uploaded.signed_url,
       metadata: uploaded.metadata,
     };
+  }
+
+  submitSurveyResponse(command: SubmitSurveyResponseCommand): Promise<SubmitSurveyResponseResult> {
+    return this.gateway.submitSurveyResponse(command);
   }
 }

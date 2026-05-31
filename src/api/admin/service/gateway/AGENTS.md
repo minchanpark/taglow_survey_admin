@@ -22,3 +22,11 @@ Owns Supabase or future HTTP API calls.
 - Signed URL and private bucket policies stay inside gateway/storage gateway code.
 - Do not import views, query hooks, stores, or React components.
 - HTTP gateway must implement the same interface as the Supabase gateway.
+
+## Performance Rules
+
+- Use the `taglow-performance-first` skill for gateway work.
+- Prefer RPCs for analysis aggregation, filter-heavy queries, and multi-table transactional operations.
+- Select only required columns and avoid `.select("*")` unless the caller genuinely needs the full row.
+- Batch signed URL creation and repeated metadata/status lookups where possible.
+- Check indexes and RLS helper cost before adding filters, joins, ordering, or fallback PostgREST queries over large tables.

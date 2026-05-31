@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParticipantSurveyController } from "../controller";
-import type { ParticipantQuestionImageUploadCommand, ParticipantSignInCommand } from "../model";
+import type { ParticipantQuestionImageUploadCommand, ParticipantSignInCommand, SubmitSurveyResponseCommand } from "../model";
 import { participantSurveyQueryKeys } from "./queryKeys";
 
 export function useParticipantSessionQuery() {
@@ -31,5 +31,12 @@ export function useParticipantQuestionImageUploadMutation() {
   const controller = useParticipantSurveyController();
   return useMutation({
     mutationFn: (command: ParticipantQuestionImageUploadCommand) => controller.uploadQuestionImage(command),
+  });
+}
+
+export function useSubmitSurveyResponseMutation() {
+  const controller = useParticipantSurveyController();
+  return useMutation({
+    mutationFn: (command: SubmitSurveyResponseCommand) => controller.submitSurveyResponse(command),
   });
 }

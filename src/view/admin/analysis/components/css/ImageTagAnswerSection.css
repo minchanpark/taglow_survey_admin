@@ -217,6 +217,13 @@
   line-height: var(--tg-line-dense);
 }
 
+.tg-analysis-load-more {
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid var(--tg-border-subtle);
+  padding-top: var(--tg-space-6);
+}
+
 @media (max-width: 1180px) {
   .tg-analysis-answer-grid {
     grid-template-columns: 1fr;

@@ -4,6 +4,8 @@ import type {
   ParticipantSessionState,
   ParticipantSignInCommand,
   ParticipantSurveyDetail,
+  SubmitSurveyResponseCommand,
+  SubmitSurveyResponseResult,
 } from "../model";
 
 export interface ParticipantSurveyController {
@@ -11,4 +13,5 @@ export interface ParticipantSurveyController {
   signInWithGoogle(command: ParticipantSignInCommand): Promise<void>;
   getPublishedSurveyByIdentifier(publicIdentifier: string): Promise<ParticipantSurveyDetail>;
   uploadQuestionImage(command: ParticipantQuestionImageUploadCommand): Promise<ParticipantQuestionImageUpload>;
+  submitSurveyResponse(command: SubmitSurveyResponseCommand): Promise<SubmitSurveyResponseResult>;
 }

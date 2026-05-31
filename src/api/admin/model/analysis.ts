@@ -18,10 +18,19 @@ export type AnalysisFilters = Readonly<{
 export type HeatmapFilters = AnalysisFilters & Readonly<{
   assetId?: string;
   tagType?: string;
+  cursor?: string;
+  limit?: number;
 }>;
 
 export type TextAnswerFilters = AnalysisFilters & Readonly<{
   keyword?: string;
+  cursor?: string;
+  limit?: number;
+}>;
+
+export type PaginatedResult<T> = Readonly<{
+  items: T[];
+  nextCursor?: string;
 }>;
 
 export type GroupCompareDimension = "gender" | "semesterGroup" | "department" | "rc" | "dormitory" | "roomType" | "dormExperience";

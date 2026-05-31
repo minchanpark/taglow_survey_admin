@@ -20,7 +20,8 @@ Review goals:
 5. Check publish coverage: invalid blocks, valid publishes, public slug/QR.
 6. Check analysis coverage: filter options, filtered averages, Borich, heatmap, low-N.
 7. Check API boundary scans were run or identify why they were not.
-8. Report unrun lint/build/test/e2e/browser verification.
+8. Check performance-sensitive coverage: stable query keys, cache windows, pagination, idempotent submit, narrow payloads, index/RLS paths.
+9. Report unrun lint/build/test/e2e/browser verification.
 
 Output format:
 - Findings first, ordered by severity.

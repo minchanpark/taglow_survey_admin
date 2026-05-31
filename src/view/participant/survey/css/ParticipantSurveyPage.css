@@ -130,6 +130,11 @@
   line-height: var(--tg-line-caption);
 }
 
+.tg-participant-flow-card__status--danger {
+  color: var(--tg-danger);
+  background: var(--tg-danger-soft);
+}
+
 .tg-participant-flow-card__actions,
 .tg-participant-step__actions {
   display: flex;
