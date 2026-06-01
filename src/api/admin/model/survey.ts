@@ -1,4 +1,4 @@
-import type { JsonRecord } from "./common";
+import type { JsonRecord, LocalizedText } from "./common";
 import type { Question } from "./question";
 import type { SurveyAsset } from "./asset";
 import type { SurveySection } from "./section";
@@ -12,7 +12,7 @@ export type SurveySettings = JsonRecord;
 export type Survey = Readonly<{
   id: string;
   title: string;
-  description?: string;
+  description?: LocalizedText;
   status: SurveyStatus;
   publicSlug?: string;
   publicCode?: string;

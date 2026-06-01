@@ -78,7 +78,7 @@ describe("ParticipantSurveyPage", () => {
       ...fakeParticipantSurveyDetail,
       survey: {
         ...fakeParticipantSurveyDetail.survey,
-        description: "자세한 내용은 https://example.com 을 확인해주세요.\n참고: www.handong.edu\njavascript:alert(1)",
+        description: { ko: "자세한 내용은 https://example.com 을 확인해주세요.\n참고: www.handong.edu\njavascript:alert(1)" },
       },
     };
     renderWithProviders(

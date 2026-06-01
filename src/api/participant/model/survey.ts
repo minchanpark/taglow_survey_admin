@@ -1,11 +1,11 @@
-import type { JsonRecord, Question, SurveyAsset, SurveySection } from "../../admin/model";
+import type { JsonRecord, LocalizedText, Question, SurveyAsset, SurveySection } from "../../admin/model";
 
-export type { JsonRecord, Question, SurveyAsset, SurveySection } from "../../admin/model";
+export type { JsonRecord, LocalizedText, Question, SurveyAsset, SurveySection } from "../../admin/model";
 
 export type ParticipantSurvey = Readonly<{
   id: string;
   title: string;
-  description?: string;
+  description?: LocalizedText;
   publicSlug?: string;
   publicCode?: string;
   publicIdentifier: string;

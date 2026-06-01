@@ -12,8 +12,11 @@ user-invocable: true
 
 - 기본 개발 remote는 항상 `origin`이다.
 - `origin`은 `https://github.com/minchanpark/taglow_survey_admin.git`이어야 한다.
+- VSCode와 로컬 기본 작업 브랜치는 `main` -> `origin/main` 추적을 기준으로 둔다.
 - 배포 remote는 `team-newdawn`이다.
 - `team-newdawn`은 `https://github.com/Team-Newdawn/taglow_survey_admin.git`이어야 한다.
+- 기능 브랜치나 임시 브랜치가 `team-newdawn/dev`를 upstream으로 추적하도록 두지 않는다. 발견하면 배포 전에 `main`으로 돌아오거나 upstream을 `origin/*`로 바로잡는다.
+- 일반 운영 흐름은 `origin/main` 최신화 -> `team-newdawn/dev` push -> `team-newdawn dev -> main` PR merge -> merge commit을 `origin/main`과 `team-newdawn/dev`에 재동기화한다.
 - Team-Newdawn 배포는 upstream tracking에 의존하지 말고 명시적으로 `git push team-newdawn HEAD:dev`를 사용한다.
 - `main`에 직접 push하지 않는다. `dev -> main` PR merge 후 서버 GitHub Actions가 배포한다.
 
@@ -39,11 +42,20 @@ TAGLOW_SKIP_CHECKS=1 .codex/skills/taglow-admin-newdawn-deploy/scripts/push-to-n
 git status -sb
 git remote -v
 git branch -vv
+git fetch origin main
+git fetch team-newdawn main dev
 ```
 
-2. 워킹트리가 dirty이면 먼저 사용자에게 커밋 범위를 확인한다. 배포 스크립트는 uncommitted 변경이 있으면 중단한다.
+2. 워킹트리가 dirty이면 먼저 사용자에게 커밋 범위를 확인한다. 배포 스크립트는 uncommitted 변경이 있으면 중단한다. 중단된 이전 작업의 stash가 있는 경우, 배포 범위에 포함하지 않는다.
 
-3. 검증한다.
+3. 현재 브랜치가 `main`이고 upstream이 `origin/main`인지 확인한다. 로컬이 `rls-*` 같은 임시 브랜치이거나 `team-newdawn/dev`를 추적 중이면 배포 전에 정리한다.
+
+```sh
+git switch main
+git branch --set-upstream-to=origin/main main
+```
+
+4. 검증한다.
 
 ```sh
 pnpm typecheck
@@ -51,13 +63,19 @@ pnpm test -- --run
 pnpm build
 ```
 
-4. 현재 커밋을 Team-Newdawn `dev`에 올린다.
+5. 기본 개발 저장소를 먼저 최신 커밋으로 맞춘다.
+
+```sh
+git push origin main
+```
+
+6. 현재 커밋을 Team-Newdawn `dev`에 올린다.
 
 ```sh
 git push team-newdawn HEAD:dev
 ```
 
-5. PR 생성/머지는 `taglow-admin:newdawn-release`로 넘긴다.
+7. PR 생성/머지는 `taglow-admin:newdawn-release`로 넘긴다.
 
 ```sh
 .codex/skills/taglow-admin-newdawn-release/scripts/release-dev-to-main.sh
@@ -69,6 +87,7 @@ git push team-newdawn HEAD:dev
 
 - `origin` remote를 Team-Newdawn으로 바꾸지 않는다.
 - 로컬 브랜치 upstream을 `team-newdawn/dev`로 바꾸지 않는다.
+- 배포 후 `team-newdawn/main`이 PR merge commit으로 앞서면 `taglow-admin:newdawn-release` 스크립트가 `origin/main`과 `team-newdawn/dev`를 그 merge commit으로 다시 맞춘다.
 - `team-newdawn/main` 직접 push, force push, branch protection 변경은 사용자가 명시적으로 요청한 경우에만 한다.
 - PR merge는 사용자가 명시적으로 요청한 경우에만 진행한다.
 

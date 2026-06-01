@@ -2,6 +2,7 @@
 set -euo pipefail
 
 REPO="Team-Newdawn/taglow_survey_admin"
+EXPECTED_ORIGIN="https://github.com/minchanpark/taglow_survey_admin.git"
 TEAM_REMOTE="team-newdawn"
 TEAM_URL="https://github.com/Team-Newdawn/taglow_survey_admin.git"
 BASE_BRANCH="main"
@@ -44,6 +45,13 @@ if ! command -v gh >/dev/null 2>&1; then
 fi
 
 gh auth status -h github.com >/dev/null
+
+origin_url="$(git remote get-url origin 2>/dev/null || true)"
+if [[ "$origin_url" != "$EXPECTED_ORIGIN" ]]; then
+  echo "origin remote must stay on $EXPECTED_ORIGIN"
+  echo "current origin: ${origin_url:-missing}"
+  exit 1
+fi
 
 team_url="$(git remote get-url "$TEAM_REMOTE" 2>/dev/null || true)"
 if [[ -z "$team_url" ]]; then
@@ -102,6 +110,14 @@ if [[ "$SHOULD_MERGE" == "1" ]]; then
   git fetch "$TEAM_REMOTE" "$BASE_BRANCH"
   merged_main_sha="$(git rev-parse --short "$TEAM_REMOTE/$BASE_BRANCH")"
   echo "Merged PR #$pr_number. $TEAM_REMOTE/$BASE_BRANCH is now $merged_main_sha."
+  git push origin "$TEAM_REMOTE/$BASE_BRANCH:$BASE_BRANCH"
+  git push "$TEAM_REMOTE" "$TEAM_REMOTE/$BASE_BRANCH:$HEAD_BRANCH"
+  if git show-ref --verify --quiet "refs/heads/$BASE_BRANCH"; then
+    git switch "$BASE_BRANCH"
+    git branch --set-upstream-to="origin/$BASE_BRANCH" "$BASE_BRANCH" >/dev/null 2>&1 || true
+    git merge --ff-only "$TEAM_REMOTE/$BASE_BRANCH"
+  fi
+  echo "Synced origin/$BASE_BRANCH and $TEAM_REMOTE/$HEAD_BRANCH to $merged_main_sha."
   echo "Recent GitHub Actions runs:"
   gh run list --repo "$REPO" --branch "$BASE_BRANCH" --limit 5 || true
 else

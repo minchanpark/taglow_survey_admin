@@ -295,6 +295,50 @@ describe("GatewayBackedAdminApiController question updates", () => {
     });
   });
 
+  it("splits localized survey intro copy into raw survey columns", async () => {
+    const updateSurvey = vi.fn(
+      async (args: { surveyId: string; payload: RawUpdateSurveyPayload }): Promise<RawSurvey> => ({
+        id: args.surveyId,
+        title: "생활관 만족도 조사",
+        description: args.payload.description ?? null,
+        description_en: args.payload.description_en ?? null,
+        status: "draft",
+        public_slug: null,
+        public_code: "8K2PQA",
+        version_group_id: "version-group-1",
+        version_number: 1,
+        parent_survey_id: null,
+        is_latest_version: true,
+        settings: {},
+        created_by: "user-1",
+        published_at: null,
+        closed_at: null,
+        created_at: "2026-05-28T00:00:00.000Z",
+        updated_at: "2026-05-28T00:00:00.000Z",
+      }),
+    );
+    const controller = new GatewayBackedAdminApiController(
+      { updateSurvey } as unknown as AdminApiGateway,
+      {} as AdminStorageGateway,
+    );
+
+    await controller.updateSurvey({
+      surveyId: "survey-1",
+      description: {
+        ko: "생활관 생활 경험을 바탕으로 응답해주세요.",
+        en: "Please answer based on your dormitory experience.",
+      },
+    });
+
+    expect(updateSurvey).toHaveBeenCalledWith({
+      surveyId: "survey-1",
+      payload: {
+        description: "생활관 생활 경험을 바탕으로 응답해주세요.",
+        description_en: "Please answer based on your dormitory experience.",
+      },
+    });
+  });
+
   it("sends question type updates and nullable clears to the gateway", async () => {
     const updateQuestion = vi.fn(
       async (args: { questionId: string; payload: RawUpdateQuestionPayload }): Promise<RawQuestion> => ({

@@ -26,7 +26,8 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
     const row: RawSurvey = {
       id: "survey-1",
       title: "생활관 만족도 조사",
-      description: null,
+      description: "2026 봄학기",
+      description_en: "Spring 2026",
       status: "draft",
       public_slug: "handong-dorm-2026",
       public_code: "8K2PQA",
@@ -44,6 +45,10 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
 
     expect(mapper.toSurvey(row)).toMatchObject({
       id: "survey-1",
+      description: {
+        ko: "2026 봄학기",
+        en: "Spring 2026",
+      },
       publicSlug: "handong-dorm-2026",
       publicCode: "8K2PQA",
       accessRole: "owner",

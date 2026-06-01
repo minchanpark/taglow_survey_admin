@@ -19,6 +19,7 @@ export type RawSurvey = Readonly<{
   id: string;
   title: string;
   description: string | null;
+  description_en?: string | null;
   status: string;
   public_slug: string | null;
   public_code?: string | null;
@@ -95,10 +96,10 @@ export type RawSurveyAsset = Readonly<{
   updated_at?: string;
 }>;
 
-export type RawCreateSurveyPayload = Partial<Pick<RawSurvey, "description" | "settings">> & Pick<RawSurvey, "title">;
+export type RawCreateSurveyPayload = Partial<Pick<RawSurvey, "description" | "description_en" | "settings">> & Pick<RawSurvey, "title">;
 export type RawInsertSurveyPayload = RawCreateSurveyPayload & Pick<RawSurvey, "created_by">;
 export type RawUpdateSurveyPayload = Partial<
-  Pick<RawSurvey, "title" | "description" | "status" | "public_slug" | "public_code" | "settings" | "published_at" | "closed_at">
+  Pick<RawSurvey, "title" | "description" | "description_en" | "status" | "public_slug" | "public_code" | "settings" | "published_at" | "closed_at">
 >;
 
 export type RawCreateSurveyCollaboratorPayload = Pick<RawSurveyCollaborator, "survey_id" | "email" | "role" | "invited_by">;

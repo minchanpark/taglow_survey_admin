@@ -12,6 +12,8 @@ user-invocable: true
 
 - `main`에 직접 push하지 않는다.
 - `dev -> main` PR만 대상으로 한다.
+- `origin`은 항상 `https://github.com/minchanpark/taglow_survey_admin.git`로 유지한다.
+- PR merge 뒤에는 `team-newdawn/main`의 merge commit을 기준으로 `origin/main`과 `team-newdawn/dev`를 다시 맞춘다. 이렇게 해야 VSCode/로컬 기본 레포와 배포 dev/main이 같은 최신 커밋을 본다.
 - merge는 사용자가 이번 요청에서 명시적으로 "merge", "머지", "배포", "main에 반영"을 요청한 경우에만 실행한다.
 - 단순히 PR을 "던져줘", "만들어줘", "열어줘"라고만 하면 merge하지 않는다.
 - 이미 열린 PR이 있으면 새 PR을 만들지 않고 기존 PR을 사용한다.
@@ -60,6 +62,17 @@ gh pr merge --repo Team-Newdawn/taglow_survey_admin <PR_NUMBER> --merge
 gh run list --repo Team-Newdawn/taglow_survey_admin --branch main --limit 5
 ```
 
+6. merge commit을 기본 개발 저장소와 배포 dev 브랜치에 재동기화한다.
+
+```sh
+git fetch team-newdawn main
+git push origin team-newdawn/main:main
+git push team-newdawn team-newdawn/main:dev
+git switch main
+git branch --set-upstream-to=origin/main main
+git merge --ff-only team-newdawn/main
+```
+
 ## Handoff
 
 마무리 응답에는 다음을 포함한다.
@@ -67,5 +80,6 @@ gh run list --repo Team-Newdawn/taglow_survey_admin --branch main --limit 5
 - PR URL
 - merge 여부
 - `team-newdawn/dev`와 `team-newdawn/main`의 commit hash
+- `origin/main` 동기화 결과
 - GitHub Actions run 확인 결과 또는 확인 명령
 - merge하지 않은 경우, 사용자가 GitHub에서 merge할 수 있다는 안내

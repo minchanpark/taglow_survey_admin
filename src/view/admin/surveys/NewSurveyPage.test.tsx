@@ -58,7 +58,7 @@ describe("NewSurveyPage", () => {
     expect(await screen.findByText("builder route")).toBeInTheDocument();
     expect(createSurvey).toHaveBeenCalledWith({
       title: "2026 생활관 만족도 조사",
-      description: "봄학기 생활관 경험을 확인합니다.",
+      description: { ko: "봄학기 생활관 경험을 확인합니다." },
       settings: {
         locales: ["ko", "en"],
         defaultLocale: "ko",

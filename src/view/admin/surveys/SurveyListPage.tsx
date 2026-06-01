@@ -169,7 +169,7 @@ export function SurveyListPage() {
                   <Link to={`/admin/surveys/${survey.id}/dashboard`} className="tg-survey-list-page__survey-link">
                     <strong>{survey.title}</strong>
                     <span className="tg-survey-list-page__survey-meta">
-                      <small>{survey.description ?? "설명 없음"}</small>
+                      <small>{survey.description?.ko ?? "설명 없음"}</small>
                       <span className="tg-survey-list-page__access">
                         <span className={`tg-survey-list-page__access-badge tg-survey-list-page__access-badge--${survey.accessRole}`}>
                           {survey.accessRole === "owner" ? "내 설문" : "공유받음"}

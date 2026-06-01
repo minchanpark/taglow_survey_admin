@@ -34,7 +34,7 @@ export function NewSurveyPage() {
     createSurveyMutation.mutate(
       {
         title: values.title,
-        description: values.description || undefined,
+        description: values.description ? { ko: values.description } : undefined,
         settings: {
           locales: values.enableEnglish ? ["ko", "en"] : ["ko"],
           defaultLocale: "ko",

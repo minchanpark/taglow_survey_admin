@@ -141,7 +141,8 @@ const editSectionSchema = z.object({
 
 const editSurveySchema = z.object({
   title: z.string().trim().min(1, "설문 제목을 입력해주세요.").max(120, "설문 제목은 120자 이하로 입력해주세요."),
-  description: z.string().trim().max(800, "소개 문구는 800자 이하로 입력해주세요.").optional(),
+  descriptionKo: z.string().trim().max(800, "소개 문구는 800자 이하로 입력해주세요.").optional(),
+  descriptionEn: z.string().trim().optional(),
 });
 
 const createQuestionSchema = z
@@ -362,22 +363,26 @@ export function SurveyBuilderPage() {
 function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
   const updateSurveyMutation = useUpdateSurveyMutation();
   const [savedTitle, setSavedTitle] = useState(props.survey.title);
-  const [savedDescription, setSavedDescription] = useState(props.survey.description ?? "");
+  const [savedDescriptionKo, setSavedDescriptionKo] = useState(props.survey.description?.ko ?? "");
+  const [savedDescriptionEn, setSavedDescriptionEn] = useState(props.survey.description?.en ?? "");
   const titleForm = useForm<EditSurveyForm>({
     resolver: zodResolver(editSurveySchema),
-    defaultValues: { title: props.survey.title, description: props.survey.description ?? "" },
+    defaultValues: surveyToTitleForm(props.survey),
   });
   const titleValue = titleForm.watch("title");
-  const descriptionValue = titleForm.watch("description") ?? "";
+  const descriptionKoValue = titleForm.watch("descriptionKo") ?? "";
+  const descriptionEnValue = titleForm.watch("descriptionEn") ?? "";
   const normalizedTitle = titleValue.trim();
-  const normalizedDescription = descriptionValue.trim();
-  const isUnchanged = normalizedTitle === savedTitle && normalizedDescription === savedDescription;
+  const normalizedDescriptionKo = descriptionKoValue.trim();
+  const normalizedDescriptionEn = descriptionEnValue.trim();
+  const isUnchanged = normalizedTitle === savedTitle && normalizedDescriptionKo === savedDescriptionKo && normalizedDescriptionEn === savedDescriptionEn;
   const isBusy = props.isDisabled || updateSurveyMutation.isPending;
 
   useEffect(() => {
     setSavedTitle(props.survey.title);
-    setSavedDescription(props.survey.description ?? "");
-    titleForm.reset({ title: props.survey.title, description: props.survey.description ?? "" });
+    setSavedDescriptionKo(props.survey.description?.ko ?? "");
+    setSavedDescriptionEn(props.survey.description?.en ?? "");
+    titleForm.reset(surveyToTitleForm(props.survey));
   }, [props.survey.description, props.survey.title, titleForm]);
 
   return (
@@ -394,13 +399,14 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
             {
               surveyId: props.survey.id,
               title: values.title.trim(),
-              description: values.description?.trim() ?? "",
+              description: toOptionalLocalizedText(values.descriptionKo, values.descriptionEn),
             },
             {
               onSuccess: (survey) => {
                 setSavedTitle(survey.title);
-                setSavedDescription(survey.description ?? "");
-                titleForm.reset({ title: survey.title, description: survey.description ?? "" });
+                setSavedDescriptionKo(survey.description?.ko ?? "");
+                setSavedDescriptionEn(survey.description?.en ?? "");
+                titleForm.reset(surveyToTitleForm(survey));
               },
             },
           );
@@ -411,15 +417,25 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
           <input aria-label="설문 제목" {...titleForm.register("title")} disabled={isBusy} />
         </label>
         <label className="tg-builder-title-form__field tg-builder-title-form__field--intro">
-          <span>설문 소개 문구</span>
+          <span>한국어 소개 문구</span>
           <textarea
-            aria-label="설문 소개 문구"
+            aria-label="한국어 소개 문구"
             rows={3}
             placeholder="예: 이번 설문은 생활관 이용 경험을 더 정확히 파악하기 위해 진행됩니다."
-            {...titleForm.register("description")}
+            {...titleForm.register("descriptionKo")}
             disabled={isBusy}
           />
           <small className="tg-builder-title-form__help">URL을 입력하면 참여자 화면에서 자동 링크로 표시됩니다.</small>
+        </label>
+        <label className="tg-builder-title-form__field tg-builder-title-form__field--intro">
+          <span>영어 소개 문구</span>
+          <textarea
+            aria-label="영어 소개 문구"
+            rows={3}
+            placeholder="Example: This survey helps us better understand your dormitory experience."
+            {...titleForm.register("descriptionEn")}
+            disabled={isBusy}
+          />
         </label>
         <div className="tg-builder-title-form__actions">
           <Button type="submit" variant="primary" icon={<Save size={16} aria-hidden="true" />} disabled={isBusy || isUnchanged}>
@@ -428,7 +444,8 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
         </div>
       </form>
       {titleForm.formState.errors.title ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.title.message}</small> : null}
-      {titleForm.formState.errors.description ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.description.message}</small> : null}
+      {titleForm.formState.errors.descriptionKo ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.descriptionKo.message}</small> : null}
+      {titleForm.formState.errors.descriptionEn ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.descriptionEn.message}</small> : null}
       {updateSurveyMutation.isError ? (
         <InlineAlert message="설문 기본 정보를 저장하지 못했습니다." detail={getErrorDetail(updateSurveyMutation.error)} />
       ) : null}
@@ -1812,6 +1829,14 @@ function InlineNotice(props: { message: string }) {
 
 function getErrorDetail(error: unknown): string | undefined {
   return error instanceof Error && error.message ? error.message : undefined;
+}
+
+function surveyToTitleForm(survey: Survey): EditSurveyForm {
+  return {
+    title: survey.title,
+    descriptionKo: survey.description?.ko ?? "",
+    descriptionEn: survey.description?.en ?? "",
+  };
 }
 
 function sectionToEditForm(section: SurveySection | undefined): EditSectionForm {

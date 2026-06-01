@@ -192,7 +192,7 @@ export function SurveyPreviewPage() {
                   <span>Taglow Survey</span>
                 </div>
                 <h2>{survey.title}</h2>
-                {survey.description ? <p>{survey.description}</p> : null}
+                {survey.description ? <p>{localizedText(survey.description, locale)}</p> : null}
               </header>
 
               {activeSections.length ? (

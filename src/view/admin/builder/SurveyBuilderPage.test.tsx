@@ -172,7 +172,7 @@ describe("SurveyBuilderPage", () => {
       expect(updateSurvey).toHaveBeenCalledWith({
         surveyId: "survey-1",
         title: "생활관 만족도 조사 2차",
-        description: "2026 봄학기",
+        description: { ko: "2026 봄학기" },
       });
     });
     expect(await screen.findByRole("status")).toHaveTextContent("설문 기본 정보가 저장되었습니다.");
@@ -189,17 +189,21 @@ describe("SurveyBuilderPage", () => {
     renderBuilder({ updateSurvey });
 
     await screen.findByRole("heading", { name: "생활관 만족도 조사" });
-    const introField = screen.getByLabelText("설문 소개 문구");
+    const introField = screen.getByLabelText("한국어 소개 문구");
     expect(screen.getByText("URL을 입력하면 참여자 화면에서 자동 링크로 표시됩니다.")).toBeInTheDocument();
     await user.clear(introField);
     await user.type(introField, "생활관 생활 경험을 바탕으로 솔직하게 응답해주세요.");
+    await user.type(screen.getByLabelText("영어 소개 문구"), "Please answer honestly based on your dormitory experience.");
     await user.click(screen.getByRole("button", { name: "기본 정보 저장" }));
 
     await waitFor(() => {
       expect(updateSurvey).toHaveBeenCalledWith({
         surveyId: "survey-1",
         title: "생활관 만족도 조사",
-        description: "생활관 생활 경험을 바탕으로 솔직하게 응답해주세요.",
+        description: {
+          ko: "생활관 생활 경험을 바탕으로 솔직하게 응답해주세요.",
+          en: "Please answer honestly based on your dormitory experience.",
+        },
       });
     });
   });
