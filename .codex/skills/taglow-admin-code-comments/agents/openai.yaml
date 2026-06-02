@@ -1,0 +1,4 @@
+interface:
+  display_name: "Taglow Code Comments"
+  short_description: "Taglow 코드 역할 주석을 보강합니다"
+  default_prompt: "Use $taglow-admin-code-comments to analyze the Taglow Survey Admin project and add concise Korean comments to code roles and relationships."
