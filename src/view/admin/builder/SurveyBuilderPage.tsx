@@ -2116,6 +2116,9 @@ function toPersistedQuestionType(questionType: QuestionKind): QuestionType {
 }
 
 function normalizeQuestionConfigForKind(questionType: QuestionKind, config: JsonRecord): QuestionConfig {
+  if (questionType === "profile") {
+    return normalizeProfileQuestionConfig(config) as QuestionConfig;
+  }
   if (questionType === shortTextQuestionKind) {
     return {
       ...config,
@@ -2162,6 +2165,24 @@ function normalizeQuestionConfigForKind(questionType: QuestionKind, config: Json
     } as QuestionConfig;
   }
   return config as QuestionConfig;
+}
+
+function normalizeProfileQuestionConfig(config: JsonRecord): JsonRecord {
+  if (config.inputType !== "single_choice" || !Array.isArray(config.options)) return config;
+  return {
+    ...config,
+    options: config.options.map((option, index) => {
+      const record = isRecord(option) ? option : {};
+      const labelKo = getConfigString(record.labelKo) ?? getConfigString(record.label) ?? getConfigString(record.value) ?? `선택지 ${index + 1}`;
+      const labelEn = getConfigString(record.labelEn);
+      return {
+        ...record,
+        value: labelKo,
+        labelKo,
+        ...(labelEn ? { labelEn } : {}),
+      };
+    }),
+  };
 }
 
 function getQuestionKind(question: Question): QuestionKind {
@@ -2383,6 +2404,10 @@ function trimTrailingEmptyLines(values: string[]): string[] {
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getConfigString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
 function groupQuestionsForDisplay(questions: Question[]): Array<{ key: string; label?: string; questions: Question[] }> {
