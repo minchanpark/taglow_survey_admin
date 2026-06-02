@@ -1367,6 +1367,7 @@ function QuestionConfigFields(props: {
               rows={6}
               config={config}
               disabled={props.disabled}
+              valueMode="labelKo"
               koPlaceholder={"남성\n여성"}
               enPlaceholder={"Male\nFemale"}
               onOptionsChange={(options) => setConfig({ options })}
@@ -1785,6 +1786,7 @@ function ChoiceOptionsEditor(props: {
   config: JsonRecord;
   disabled: boolean;
   rows?: number;
+  valueMode?: "preserve" | "labelKo";
   koPlaceholder?: string;
   enPlaceholder?: string;
   onOptionsChange: (options: Array<{ value: string; labelKo: string; labelEn?: string }>) => void;
@@ -1805,7 +1807,7 @@ function ChoiceOptionsEditor(props: {
             value={koText}
             disabled={props.disabled}
             placeholder={props.koPlaceholder}
-            onChange={(event) => props.onOptionsChange(textToOptions(event.target.value, existingOptions, enText))}
+            onChange={(event) => props.onOptionsChange(textToOptions(event.target.value, existingOptions, enText, props.valueMode))}
           />
         </label>
         <label className="tg-builder-field">
@@ -1816,7 +1818,7 @@ function ChoiceOptionsEditor(props: {
             value={enText}
             disabled={props.disabled}
             placeholder={props.enPlaceholder}
-            onChange={(event) => props.onOptionsChange(textToOptions(koText, existingOptions, event.target.value))}
+            onChange={(event) => props.onOptionsChange(textToOptions(koText, existingOptions, event.target.value, props.valueMode))}
           />
         </label>
       </div>
@@ -2346,12 +2348,17 @@ function optionsToText(config: JsonRecord, locale: "ko" | "en" = "ko"): string {
   return labels.filter(Boolean).join("\n");
 }
 
-function textToOptions(value: string, existingOptions: Array<{ value: string; labelKo: string; labelEn?: string }> = [], enValue?: string) {
+function textToOptions(
+  value: string,
+  existingOptions: Array<{ value: string; labelKo: string; labelEn?: string }> = [],
+  enValue?: string,
+  valueMode: "preserve" | "labelKo" = "preserve",
+) {
   const englishLabels = typeof enValue === "string" ? splitOptionLines(enValue) : undefined;
   return splitLines(value).map((label, index) => {
     const labelEn = englishLabels ? englishLabels[index]?.trim() : existingOptions[index]?.labelEn?.trim();
     return {
-      value: existingOptions[index]?.value ?? `option_${index + 1}`,
+      value: valueMode === "labelKo" ? label : existingOptions[index]?.value ?? `option_${index + 1}`,
       labelKo: label,
       ...(labelEn ? { labelEn } : {}),
     };

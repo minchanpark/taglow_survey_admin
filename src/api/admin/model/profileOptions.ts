@@ -20,7 +20,7 @@ export type ProfileFilterDefinition = Readonly<{
   orderIndex: number;
 }>;
 
-export const semesterGroupOptions = ["1학기", "2학기", "3학기", "4학기", "5학기이상"] as const;
+export const semesterGroupOptions = ["1-2학기", "3-4학기", "5-6학기", "7-8학기", "9학기이상"] as const;
 
 export const genderOptions = ["남성", "여성"] as const;
 

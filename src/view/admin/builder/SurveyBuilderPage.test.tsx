@@ -778,35 +778,48 @@ describe("SurveyBuilderPage", () => {
 
   it("edits profile answer options without opening raw config JSON", async () => {
     const user = userEvent.setup();
-    const updateQuestion = vi.fn<AdminApiController["updateQuestion"]>(async (command: UpdateQuestionCommand) => ({
+    const semesterProfileQuestion: Question = {
       ...profileQuestion,
+      questionKey: "profile_semester",
+      title: { ko: "학기" },
+      config: {
+        profileField: "semester_group",
+        inputType: "single_choice",
+        options: [
+          { value: "1학기", labelKo: "1-2학기" },
+          { value: "option_2", labelKo: "3-4학기" },
+        ],
+      },
+    };
+    const updateQuestion = vi.fn<AdminApiController["updateQuestion"]>(async (command: UpdateQuestionCommand) => ({
+      ...semesterProfileQuestion,
       id: command.questionId,
-      questionType: command.questionType ?? profileQuestion.questionType,
-      title: command.title ?? profileQuestion.title,
+      questionType: command.questionType ?? semesterProfileQuestion.questionType,
+      title: command.title ?? semesterProfileQuestion.title,
       description: command.description,
-      isRequired: command.isRequired ?? profileQuestion.isRequired,
-      metricType: command.metricType ?? profileQuestion.metricType,
+      isRequired: command.isRequired ?? semesterProfileQuestion.isRequired,
+      metricType: command.metricType ?? semesterProfileQuestion.metricType,
       topicKey: command.topicKey,
       spaceKey: command.spaceKey,
-      config: command.config ?? profileQuestion.config,
-      validation: command.validation ?? profileQuestion.validation,
+      config: command.config ?? semesterProfileQuestion.config,
+      validation: command.validation ?? semesterProfileQuestion.validation,
     }));
-    renderBuilder({ updateQuestion }, { questions: [profileQuestion] });
+    renderBuilder({ updateQuestion }, { questions: [semesterProfileQuestion] });
 
     await screen.findByRole("heading", { name: "생활관 만족도 조사" });
-    await user.click(screen.getByRole("button", { name: "성별 질문 선택" }));
+    await user.click(screen.getByRole("button", { name: "학기 질문 선택" }));
     const editor = screen.getByRole("complementary", { name: "질문 편집" });
 
-    expect(within(editor).getByLabelText("기본 정보 항목")).toHaveValue("gender");
+    expect(within(editor).getByLabelText("기본 정보 항목")).toHaveValue("semester_group");
     expect(within(editor).getByLabelText("기본 정보 응답 방식")).toHaveValue("single_choice");
-    expect(within(editor).getByText("남성")).toBeInTheDocument();
-    expect(within(editor).getByText("여성")).toBeInTheDocument();
+    expect(within(editor).getByText("1-2학기")).toBeInTheDocument();
+    expect(within(editor).getByText("3-4학기")).toBeInTheDocument();
     expect(within(editor).queryByText("기타")).not.toBeInTheDocument();
 
     const optionsKoInput = within(editor).getByLabelText("세부 답변 항목 한국어");
     const optionsEnInput = within(editor).getByLabelText("세부 답변 항목 영어");
-    fireEvent.change(optionsKoInput, { target: { value: "남성\n여성" } });
-    fireEvent.change(optionsEnInput, { target: { value: "Male\nFemale" } });
+    fireEvent.change(optionsKoInput, { target: { value: "1-2학기\n3-4학기\n5-6학기" } });
+    fireEvent.change(optionsEnInput, { target: { value: "1st-2nd semester\n3rd-4th semester\n5th-6th semester" } });
     await user.click(within(editor).getByRole("button", { name: "저장" }));
 
     await waitFor(() => {
@@ -814,14 +827,15 @@ describe("SurveyBuilderPage", () => {
         expect.objectContaining({
           questionId: "question-profile",
           questionType: "profile",
-          title: { ko: "성별" },
+          title: { ko: "학기" },
           metricType: "none",
           config: {
-            profileField: "gender",
+            profileField: "semester_group",
             inputType: "single_choice",
             options: [
-              { value: "남성", labelKo: "남성", labelEn: "Male" },
-              { value: "여성", labelKo: "여성", labelEn: "Female" },
+              { value: "1-2학기", labelKo: "1-2학기", labelEn: "1st-2nd semester" },
+              { value: "3-4학기", labelKo: "3-4학기", labelEn: "3rd-4th semester" },
+              { value: "5-6학기", labelKo: "5-6학기", labelEn: "5th-6th semester" },
             ],
           },
         }),

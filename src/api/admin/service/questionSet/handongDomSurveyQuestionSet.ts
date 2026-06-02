@@ -859,11 +859,11 @@ function inferProfileConfig(source: SourceQuestion): QuestionConfig {
       여성: "Female",
     }),
     semester_group: toLocalizedChoiceOptions(semesterGroupOptions, {
-      "1학기": "1st semester",
-      "2학기": "2nd semester",
-      "3학기": "3rd semester",
-      "4학기": "4th semester",
-      "5학기이상": "5th semester or above",
+      "1-2학기": "1st-2nd semester",
+      "3-4학기": "3rd-4th semester",
+      "5-6학기": "5th-6th semester",
+      "7-8학기": "7th-8th semester",
+      "9학기이상": "9th semester or above",
     }),
     department: toLocalizedChoiceOptions(departmentOptions, {
       AI컴퓨터전자공학부: "School of AI Computer and Electrical Engineering",
