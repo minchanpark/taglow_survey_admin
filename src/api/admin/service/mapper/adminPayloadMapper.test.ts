@@ -405,4 +405,30 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
       createdAt: "2026-05-28T00:00:00.000Z",
     });
   });
+
+  it("maps identity response rows for point assignment lists", () => {
+    expect(
+      mapper.toIdentityResponse({
+        response_id: "response-1",
+        student_number: "22000123",
+        name: "김태글",
+        dormitory: "A동",
+        room_type: "2인실",
+        rc: "장기려",
+        department: "전산전자공학부",
+        submitted_at: "2026-05-28T00:00:00.000Z",
+      }),
+    ).toEqual({
+      responseId: "response-1",
+      studentNumber: "22000123",
+      name: "김태글",
+      profile: {
+        dormitory: "A동",
+        roomType: "2인실",
+        rc: "장기려",
+        department: "전산전자공학부",
+      },
+      submittedAt: "2026-05-28T00:00:00.000Z",
+    });
+  });
 });

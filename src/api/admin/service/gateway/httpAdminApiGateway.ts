@@ -3,6 +3,7 @@ import type { AdminApiGateway } from "./adminApiGateway";
 import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
+  IdentityResponseQueryArgs,
   RawChoiceDistribution,
   RawGroupCompareResult,
   RawAdminAuthUser,
@@ -16,6 +17,7 @@ import type {
   RawFilterOptions,
   RawHeatmapPoint,
   RawImageTagAnswer,
+  RawIdentityResponse,
   RawLocusPoint,
   RawPriorityIssue,
   RawQuestion,
@@ -257,6 +259,14 @@ export class HttpAdminApiGateway implements AdminApiGateway {
 
   async listImageTagAnswers(args: HeatmapQueryArgs) {
     const rows = await this.request<RawImageTagAnswer[]>(`/api/admin/surveys/${args.surveyId}/analysis/image-tag-answers`, {
+      method: "POST",
+      body: args.filters,
+    });
+    return { items: rows, next_cursor: rows.find((row) => row.next_cursor)?.next_cursor ?? null };
+  }
+
+  async listIdentityResponses(args: IdentityResponseQueryArgs) {
+    const rows = await this.request<RawIdentityResponse[]>(`/api/admin/surveys/${args.surveyId}/analysis/identity-responses`, {
       method: "POST",
       body: args.filters,
     });

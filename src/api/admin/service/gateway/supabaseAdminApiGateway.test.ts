@@ -456,6 +456,113 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
+  it("loads identity responses through the analysis RPC first", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          response_id: "response-1",
+          student_number: "22000123",
+          name: "김태글",
+          dormitory: "비전관",
+          room_type: "2인실",
+          submitted_at: "2026-05-29T00:00:00.000Z",
+        },
+      ],
+      error: null,
+    }));
+    const supabase = {
+      auth: {
+        getSession: vi.fn(),
+        getUser: vi.fn(),
+        signInWithOAuth: vi.fn(),
+        signOut: vi.fn(),
+      },
+      from: vi.fn(),
+      rpc,
+    };
+
+    const gateway = new SupabaseAdminApiGateway(supabase as never);
+    const rows = await gateway.listIdentityResponses({ surveyId: "survey-1", filters: { dormitory: "비전관", limit: 100 } });
+
+    expect(rpc).toHaveBeenCalledWith("get_identity_responses", {
+      p_survey_id: "survey-1",
+      p_filters: { dormitory: "비전관", limit: 100 },
+    });
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(rows.items[0]).toMatchObject({
+      student_number: "22000123",
+      name: "김태글",
+    });
+  });
+
+  it("falls back to identity answers while excluding failed attention checks", async () => {
+    const query = createTableQuery([
+      {
+        response_id: "response-1",
+        text_value: "22000123",
+        created_at: "2026-05-29T00:00:00.000Z",
+        responses: {
+          id: "response-1",
+          status: "submitted",
+          submitted_at: "2026-05-29T00:00:00.000Z",
+          passed_attention_check: true,
+          dormitory: "비전관",
+          room_type: "2인실",
+        },
+        questions: {
+          question_key: "student_number",
+          title_ko: "학번",
+          title_en: "Student ID",
+          config: { profileField: "student_number" },
+        },
+      },
+      {
+        response_id: "response-1",
+        text_value: "김태글",
+        created_at: "2026-05-29T00:00:01.000Z",
+        responses: {
+          id: "response-1",
+          status: "submitted",
+          submitted_at: "2026-05-29T00:00:00.000Z",
+          passed_attention_check: true,
+          dormitory: "비전관",
+          room_type: "2인실",
+        },
+        questions: {
+          question_key: "name",
+          title_ko: "이름",
+          title_en: "Name",
+          config: { profileField: "name" },
+        },
+      },
+    ]);
+    const supabase = {
+      auth: {
+        getSession: vi.fn(),
+        getUser: vi.fn(),
+        signInWithOAuth: vi.fn(),
+        signOut: vi.fn(),
+      },
+      from: vi.fn(() => query),
+      rpc: vi.fn(missingIdentityResponsesRpc),
+    };
+
+    const gateway = new SupabaseAdminApiGateway(supabase as never);
+    const rows = await gateway.listIdentityResponses({ surveyId: "survey-1", filters: { dormitory: "비전관", room_type: "2인실", limit: 100 } });
+
+    expect(query.eq).toHaveBeenCalledWith("responses.status", "submitted");
+    expect(query.eq).toHaveBeenCalledWith("responses.passed_attention_check", true);
+    expect(query.eq).toHaveBeenCalledWith("responses.dormitory", "비전관");
+    expect(query.eq).toHaveBeenCalledWith("responses.room_type", "2인실");
+    expect(rows.items).toEqual([
+      expect.objectContaining({
+        response_id: "response-1",
+        student_number: "22000123",
+        name: "김태글",
+      }),
+    ]);
+  });
+
   it("unwraps single-row RPC arrays for one-row gateway calls", async () => {
     const supabase = {
       auth: {
@@ -804,12 +911,22 @@ async function missingImageTagAnswersRpc() {
   };
 }
 
+async function missingIdentityResponsesRpc() {
+  return {
+    data: null,
+    error: {
+      message: "Could not find the function public.get_identity_responses in the schema cache",
+    },
+  };
+}
+
 function createTableQuery(data: unknown[]) {
   const query = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
     is: vi.fn(() => query),
     order: vi.fn(() => query),
+    limit: vi.fn(() => query),
     then: (resolve: (value: { data: unknown[]; error: null }) => void, reject?: (reason: unknown) => void) =>
       Promise.resolve({ data, error: null }).then(resolve, reject),
   };

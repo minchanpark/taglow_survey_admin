@@ -1,5 +1,6 @@
 import type {
   AnalysisQueryArgs,
+  IdentityResponseQueryArgs,
   RawChoiceDistribution,
   RawGroupCompareResult,
   HeatmapQueryArgs,
@@ -14,6 +15,7 @@ import type {
   RawFilterOptions,
   RawHeatmapPoint,
   RawImageTagAnswer,
+  RawIdentityResponse,
   RawLocusPoint,
   RawPaginatedResult,
   RawQuestion,
@@ -93,6 +95,7 @@ export interface AdminApiGateway {
   getLocusSummary(args: AnalysisQueryArgs): Promise<RawLocusPoint[]>;
   getHeatmapPoints(args: HeatmapQueryArgs): Promise<RawHeatmapPoint[]>;
   listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawPaginatedResult<RawImageTagAnswer>>;
+  listIdentityResponses(args: IdentityResponseQueryArgs): Promise<RawPaginatedResult<RawIdentityResponse>>;
   getTextGroups(args: TextAnswerQueryArgs): Promise<RawTextGroup[]>;
   listTextAnswers(args: TextAnswerQueryArgs): Promise<RawPaginatedResult<RawTextAnswer>>;
 }

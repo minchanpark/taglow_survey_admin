@@ -527,3 +527,55 @@ describe("GatewayBackedAdminApiController question set import", () => {
     expect(result.questionsSkipped).toBe(1);
   });
 });
+
+describe("GatewayBackedAdminApiController analysis identity responses", () => {
+  it("lists identity responses through the analysis boundary with normalized filters", async () => {
+    const listIdentityResponses = vi.fn(async () => ({
+      items: [
+        {
+          response_id: "response-1",
+          student_number: "22000123",
+          name: "김태글",
+          dormitory: "비전관",
+          room_type: "2인실",
+          submitted_at: "2026-05-28T00:00:00.000Z",
+        },
+      ],
+      next_cursor: "cursor-1",
+    }));
+    const controller = new GatewayBackedAdminApiController(
+      { listIdentityResponses } as unknown as AdminApiGateway,
+      {} as AdminStorageGateway,
+    );
+
+    await expect(
+      controller.listIdentityResponses({
+        surveyId: "survey-1",
+        filters: { dormitory: "비전관", roomType: "2인실", limit: 100 },
+      }),
+    ).resolves.toEqual({
+      items: [
+        {
+          responseId: "response-1",
+          studentNumber: "22000123",
+          name: "김태글",
+          profile: {
+            dormitory: "비전관",
+            roomType: "2인실",
+          },
+          submittedAt: "2026-05-28T00:00:00.000Z",
+        },
+      ],
+      nextCursor: "cursor-1",
+    });
+
+    expect(listIdentityResponses).toHaveBeenCalledWith({
+      surveyId: "survey-1",
+      filters: expect.objectContaining({
+        dormitory: "비전관",
+        room_type: "2인실",
+        limit: 100,
+      }),
+    });
+  });
+});

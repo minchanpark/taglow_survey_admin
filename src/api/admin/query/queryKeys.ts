@@ -1,4 +1,4 @@
-import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, PreviewOptions, TextAnswerFilters } from "../model";
+import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, IdentityResponseFilters, PreviewOptions, TextAnswerFilters } from "../model";
 
 export const adminQueryKeys = {
   adminSession: ["admin", "session"] as const,
@@ -39,6 +39,8 @@ export const adminQueryKeys = {
     ["admin", "survey", surveyId, "analysis", "imageTagAnswers", filters] as const,
   imageTagAnswersInfinite: (surveyId: string, filters: HeatmapFilters) =>
     ["admin", "survey", surveyId, "analysis", "imageTagAnswersInfinite", filters] as const,
+  identityResponsesInfinite: (surveyId: string, filters: IdentityResponseFilters) =>
+    ["admin", "survey", surveyId, "analysis", "identityResponsesInfinite", filters] as const,
   textAnswers: (surveyId: string, filters: TextAnswerFilters) =>
     ["admin", "survey", surveyId, "analysis", "textAnswers", filters] as const,
   textAnswersInfinite: (surveyId: string, filters: TextAnswerFilters) =>

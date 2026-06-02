@@ -7,6 +7,7 @@ import {
   useGroupCompareSummaryQuery,
   useHeatmapPointsQuery,
   useImageTagAnswersInfiniteQuery,
+  useIdentityResponsesInfiniteQuery,
   usePriorityTop5Query,
   useQuestionSatisfactionSummaryQuery,
   useResponseSummaryQuery,
@@ -26,6 +27,7 @@ import type {
   GroupCompareDimension,
   GroupCompareFilters,
   HeatmapFilters,
+  IdentityResponse,
   ImageTagAnswer,
   ImageTagAnswerImage,
   JsonRecord,
@@ -40,6 +42,7 @@ import {
   ChoiceDistributionCard,
   GroupCompareCard,
   HeatmapPointCard,
+  IdentityResponseCard,
   PriorityTop5Card,
   ProfileDistributionCard,
   QuestionAverageCard,
@@ -52,6 +55,30 @@ import { GlobalFilterBar } from "./components/GlobalFilterBar";
 import { ImageTagAnswerSection, type ImageTagAnswerGroup } from "./components/ImageTagAnswerSection";
 import "./css/SurveyAnalysisPage.css";
 
+const devIdentityResponses: IdentityResponse[] = [
+  {
+    responseId: "dev-identity-response-1",
+    studentNumber: "22000123",
+    name: "김태글",
+    profile: { dormitory: "비전관", roomType: "2인실", rc: "장기려", department: "전산전자공학부" },
+    submittedAt: "2026-06-02T09:10:00.000Z",
+  },
+  {
+    responseId: "dev-identity-response-2",
+    studentNumber: "22110456",
+    name: "이상점",
+    profile: { dormitory: "은혜관", roomType: "3인실", rc: "손양원", department: "콘텐츠융합디자인학부" },
+    submittedAt: "2026-06-02T09:18:00.000Z",
+  },
+  {
+    responseId: "dev-identity-response-3",
+    studentNumber: "21907890",
+    name: "박참여",
+    profile: { dormitory: "창조관", roomType: "4인실", rc: "토레이", department: "ICT창업학부" },
+    submittedAt: "2026-06-02T09:27:00.000Z",
+  },
+];
+
 export function SurveyAnalysisPage() {
   const { surveyId = "" } = useParams();
   const { surveyId: filterSurveyId, filters, activeTab, setSurveyId, setFilters, setActiveTab, resetFilters } = useAdminFilterStore();
@@ -62,6 +89,7 @@ export function SurveyAnalysisPage() {
   const isOverviewTab = activeTab === "overview";
   const isScaleTab = activeTab === "scale";
   const isGroupsTab = activeTab === "groups";
+  const isIdentityTab = activeTab === "identity";
   const isTextTab = activeTab === "text";
   const isHeatmapTab = activeTab === "heatmap";
   const textFilters: TextAnswerFilters = useMemo(
@@ -89,6 +117,7 @@ export function SurveyAnalysisPage() {
   const questionSummaryQuery = useQuestionSatisfactionSummaryQuery(surveyId, activeFilters, { enabled: isScaleTab });
   const choiceDistributionQuery = useChoiceDistributionQuery(surveyId, activeFilters, { enabled: isScaleTab });
   const priorityTop5Query = usePriorityTop5Query(surveyId, activeFilters, { enabled: isOverviewTab });
+  const identityResponsesQuery = useIdentityResponsesInfiniteQuery(surveyId, activeFilters, { enabled: isIdentityTab });
   const groupCompareQuery = useGroupCompareSummaryQuery(surveyId, groupCompareFilters, { enabled: isGroupsTab });
   const textGroupsQuery = useTextGroupsQuery(surveyId, textFilters, { enabled: isTextTab });
   const textAnswersQuery = useTextAnswersInfiniteQuery(surveyId, textFilters, { enabled: isTextTab });
@@ -137,6 +166,11 @@ export function SurveyAnalysisPage() {
     () => textAnswersQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [textAnswersQuery.data],
   );
+  const identityResponses = useMemo(
+    () => identityResponsesQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [identityResponsesQuery.data],
+  );
+  const displayIdentityResponses = import.meta.env.DEV && identityResponses.length === 0 ? devIdentityResponses : identityResponses;
   const adminImageGroups = groups.filter((group) => group.kind === "admin_image");
   const participantUploadGroups = groups.filter((group) => group.kind === "participant_upload");
   const satisfactionQuestions = useMemo(
@@ -150,6 +184,7 @@ export function SurveyAnalysisPage() {
     questionSummaryQuery,
     choiceDistributionQuery,
     priorityTop5Query,
+    identityResponsesQuery,
     groupCompareQuery,
     textGroupsQuery,
     textAnswersQuery,
@@ -225,6 +260,7 @@ export function SurveyAnalysisPage() {
           ["overview", "개요"],
           ["scale", "점수 문항"],
           ["groups", "그룹별 비교"],
+          ["identity", "상세 명단"],
           ["text", "서술형"],
           ["heatmap", "사진 표시"],
         ].map(([tab, label]) => (
@@ -241,6 +277,7 @@ export function SurveyAnalysisPage() {
         questionSummaryQuery,
         choiceDistributionQuery,
         priorityTop5Query,
+        identityResponsesQuery,
         groupCompareQuery,
         textGroupsQuery,
         textAnswersQuery,
@@ -268,6 +305,21 @@ export function SurveyAnalysisPage() {
             filters={activeFilters}
           />
           <SectionAverageCard surveyId={surveyId} sections={sectionSummaryQuery.data ?? []} filters={activeFilters} />
+        </div>
+      ) : null}
+
+      {activeTab === "identity" ? (
+        <div className="tg-analysis-page__grid">
+          <IdentityResponseCard
+            surveyId={surveyId}
+            responses={displayIdentityResponses}
+            filters={activeFilters}
+            hasMore={Boolean(identityResponsesQuery.hasNextPage)}
+            isLoadingMore={identityResponsesQuery.isFetchingNextPage}
+            onLoadMore={() => {
+              void identityResponsesQuery.fetchNextPage();
+            }}
+          />
         </div>
       ) : null}
 

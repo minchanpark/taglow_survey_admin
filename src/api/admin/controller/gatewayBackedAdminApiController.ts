@@ -35,6 +35,8 @@ import type {
   HeatmapPoint,
   ImageTagAnswer,
   ImageTagAnswerFilterCommand,
+  IdentityResponse,
+  IdentityResponseFilterCommand,
   InviteSurveyCollaboratorCommand,
   JsonRecord,
   LocusPoint,
@@ -511,6 +513,17 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     });
     return {
       items: page.items.map((row) => this.mapper.toImageTagAnswer(row)),
+      nextCursor: page.next_cursor ?? undefined,
+    };
+  }
+
+  async listIdentityResponses(command: IdentityResponseFilterCommand): Promise<PaginatedResult<IdentityResponse>> {
+    const page = await this.gateway.listIdentityResponses({
+      surveyId: command.surveyId,
+      filters: toAnalysisFilterPayload(command.filters),
+    });
+    return {
+      items: page.items.map((row) => this.mapper.toIdentityResponse(row)),
       nextCursor: page.next_cursor ?? undefined,
     };
   }

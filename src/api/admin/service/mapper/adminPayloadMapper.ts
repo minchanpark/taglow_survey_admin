@@ -8,6 +8,7 @@ import {
   type GroupCompareResult,
   type HeatmapPoint,
   type ImageTagAnswer,
+  type IdentityResponse,
   type JsonRecord,
   type LocusPoint,
   type LocusQuadrant,
@@ -38,6 +39,7 @@ import type {
   RawGroupCompareResult,
   RawHeatmapPoint,
   RawImageTagAnswer,
+  RawIdentityResponse,
   RawLocusPoint,
   RawPriorityIssue,
   RawQuestion,
@@ -349,6 +351,24 @@ export class AdminPayloadMapper {
       count: Number(row.count ?? 0),
       n: Number(row.n ?? row.count ?? 0),
       representativeTexts: normalizeStringArray(row.representative_texts),
+    };
+  }
+
+  toIdentityResponse(row: RawIdentityResponse): IdentityResponse {
+    return {
+      responseId: row.response_id,
+      studentNumber: row.student_number ?? undefined,
+      name: row.name ?? undefined,
+      profile: row.profile ?? compactRecord({
+        gender: row.gender,
+        semesterGroup: row.semester_group,
+        department: row.department,
+        rc: row.rc,
+        dormitory: row.dormitory,
+        roomType: row.room_type,
+        dormExperience: row.dorm_experience,
+      }),
+      submittedAt: row.submitted_at,
     };
   }
 }

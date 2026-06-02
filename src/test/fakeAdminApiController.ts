@@ -13,6 +13,7 @@ import type {
   GroupCompareResult,
   HeatmapPoint,
   ImageTagAnswer,
+  IdentityResponse,
   LocusPoint,
   PreviewSurvey,
   PreviewSurveyCommand,
@@ -315,6 +316,7 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
     getLocusSummary: async (): Promise<LocusPoint[]> => [],
     getHeatmapPoints: async (): Promise<HeatmapPoint[]> => [],
     listImageTagAnswers: async () => ({ items: [] as ImageTagAnswer[] }),
+    listIdentityResponses: async () => ({ items: [] as IdentityResponse[] }),
     getTextGroups: async (): Promise<TextGroup[]> => [],
     listTextAnswers: async () => ({ items: [] as TextAnswer[] }),
   };

@@ -28,6 +28,11 @@ export type TextAnswerFilters = AnalysisFilters & Readonly<{
   limit?: number;
 }>;
 
+export type IdentityResponseFilters = AnalysisFilters & Readonly<{
+  cursor?: string;
+  limit?: number;
+}>;
+
 export type PaginatedResult<T> = Readonly<{
   items: T[];
   nextCursor?: string;
@@ -188,6 +193,14 @@ export type TextGroup = Readonly<{
   count: number;
   n: number;
   representativeTexts: string[];
+}>;
+
+export type IdentityResponse = Readonly<{
+  responseId: string;
+  studentNumber?: string;
+  name?: string;
+  profile?: JsonRecord;
+  submittedAt: string;
 }>;
 
 export type ImageTagAnswerImage = Readonly<{

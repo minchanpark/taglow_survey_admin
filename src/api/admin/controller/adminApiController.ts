@@ -17,6 +17,8 @@ import type {
   HeatmapPoint,
   ImageTagAnswer,
   ImageTagAnswerFilterCommand,
+  IdentityResponse,
+  IdentityResponseFilterCommand,
   InviteSurveyCollaboratorCommand,
   LocusPoint,
   PaginatedResult,
@@ -108,6 +110,7 @@ export interface AdminApiController {
   getLocusSummary(command: AnalysisFilterCommand): Promise<LocusPoint[]>;
   getHeatmapPoints(command: HeatmapFilterCommand): Promise<HeatmapPoint[]>;
   listImageTagAnswers(command: ImageTagAnswerFilterCommand): Promise<PaginatedResult<ImageTagAnswer>>;
+  listIdentityResponses(command: IdentityResponseFilterCommand): Promise<PaginatedResult<IdentityResponse>>;
   getTextGroups(command: TextAnswerFilterCommand): Promise<TextGroup[]>;
   listTextAnswers(command: TextAnswerFilterCommand): Promise<PaginatedResult<TextAnswer>>;
 }

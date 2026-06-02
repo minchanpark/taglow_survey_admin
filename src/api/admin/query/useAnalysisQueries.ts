@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useAdminApiController } from "../controller/adminApiControllerProvider";
-import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, TextAnswerFilters } from "../model";
+import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, IdentityResponseFilters, TextAnswerFilters } from "../model";
 import { adminQueryKeys } from "./queryKeys";
 
 type AnalysisQueryOptions = Readonly<{
@@ -124,6 +124,18 @@ export function useImageTagAnswersInfiniteQuery(surveyId: string, filters: Heatm
   return useInfiniteQuery({
     queryKey: adminQueryKeys.imageTagAnswersInfinite(surveyId, filters),
     queryFn: ({ pageParam }) => controller.listImageTagAnswers({ surveyId, filters: { ...filters, cursor: pageParam, limit: filters.limit ?? 50 } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: Boolean(surveyId) && (options.enabled ?? true),
+    staleTime: analysisStaleTimeMs,
+  });
+}
+
+export function useIdentityResponsesInfiniteQuery(surveyId: string, filters: IdentityResponseFilters, options: AnalysisQueryOptions = {}) {
+  const controller = useAdminApiController();
+  return useInfiniteQuery({
+    queryKey: adminQueryKeys.identityResponsesInfinite(surveyId, filters),
+    queryFn: ({ pageParam }) => controller.listIdentityResponses({ surveyId, filters: { ...filters, cursor: pageParam, limit: filters.limit ?? 100 } }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: Boolean(surveyId) && (options.enabled ?? true),

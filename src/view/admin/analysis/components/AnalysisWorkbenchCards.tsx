@@ -1,4 +1,4 @@
-import { AlertTriangle, Download, FileText, GitBranch, Layers3, ListFilter, MapPinned, Target, TrendingUp } from "lucide-react";
+import { AlertTriangle, Download, FileText, GitBranch, Layers3, ListFilter, MapPinned, Target, TrendingUp, UserRound } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import type {
@@ -7,6 +7,7 @@ import type {
   GroupCompareDimension,
   GroupCompareResult,
   HeatmapPoint,
+  IdentityResponse,
   PriorityIssue,
   ProfileDistribution,
   ProfileFilterDefinition,
@@ -102,6 +103,62 @@ export function ProfileDistributionCard(props: { surveyId: string; distribution?
           <EmptyState title="기본 정보 기준이 없습니다." description="기본 정보 질문을 추가하면 항목별 응답 비율이 표시됩니다." />
         )}
       </div>
+    </AnalysisCard>
+  );
+}
+
+export function IdentityResponseCard(props: {
+  surveyId: string;
+  responses: IdentityResponse[];
+  filters: AnalysisFilters;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+}) {
+  const visibleResponses = props.responses.filter((response) => response.studentNumber || response.name);
+  return (
+    <AnalysisCard
+      surveyId={props.surveyId}
+      captureKey="identity-responses"
+      title="상세 명단"
+      icon={<UserRound size={16} aria-hidden="true" />}
+      meta={`${formatFilterSummary(props.filters)} · 주의력 확인 통과 응답만`}
+      className="tg-analysis-card--wide"
+    >
+      <p className="tg-analysis-card-summary">표시 중 {visibleResponses.length.toLocaleString("ko-KR")}명</p>
+      {visibleResponses.length ? (
+        <div className="tg-analysis-table-wrap">
+          <table className="tg-analysis-table">
+            <thead>
+              <tr>
+                <th>학번</th>
+                <th>이름</th>
+                <th>기본 정보</th>
+                <th>제출 시각</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleResponses.map((response) => (
+                <tr key={response.responseId}>
+                  <td>{response.studentNumber ?? "-"}</td>
+                  <td>{response.name ?? "-"}</td>
+                  <td>{formatProfile(response.profile)}</td>
+                  <td>{formatDateTime(response.submittedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title="이름과 학번 응답이 없습니다." description="기본 정보에 이름/학번 문항이 있고 주의력 확인을 통과한 제출 응답만 표시됩니다." />
+      )}
+      {props.hasMore ? (
+        <div className="tg-analysis-load-more">
+          <Button variant="secondary" onClick={props.onLoadMore} disabled={props.isLoadingMore}>
+            {props.isLoadingMore ? "불러오는 중" : "더 보기"}
+          </Button>
+        </div>
+      ) : null}
     </AnalysisCard>
   );
 }
@@ -668,6 +725,18 @@ function formatCount(value: number | undefined): string {
 
 function formatScore(value: number | null | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : "-";
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value || "-";
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function formatPercent(value: number): string {

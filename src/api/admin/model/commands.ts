@@ -1,5 +1,5 @@
 import type { JsonRecord, LocalizedText } from "./common";
-import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, TextAnswerFilters } from "./analysis";
+import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, IdentityResponseFilters, TextAnswerFilters } from "./analysis";
 import type { QuestionConfig, QuestionType, QuestionValidation, MetricType } from "./question";
 import type { SectionType } from "./section";
 import type { SurveyCollaboratorRole, SurveySettings, SurveyStatus } from "./survey";
@@ -120,6 +120,11 @@ export type TextAnswerFilterCommand = Readonly<{
 export type ImageTagAnswerFilterCommand = Readonly<{
   surveyId: string;
   filters: HeatmapFilters;
+}>;
+
+export type IdentityResponseFilterCommand = Readonly<{
+  surveyId: string;
+  filters: IdentityResponseFilters;
 }>;
 
 export type ApproveAdminMemberCommand = Readonly<{

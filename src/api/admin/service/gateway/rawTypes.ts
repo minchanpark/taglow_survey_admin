@@ -164,6 +164,7 @@ export type AnalysisQueryArgs = Readonly<{
 
 export type HeatmapQueryArgs = AnalysisQueryArgs;
 export type TextAnswerQueryArgs = AnalysisQueryArgs;
+export type IdentityResponseQueryArgs = AnalysisQueryArgs;
 
 export type RawPaginatedResult<T> = Readonly<{
   items: T[];
@@ -339,4 +340,20 @@ export type RawTextGroup = Readonly<{
   count: number;
   n?: number | null;
   representative_texts?: string[] | null;
+}>;
+
+export type RawIdentityResponse = Readonly<{
+  response_id: string;
+  student_number: string | null;
+  name: string | null;
+  gender?: string | null;
+  semester_group?: string | null;
+  department?: string | null;
+  rc?: string | null;
+  dormitory?: string | null;
+  room_type?: string | null;
+  dorm_experience?: string | null;
+  profile?: JsonRecord | null;
+  submitted_at: string;
+  next_cursor?: string | null;
 }>;
