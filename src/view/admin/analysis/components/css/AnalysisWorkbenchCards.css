@@ -443,6 +443,21 @@
   gap: var(--tg-space-4);
 }
 
+.tg-analysis-text-node__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--tg-space-3);
+}
+
+.tg-analysis-text-node__actions .tg-button {
+  min-height: 32px;
+  padding: 0 var(--tg-space-5);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
 .tg-analysis-choice-group__header {
   display: flex;
   align-items: center;

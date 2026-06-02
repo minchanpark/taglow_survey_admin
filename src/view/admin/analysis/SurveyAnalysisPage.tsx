@@ -370,6 +370,7 @@ export function SurveyAnalysisPage() {
           <HeatmapPointCard surveyId={surveyId} points={heatmapPointsQuery.data ?? []} filters={activeFilters} />
           {imageTagAnswersQuery.isPending ? <LoadingState label="사진 표시 답변을 불러오는 중" /> : null}
           <ImageTagAnswerSection
+            surveyId={surveyId}
             headingId="analysis-admin-image-tags"
             title="준비된 사진 위 표시"
             description="관리자가 미리 올려둔 사진 위에 남겨진 표시입니다."
@@ -384,6 +385,7 @@ export function SurveyAnalysisPage() {
             }}
           />
           <ImageTagAnswerSection
+            surveyId={surveyId}
             headingId="analysis-participant-upload-tags"
             title="참여자가 올린 사진 위 표시"
             description="참여자가 직접 올린 사진 위에 남긴 표시입니다."

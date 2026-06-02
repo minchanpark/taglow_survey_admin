@@ -466,17 +466,7 @@ export function TextEvidenceCard(props: {
       {props.groups.length ? (
         <div className="tg-analysis-text-grid">
           {props.groups.slice(0, 8).map((group) => (
-            <section key={group.groupKey} className="tg-analysis-text-node">
-              <header>
-                <h3>{group.label}</h3>
-                <StatusBadge tone={group.n > 0 && group.n < lowSampleThreshold ? "warning" : "info"}>응답 수 {group.n}명</StatusBadge>
-              </header>
-              <ul>
-                {group.representativeTexts.map((text, index) => (
-                  <li key={`${group.groupKey}-${index}`}>{text}</li>
-                ))}
-              </ul>
-            </section>
+            <TextGroupNode key={group.groupKey} surveyId={props.surveyId} group={group} />
           ))}
         </div>
       ) : (
@@ -511,6 +501,45 @@ export function TextEvidenceCard(props: {
         </div>
       ) : null}
     </AnalysisCard>
+  );
+}
+
+function TextGroupNode(props: { surveyId: string; group: TextGroup }) {
+  const captureRef = useRef<HTMLElement>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const filename = `taglow-${props.surveyId}-text-node-${toFilenamePart(props.group.groupKey)}-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
+  return (
+    <section ref={captureRef} className="tg-analysis-text-node">
+      <header>
+        <h3>{props.group.label}</h3>
+        <div className="tg-analysis-text-node__actions">
+          <StatusBadge tone={props.group.n > 0 && props.group.n < lowSampleThreshold ? "warning" : "info"}>응답 수 {props.group.n}명</StatusBadge>
+          <Button
+            variant="ghost"
+            icon={<Download size={15} aria-hidden="true" />}
+            aria-label={`${props.group.label} 이미지 저장`}
+            data-capture-hidden="true"
+            disabled={isCapturing}
+            onClick={async () => {
+              if (!captureRef.current) return;
+              setIsCapturing(true);
+              try {
+                await downloadElementAsPng(captureRef.current, filename);
+              } finally {
+                setIsCapturing(false);
+              }
+            }}
+          >
+            이미지 저장
+          </Button>
+        </div>
+      </header>
+      <ul>
+        {props.group.representativeTexts.map((text, index) => (
+          <li key={`${props.group.groupKey}-${index}`}>{text}</li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -771,6 +800,10 @@ function formatPrioritySource(value: PriorityIssue["source"]): string {
 function formatFilterSummary(filters: AnalysisFilters): string {
   const count = countActiveFilters(filters);
   return count ? `조건 ${count}개 적용` : "모든 응답 기준";
+}
+
+function toFilenamePart(value: string): string {
+  return value.replace(/[^a-zA-Z0-9가-힣_-]+/g, "-").replace(/^-+|-+$/g, "") || "node";
 }
 
 function hasActiveFilters(filters: AnalysisFilters): boolean {

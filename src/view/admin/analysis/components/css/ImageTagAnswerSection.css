@@ -98,12 +98,27 @@
   line-height: var(--tg-line-card-title);
 }
 
-.tg-analysis-tag-card__header > span,
+.tg-analysis-tag-card__actions > span,
 .tg-analysis-tag-card__meta span {
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-caption);
   line-height: var(--tg-line-caption);
   white-space: nowrap;
+}
+
+.tg-analysis-tag-card__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--tg-space-4);
+}
+
+.tg-analysis-tag-card__actions .tg-button {
+  min-height: 32px;
+  padding: 0 var(--tg-space-5);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
 }
 
 .tg-analysis-tag-card__visual {

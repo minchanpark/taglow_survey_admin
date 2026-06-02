@@ -1,7 +1,9 @@
-import { AlertTriangle, MousePointer2 } from "lucide-react";
+import { AlertTriangle, Download, MousePointer2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useRef, useState } from "react";
 import type { ImageTagAnswer, ImageTagAnswerImage, JsonRecord } from "../../../../api/admin/model";
 import { Button, EmptyState } from "../../../../components";
+import { downloadElementAsPng } from "../../../../utils/downloadHelper";
 import "./css/ImageTagAnswerSection.css";
 
 export type ImageTagAnswerGroup = Readonly<{
@@ -16,6 +18,7 @@ export type ImageTagAnswerGroup = Readonly<{
 }>;
 
 export function ImageTagAnswerSection(props: {
+  surveyId: string;
   headingId: string;
   title: string;
   description: string;
@@ -48,7 +51,7 @@ export function ImageTagAnswerSection(props: {
       {props.groups.length ? (
         <div className="tg-analysis-answer-grid">
           {props.groups.map((group) => (
-            <ImageTagAnswerCard key={group.key} group={group} />
+            <ImageTagAnswerCard key={group.key} surveyId={props.surveyId} group={group} />
           ))}
         </div>
       ) : (
@@ -69,16 +72,39 @@ export function countUniqueImageTagResponses(answers: ImageTagAnswer[]): number 
   return new Set(answers.map((answer) => answer.responseId ?? answer.id)).size;
 }
 
-function ImageTagAnswerCard(props: { group: ImageTagAnswerGroup }) {
+function ImageTagAnswerCard(props: { surveyId: string; group: ImageTagAnswerGroup }) {
   const imageUrl = props.group.image?.signedUrl;
+  const captureRef = useRef<HTMLElement>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const filename = `taglow-${props.surveyId}-image-node-${toFilenamePart(props.group.key)}-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
   return (
-    <article className="tg-analysis-tag-card">
+    <article ref={captureRef} className="tg-analysis-tag-card">
       <header className="tg-analysis-tag-card__header">
         <div>
           <p>{props.group.sectionTitle ?? "주제 없음"}</p>
           <h3>{props.group.questionTitle}</h3>
         </div>
-        <span>{props.group.questionType === "participant_image_tag" ? "참여자가 올린 사진" : "준비된 사진"}</span>
+        <div className="tg-analysis-tag-card__actions">
+          <span>{props.group.questionType === "participant_image_tag" ? "참여자가 올린 사진" : "준비된 사진"}</span>
+          <Button
+            variant="ghost"
+            icon={<Download size={15} aria-hidden="true" />}
+            aria-label={`${props.group.questionTitle} 이미지 저장`}
+            data-capture-hidden="true"
+            disabled={isCapturing}
+            onClick={async () => {
+              if (!captureRef.current) return;
+              setIsCapturing(true);
+              try {
+                await downloadElementAsPng(captureRef.current, filename);
+              } finally {
+                setIsCapturing(false);
+              }
+            }}
+          >
+            이미지 저장
+          </Button>
+        </div>
       </header>
 
       <div className="tg-analysis-tag-card__visual" aria-label={`${props.group.questionTitle} 표시 위치`}>
@@ -128,4 +154,8 @@ function formatProfile(profile: JsonRecord | undefined): string {
 
 function formatRatio(value: number): string {
   return `${Math.round(value * 100)}%`;
+}
+
+function toFilenamePart(value: string): string {
+  return value.replace(/[^a-zA-Z0-9가-힣_-]+/g, "-").replace(/^-+|-+$/g, "") || "node";
 }

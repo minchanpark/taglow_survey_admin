@@ -255,6 +255,7 @@ describe("SurveyAnalysisPage", () => {
     const adminSection = screen.getByRole("heading", { name: "준비된 사진 위 표시" }).closest("section");
     expect(adminSection).toBeTruthy();
     expect(within(adminSection!).getByRole("heading", { name: "복도 사진에서 불편한 지점을 표시해주세요." })).toBeInTheDocument();
+    expect(within(adminSection!).getByRole("button", { name: "복도 사진에서 불편한 지점을 표시해주세요. 이미지 저장" })).toBeInTheDocument();
     expect(within(adminSection!).getByText("미끄러움")).toBeInTheDocument();
     expect(within(adminSection!).getByText("바닥 물기가 많습니다.")).toBeInTheDocument();
     expect(within(adminSection!).getByText(/가로 40% · 세로 55%/)).toBeInTheDocument();
@@ -262,6 +263,7 @@ describe("SurveyAnalysisPage", () => {
     const participantSection = screen.getByRole("heading", { name: "참여자가 올린 사진 위 표시" }).closest("section");
     expect(participantSection).toBeTruthy();
     expect(within(participantSection!).getByRole("heading", { name: "직접 사진을 올려 불편한 지점을 표시해주세요." })).toBeInTheDocument();
+    expect(within(participantSection!).getByRole("button", { name: "직접 사진을 올려 불편한 지점을 표시해주세요. 이미지 저장" })).toBeInTheDocument();
     expect(within(participantSection!).getByText("수리 요청")).toBeInTheDocument();
     expect(within(participantSection!).getByText("창틀이 흔들립니다.")).toBeInTheDocument();
     expect(within(participantSection!).getByText(/가로 62% · 세로 20%/)).toBeInTheDocument();
@@ -435,6 +437,53 @@ describe("SurveyAnalysisPage", () => {
     expect(within(priorityCard!).getByText(/서술형 의견 3개 · 사진 표시 2개/)).toBeInTheDocument();
     expect(within(priorityCard!).getByText("여러 근거")).toBeInTheDocument();
     expect(within(priorityCard!).queryByText(/중요도|개선 필요 점수|차이/)).not.toBeInTheDocument();
+  });
+
+  it("shows image save controls for each filtered text evidence node", async () => {
+    const user = userEvent.setup();
+    renderAnalysis({
+      getTextGroups: async () => [
+        {
+          groupKey: "laundry",
+          label: "세탁실",
+          topicKey: "laundry",
+          count: 3,
+          n: 3,
+          representativeTexts: ["건조기가 부족합니다.", "세탁실 환기가 약합니다."],
+        },
+        {
+          groupKey: "noise",
+          label: "소음",
+          topicKey: "noise",
+          count: 12,
+          n: 12,
+          representativeTexts: ["야간 소음이 큽니다."],
+        },
+      ],
+      listTextAnswers: async () => ({
+        items: [
+          {
+            id: "text-answer-1",
+            textValue: "건조기가 부족합니다.",
+            valueJson: {},
+            topicKey: "laundry",
+            profile: { dormitory: "비전관" },
+            createdAt: "2026-05-28T00:00:00.000Z",
+          },
+        ],
+      }),
+    });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "서술형" }));
+
+    const textCard = await screen.findByRole("heading", { name: "서술형 의견 모음" });
+    const card = textCard.closest("article");
+    expect(card).toBeTruthy();
+    expect(within(card!).getByRole("heading", { name: "세탁실" })).toBeInTheDocument();
+    expect(within(card!).getByRole("button", { name: "세탁실 이미지 저장" })).toBeInTheDocument();
+    expect(within(card!).getByRole("heading", { name: "소음" })).toBeInTheDocument();
+    expect(within(card!).getByRole("button", { name: "소음 이미지 저장" })).toBeInTheDocument();
   });
 
   it("shows satisfaction averages and choice ratios without importance-based cards", async () => {
