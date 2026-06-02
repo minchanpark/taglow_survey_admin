@@ -1,6 +1,6 @@
 import { BarChart3, Eye, PencilLine, Settings } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { canEditSurvey, canManageSurvey, getSurveyAccessRoleLabel, getSurveyPublicPath } from "../../../api/admin/model";
+import { canEditSurvey, canInviteSurvey, canManageSurvey, getSurveyAccessRoleLabel, getSurveyPublicPath } from "../../../api/admin/model";
 import { useSurveyDetailQuery } from "../../../api/admin/query";
 import { EmptyState, ErrorState, LoadingState, SurveyStatusBadge } from "../../../components";
 import "./css/SurveyDashboardPage.css";
@@ -46,7 +46,7 @@ export function SurveyDashboardPage() {
                 <BarChart3 size={15} aria-hidden="true" />
                 <span>분석 보기</span>
               </Link>
-              {survey && canManageSurvey(survey.accessRole) ? (
+              {survey && (canManageSurvey(survey.accessRole) || canInviteSurvey(survey.accessRole)) ? (
                 <Link to={`/admin/surveys/${surveyId}/settings`} className="tg-survey-dashboard-page__action">
                   <Settings size={15} aria-hidden="true" />
                   <span>설정</span>

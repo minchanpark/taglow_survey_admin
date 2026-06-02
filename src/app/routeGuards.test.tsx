@@ -126,4 +126,33 @@ describe("RequireAdminShell", () => {
     expect(screen.queryByText("viewer")).not.toBeInTheDocument();
     expect(screen.queryByText("editor")).not.toBeInTheDocument();
   });
+
+  it("shows settings navigation for shared invitation manager surveys", async () => {
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/admin/surveys/survey-1/dashboard"]}>
+        <Routes>
+          <Route path="/admin/login" element={<div>login route</div>} />
+          <Route path="/admin/access-denied" element={<div>denied route</div>} />
+          <Route path="/admin" element={<RequireAdminShell />}>
+            <Route path="surveys/:surveyId/dashboard" element={<div>survey dashboard route</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+      {
+        controller: createFakeAdminApiController({
+          getAdminSessionState: async () => sharedSurveySession,
+          getSurveyDetail: async () => ({
+            survey: { ...fakeSurvey, accessRole: "manager" },
+            sections: [],
+            questions: [],
+            assets: [],
+          }),
+        }),
+      },
+    );
+
+    expect(await screen.findByText("survey dashboard route")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /빌더/ })).toHaveAttribute("href", "/admin/surveys/survey-1/builder");
+    expect(screen.getByRole("link", { name: /설정/ })).toHaveAttribute("href", "/admin/surveys/survey-1/settings");
+  });
 });

@@ -24,7 +24,7 @@ describe("SurveySettingsPage", () => {
   it("lets owners add, update, and revoke survey collaborators", async () => {
     const user = userEvent.setup();
     const inviteSurveyCollaborator = vi.fn(async () => fakeSurveyCollaborator);
-    const updateSurveyCollaboratorRole = vi.fn(async () => ({ ...fakeSurveyCollaborator, role: "editor" as const }));
+    const updateSurveyCollaboratorRole = vi.fn(async () => ({ ...fakeSurveyCollaborator, role: "manager" as const }));
     const revokeSurveyCollaborator = vi.fn(async () => ({ ...fakeSurveyCollaborator, revokedAt: "2026-05-28T03:00:00.000Z" }));
 
     renderSettings({
@@ -32,6 +32,45 @@ describe("SurveySettingsPage", () => {
       inviteSurveyCollaborator,
       updateSurveyCollaboratorRole,
       revokeSurveyCollaborator,
+    });
+
+    await user.type(await screen.findByLabelText("공유할 이메일"), "editor@example.com");
+    await user.selectOptions(screen.getByLabelText("공유 역할"), "manager");
+    await user.click(screen.getByRole("button", { name: "등록" }));
+
+    expect(inviteSurveyCollaborator).toHaveBeenCalledWith({
+      surveyId: "survey-1",
+      email: "editor@example.com",
+      role: "manager",
+    });
+
+    await user.selectOptions(screen.getByLabelText("viewer@example.com 역할"), "manager");
+    expect(updateSurveyCollaboratorRole).toHaveBeenCalledWith({
+      collaboratorId: "survey-collaborator-1",
+      surveyId: "survey-1",
+      role: "manager",
+    });
+
+    await user.click(screen.getByRole("button", { name: "해제" }));
+    expect(revokeSurveyCollaborator).toHaveBeenCalledWith({
+      collaboratorId: "survey-collaborator-1",
+      surveyId: "survey-1",
+    });
+  });
+
+  it("lets invitation managers manage survey collaborators and settings", async () => {
+    const user = userEvent.setup();
+    const inviteSurveyCollaborator = vi.fn(async () => ({ ...fakeSurveyCollaborator, role: "editor" as const }));
+
+    renderSettings({
+      getSurveyDetail: async () => ({
+        survey: { ...fakeSurvey, accessRole: "manager" },
+        sections: [],
+        questions: [],
+        assets: [],
+      }),
+      listSurveyCollaborators: async () => [],
+      inviteSurveyCollaborator,
     });
 
     await user.type(await screen.findByLabelText("공유할 이메일"), "editor@example.com");
@@ -43,22 +82,12 @@ describe("SurveySettingsPage", () => {
       email: "editor@example.com",
       role: "editor",
     });
-
-    await user.selectOptions(screen.getByLabelText("viewer@example.com 역할"), "editor");
-    expect(updateSurveyCollaboratorRole).toHaveBeenCalledWith({
-      collaboratorId: "survey-collaborator-1",
-      surveyId: "survey-1",
-      role: "editor",
-    });
-
-    await user.click(screen.getByRole("button", { name: "해제" }));
-    expect(revokeSurveyCollaborator).toHaveBeenCalledWith({
-      collaboratorId: "survey-collaborator-1",
-      surveyId: "survey-1",
-    });
+    expect(screen.getByText("아직 공유된 사용자가 없습니다.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "게시" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Public slug")).toBeInTheDocument();
   });
 
-  it("blocks shared viewers from owner-only settings", async () => {
+  it("blocks shared viewers from invitation settings", async () => {
     renderSettings({
       getSurveyDetail: async () => ({
         survey: { ...fakeSurvey, accessRole: "viewer" },

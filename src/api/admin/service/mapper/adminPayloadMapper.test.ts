@@ -73,13 +73,13 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
       closed_at: null,
       created_at: "2026-05-28T00:00:00.000Z",
       updated_at: "2026-05-28T00:00:00.000Z",
-      access_role: "editor",
+      access_role: "manager",
     };
     const collaborator: RawSurveyCollaborator = {
       id: "collaborator-1",
       survey_id: "survey-1",
       email: "viewer@example.com",
-      role: "viewer",
+      role: "manager",
       invited_by: "user-1",
       created_at: "2026-05-28T01:00:00.000Z",
       updated_at: "2026-05-28T02:00:00.000Z",
@@ -88,13 +88,13 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
 
     expect(mapper.toSurvey(sharedSurvey)).toMatchObject({
       id: "survey-1",
-      accessRole: "editor",
+      accessRole: "manager",
     });
     expect(mapper.toSurveyCollaborator(collaborator)).toEqual({
       id: "collaborator-1",
       surveyId: "survey-1",
       email: "viewer@example.com",
-      role: "viewer",
+      role: "manager",
       invitedBy: "user-1",
       createdAt: "2026-05-28T01:00:00.000Z",
       updatedAt: "2026-05-28T02:00:00.000Z",

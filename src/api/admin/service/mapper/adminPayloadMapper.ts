@@ -498,12 +498,13 @@ function normalizeSurveyStatus(value: string): SurveyStatus {
 }
 
 function normalizeSurveyAccessRole(value: string | null | undefined): SurveyAccessRole {
-  if (value === "editor" || value === "viewer") return value;
+  if (value === "manager" || value === "editor" || value === "viewer") return value;
   return "owner";
 }
 
 function normalizeSurveyCollaboratorRole(value: string): SurveyCollaboratorRole {
-  return value === "editor" ? "editor" : "viewer";
+  if (value === "manager" || value === "editor") return value;
+  return "viewer";
 }
 
 function normalizeSectionType(value: string): SectionType {

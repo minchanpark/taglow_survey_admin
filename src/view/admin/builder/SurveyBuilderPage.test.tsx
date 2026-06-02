@@ -367,8 +367,9 @@ describe("SurveyBuilderPage", () => {
         metricType: "satisfaction",
         config: {
           scaleMin: 1,
-          scaleMax: 5,
-          labelsKo: ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
+          scaleMax: 7,
+          labelsKo: ["참여경험없음", "매우 불만족", "불만족", "보통", "만족", "매우 만족", "들어본 적 없음"],
+          excludedValues: [1, 7],
         },
         validation: {},
       });
@@ -853,6 +854,36 @@ describe("SurveyBuilderPage", () => {
           config: expect.objectContaining({
             labelsKo: ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
             labelsEn: ["Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied"],
+          }),
+        }),
+      );
+    });
+  });
+
+  it("saves analysis excluded values for scale questions", async () => {
+    const user = userEvent.setup();
+    const updateQuestion = vi.fn<AdminApiController["updateQuestion"]>(async (command: UpdateQuestionCommand) => ({
+      ...question,
+      id: command.questionId,
+      config: command.config ?? question.config,
+    }));
+    renderBuilder({ updateQuestion });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "침대 상태에 만족하시나요? 질문 선택" }));
+    const editor = screen.getByRole("complementary", { name: "질문 편집" });
+
+    const excludedValuesInput = within(editor).getByLabelText("분석 제외 값");
+    await user.type(excludedValuesInput, "1, 7");
+    expect(excludedValuesInput).toHaveValue("1, 7");
+    await user.click(within(editor).getByRole("button", { name: "저장" }));
+
+    await waitFor(() => {
+      expect(updateQuestion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          questionId: "question-1",
+          config: expect.objectContaining({
+            excludedValues: [1, 7],
           }),
         }),
       );

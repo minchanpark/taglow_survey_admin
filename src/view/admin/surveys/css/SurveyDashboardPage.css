@@ -92,6 +92,11 @@
   background: var(--tg-info-soft);
 }
 
+.tg-survey-dashboard-page__access--manager {
+  color: var(--tg-accent);
+  background: var(--tg-accent-soft);
+}
+
 .tg-survey-dashboard-page__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

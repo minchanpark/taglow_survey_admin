@@ -25,6 +25,7 @@ export type ScaleQuestionConfig = Readonly<{
   scaleMax: number;
   labelsKo: string[];
   labelsEn?: string[];
+  excludedValues?: number[];
 }>;
 
 export type SingleChoiceQuestionConfig = Readonly<{

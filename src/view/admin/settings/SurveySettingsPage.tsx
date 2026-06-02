@@ -1,7 +1,7 @@
 import { CheckCircle2, Copy, ExternalLink, Globe2, RefreshCcw, Rocket, Save, UserPlus, Users, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { canManageSurvey, getSurveyPublicPath, type SurveyCollaboratorRole } from "../../../api/admin/model";
+import { canInviteSurvey, canManageSurvey, getSurveyPublicPath, type SurveyCollaboratorRole } from "../../../api/admin/model";
 import {
   useCloseSurveyMutation,
   useCreateNextVersionMutation,
@@ -24,6 +24,12 @@ type Notice = Readonly<{
   message: string;
 }>;
 
+const collaboratorRoleOptions: ReadonlyArray<Readonly<{ value: SurveyCollaboratorRole; label: string }>> = [
+  { value: "viewer", label: "결과보기" },
+  { value: "editor", label: "작업 가능" },
+  { value: "manager", label: "초대 가능" },
+];
+
 export function SurveySettingsPage() {
   const { surveyId = "" } = useParams();
   const surveyQuery = useSurveyDetailQuery(surveyId);
@@ -40,7 +46,7 @@ export function SurveySettingsPage() {
   const [collaboratorRoleInput, setCollaboratorRoleInput] = useState<SurveyCollaboratorRole>("viewer");
   const [notice, setNotice] = useState<Notice | null>(null);
   const survey = surveyQuery.data?.survey;
-  const collaboratorsQuery = useSurveyCollaboratorsQuery(surveyId, survey?.accessRole === "owner");
+  const collaboratorsQuery = useSurveyCollaboratorsQuery(surveyId, survey ? canInviteSurvey(survey.accessRole) : false);
   const publicPath = survey ? getSurveyPublicPath(survey) : undefined;
   const publicUrl = useMemo(() => {
     if (!publicPath) return undefined;
@@ -74,7 +80,9 @@ export function SurveySettingsPage() {
   }
 
   const activeSurvey = survey;
-  const isOwner = canManageSurvey(activeSurvey.accessRole);
+  const canManageSettings = canManageSurvey(activeSurvey.accessRole) || canInviteSurvey(activeSurvey.accessRole);
+  const canManageSharing = canManageSettings;
+  const canOpenSettings = canManageSettings || canManageSharing;
   const normalizedSlug = normalizePublicSlug(publicSlugInput);
   const hasSlugChange = normalizedSlug !== (activeSurvey.publicSlug ?? "");
   const validationIssues = validationQuery.data?.issues ?? [];
@@ -97,12 +105,13 @@ export function SurveySettingsPage() {
         </div>
       ) : null}
 
-      {!isOwner ? (
-        <ErrorState title="설문 설정을 변경할 수 없습니다." description="공유받은 설문에서는 소유자만 공개 URL, 게시 상태, 공유 권한을 변경할 수 있습니다." />
+      {!canOpenSettings ? (
+        <ErrorState title="설문 설정을 변경할 수 없습니다." description="초대 가능 권한 이상만 공개 URL, 게시 상태, 공유 권한을 변경할 수 있습니다." />
       ) : null}
 
-      {isOwner ? (
+      {canOpenSettings ? (
       <div className="tg-settings-page__grid">
+        {canManageSettings ? (
         <section className="tg-settings-panel" aria-labelledby="public-url-title">
           <header className="tg-settings-panel__header">
             <Globe2 size={18} aria-hidden="true" />
@@ -150,7 +159,9 @@ export function SurveySettingsPage() {
             ) : null}
           </div>
         </section>
+        ) : null}
 
+        {canManageSettings ? (
         <section className="tg-settings-panel" aria-labelledby="publish-title">
           <header className="tg-settings-panel__header">
             <Rocket size={18} aria-hidden="true" />
@@ -200,7 +211,9 @@ export function SurveySettingsPage() {
             </Button>
           </div>
         </section>
+        ) : null}
 
+        {canManageSharing ? (
         <section className="tg-settings-panel tg-settings-panel--wide" aria-labelledby="share-title">
           <header className="tg-settings-panel__header">
             <Users size={18} aria-hidden="true" />
@@ -225,8 +238,11 @@ export function SurveySettingsPage() {
                 value={collaboratorRoleInput}
                 onChange={(event) => setCollaboratorRoleInput(event.target.value as SurveyCollaboratorRole)}
               >
-                <option value="viewer">결과 보기</option>
-                <option value="editor">작업 가능</option>
+                {collaboratorRoleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <Button
                 variant="primary"
@@ -237,7 +253,7 @@ export function SurveySettingsPage() {
                 등록
               </Button>
             </div>
-            <p>작업 가능은 빌더 수정과 분석 확인이 가능하고, 결과 보기는 분석과 미리보기만 가능합니다.</p>
+            <p>결과보기는 결과 보기만 가능합니다. 작업 가능은 결과보기와 작업이 가능하고 초대는 할 수 없습니다. 초대 가능은 모두 가능합니다.</p>
           </div>
 
           <div className="tg-settings-page__url-box">
@@ -273,8 +289,11 @@ export function SurveySettingsPage() {
                     })
                   }
                 >
-                  <option value="viewer">결과 보기</option>
-                  <option value="editor">작업 가능</option>
+                  {collaboratorRoleOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
                 <Button
                   variant="ghost"
@@ -292,6 +311,7 @@ export function SurveySettingsPage() {
             ))}
           </div>
         </section>
+        ) : null}
       </div>
       ) : null}
     </section>
@@ -299,6 +319,11 @@ export function SurveySettingsPage() {
 
   async function savePublicSlug() {
     setNotice(null);
+    if (!canManageSettings) {
+      setNotice({ tone: "error", message: "공개 URL은 초대 가능 권한 이상만 변경할 수 있습니다." });
+      return;
+    }
+
     if (normalizedSlug && !isValidPublicSlug(normalizedSlug)) {
       setNotice({ tone: "error", message: "Public slug는 영문 소문자, 숫자, 하이픈만 사용할 수 있습니다." });
       return;
@@ -326,6 +351,11 @@ export function SurveySettingsPage() {
 
   async function inviteCollaborator() {
     setNotice(null);
+    if (!canManageSharing) {
+      setNotice({ tone: "error", message: "초대 가능 권한 이상만 공유 사용자를 등록할 수 있습니다." });
+      return;
+    }
+
     const email = collaboratorEmailInput.trim().toLowerCase();
     if (!isValidEmail(email)) {
       setNotice({ tone: "error", message: "공유할 이메일을 정확히 입력해주세요." });
@@ -347,6 +377,11 @@ export function SurveySettingsPage() {
 
   async function publishSurvey() {
     setNotice(null);
+    if (!canManageSettings) {
+      setNotice({ tone: "error", message: "게시 상태는 초대 가능 권한 이상만 변경할 수 있습니다." });
+      return;
+    }
+
     try {
       await publishSurveyMutation.mutateAsync(activeSurvey.id);
       setNotice({ tone: "success", message: "설문을 게시했습니다." });
@@ -357,6 +392,11 @@ export function SurveySettingsPage() {
 
   async function closeSurvey() {
     setNotice(null);
+    if (!canManageSettings) {
+      setNotice({ tone: "error", message: "게시 상태는 초대 가능 권한 이상만 변경할 수 있습니다." });
+      return;
+    }
+
     try {
       await closeSurveyMutation.mutateAsync(activeSurvey.id);
       setNotice({ tone: "success", message: "설문을 종료했습니다." });
@@ -367,6 +407,11 @@ export function SurveySettingsPage() {
 
   async function createNextVersion() {
     setNotice(null);
+    if (!canManageSettings) {
+      setNotice({ tone: "error", message: "다음 버전은 초대 가능 권한 이상만 만들 수 있습니다." });
+      return;
+    }
+
     try {
       const nextSurvey = await createNextVersionMutation.mutateAsync(activeSurvey.id);
       setNotice({ tone: "success", message: `v${nextSurvey.versionNumber} 초안 버전을 만들었습니다.` });

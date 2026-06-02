@@ -118,7 +118,15 @@ describe("GatewayBackedAdminApiController question updates", () => {
   });
 
   it("maps collaborator invite, role update, and revoke commands through the gateway boundary", async () => {
-    const createSurveyCollaborator = vi.fn(async (): Promise<RawSurveyCollaborator> => rawCollaborator);
+    const createSurveyCollaborator = vi.fn(
+      async (payload: { role: string; email: string; survey_id: string; invited_by: string }): Promise<RawSurveyCollaborator> => ({
+        ...rawCollaborator,
+        survey_id: payload.survey_id,
+        email: payload.email,
+        role: payload.role,
+        invited_by: payload.invited_by,
+      }),
+    );
     const updateSurveyCollaborator = vi.fn(async (args: { payload: { role?: string; revoked_at?: string | null } }): Promise<RawSurveyCollaborator> => ({
       ...rawCollaborator,
       role: args.payload.role ?? rawCollaborator.role,
@@ -137,11 +145,11 @@ describe("GatewayBackedAdminApiController question updates", () => {
       controller.inviteSurveyCollaborator({
         surveyId: "survey-1",
         email: " VIEWER@example.com ",
-        role: "viewer",
+        role: "manager",
       }),
     ).resolves.toMatchObject({
       email: "viewer@example.com",
-      role: "viewer",
+      role: "manager",
     });
     await expect(
       controller.updateSurveyCollaboratorRole({
@@ -160,7 +168,7 @@ describe("GatewayBackedAdminApiController question updates", () => {
     expect(createSurveyCollaborator).toHaveBeenCalledWith({
       survey_id: "survey-1",
       email: "viewer@example.com",
-      role: "viewer",
+      role: "manager",
       invited_by: "user-1",
     });
     expect(updateSurveyCollaborator).toHaveBeenCalledWith({
@@ -438,9 +446,9 @@ describe("GatewayBackedAdminApiController question set import", () => {
 
     expect(preview.title).toBe("2026년도 1학기 생활관 정기 설문조사 질문 목록");
     expect(preview.totalSectionCount).toBe(7);
-    expect(preview.totalQuestionCount).toBe(207);
+    expect(preview.totalQuestionCount).toBe(199);
     expect(preview.importableSectionCount).toBe(6);
-    expect(preview.importableQuestionCount).toBe(206);
+    expect(preview.importableQuestionCount).toBe(198);
     expect(preview.skippedQuestionCount).toBe(1);
     expect(preview.sections.find((section) => section.sectionKey === "dorm_25_2_profile")?.isExisting).toBe(true);
     expect(preview.questions.find((question) => question.questionKey === "dorm_25_2_q001")?.isExisting).toBe(true);
@@ -504,7 +512,7 @@ describe("GatewayBackedAdminApiController question set import", () => {
 
     expect(createSections).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ section_key: "dorm_25_2_facilities" })]));
     expect(createSections.mock.calls[0]?.[0]).toHaveLength(6);
-    expect(createQuestions.mock.calls[0]?.[0]).toHaveLength(206);
+    expect(createQuestions.mock.calls[0]?.[0]).toHaveLength(198);
     expect(createQuestions.mock.calls[0]?.[0]).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ question_key: "dorm_25_2_q001" })]),
     );
@@ -523,7 +531,7 @@ describe("GatewayBackedAdminApiController question set import", () => {
       ]),
     );
     expect(result.sectionsCreated).toBe(6);
-    expect(result.questionsCreated).toBe(206);
+    expect(result.questionsCreated).toBe(198);
     expect(result.questionsSkipped).toBe(1);
   });
 });

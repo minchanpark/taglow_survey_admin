@@ -141,8 +141,14 @@
 }
 
 .tg-builder-panel {
+  position: sticky;
+  top: var(--tg-space-8);
   display: grid;
   min-width: 0;
+  max-height: calc(100dvh - var(--tg-space-16));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   gap: var(--tg-space-8);
   border: 1px solid var(--tg-border-subtle);
   border-radius: var(--tg-radius-md);
@@ -151,8 +157,7 @@
 }
 
 .tg-builder-panel--editor {
-  position: sticky;
-  top: var(--tg-space-8);
+  align-self: start;
 }
 
 .tg-builder-panel__title-row {
@@ -762,8 +767,15 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .tg-builder-panel--editor {
+  .tg-builder-panel {
     position: static;
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: auto;
+    scrollbar-gutter: auto;
+  }
+
+  .tg-builder-panel--editor {
     grid-column: 1 / -1;
   }
 }

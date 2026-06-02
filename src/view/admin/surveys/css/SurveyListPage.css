@@ -187,6 +187,11 @@
   background: var(--tg-info-soft);
 }
 
+.tg-survey-list-page__access-badge--manager {
+  color: var(--tg-accent);
+  background: var(--tg-accent-soft);
+}
+
 .tg-survey-list-page__public-id {
   overflow: hidden;
   color: var(--tg-text-muted);

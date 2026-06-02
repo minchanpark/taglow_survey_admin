@@ -137,6 +137,12 @@ describe("ParticipantSurveyPage", () => {
       signedUrl: "https://example.com/upload.png",
       metadata: {},
     }));
+    const submitSurveyResponse = vi.fn(async () => ({
+      responseId: "response-1",
+      submittedAt: "2026-05-28T00:00:00.000Z",
+      alreadySubmitted: false,
+      passedAttentionCheck: true,
+    }));
     renderWithProviders(
       <MemoryRouter initialEntries={["/survey/handong-dorm-2026"]}>
         <Routes>
@@ -147,6 +153,7 @@ describe("ParticipantSurveyPage", () => {
         participantController: createFakeParticipantSurveyController({
           getPublishedSurveyByIdentifier: async () => detail,
           uploadQuestionImage,
+          submitSurveyResponse,
         }),
       },
     );
@@ -162,6 +169,28 @@ describe("ParticipantSurveyPage", () => {
 
     expect(screen.getByText("태그 1")).toBeInTheDocument();
     expect(screen.getByLabelText("태그 1 카테고리")).toHaveValue("수리 요청");
+
+    await user.click(screen.getByRole("button", { name: "완료" }));
+    await user.click(screen.getByRole("button", { name: "응답 제출" }));
+
+    expect(submitSurveyResponse).toHaveBeenCalledWith(expect.objectContaining({
+      surveyId: "survey-1",
+      answers: [
+        expect.objectContaining({
+          questionId: "question-upload",
+          answerType: "participant_image_tag",
+          xRatio: expect.any(Number),
+          yRatio: expect.any(Number),
+          tagType: "수리 요청",
+          valueJson: expect.objectContaining({
+            image: expect.objectContaining({
+              storageBucket: "survey-assets",
+              storagePath: "participant-uploads/survey-1/user-1/question-upload/upload.png",
+            }),
+          }),
+        }),
+      ],
+    }));
   });
 
   it("renders configured English scale labels and tagging categories when locale is English", async () => {

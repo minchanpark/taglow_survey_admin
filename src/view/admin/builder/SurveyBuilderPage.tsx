@@ -1291,6 +1291,8 @@ function QuestionConfigFields(props: {
   const uploadMutation = useUploadSurveyImageMutation();
   const config = parseJsonRecord(props.configJson) ?? {};
   const setConfig = (patch: JsonRecord) => props.onConfigChange(stringifyConfig({ ...config, ...patch } as QuestionConfig));
+  const [scaleExcludedValuesInput, setScaleExcludedValuesInput] = useState("");
+  const [isScaleExcludedValuesFocused, setScaleExcludedValuesFocused] = useState(false);
   const displayGroupField = (
     <label className="tg-builder-field">
       <span>큰 질문</span>
@@ -1303,6 +1305,12 @@ function QuestionConfigFields(props: {
       />
     </label>
   );
+
+  useEffect(() => {
+    if (props.questionType !== "scale" || isScaleExcludedValuesFocused) return;
+    const nextConfig = parseJsonRecord(props.configJson) ?? {};
+    setScaleExcludedValuesInput(formatNumericConfigArray(nextConfig.excludedValues));
+  }, [isScaleExcludedValuesFocused, props.configJson, props.questionType]);
 
   if (props.questionType === "profile") {
     const choiceOptions = getChoiceOptions(config);
@@ -1404,6 +1412,27 @@ function QuestionConfigFields(props: {
             />
           </label>
         </div>
+        <label className="tg-builder-field">
+          <span>분석 제외 값</span>
+          <input
+            aria-label="분석 제외 값"
+            placeholder="예: 1, 7"
+            value={scaleExcludedValuesInput}
+            disabled={props.disabled}
+            onFocus={() => setScaleExcludedValuesFocused(true)}
+            onBlur={(event) => {
+              const parsedValues = parseNumericListInput(event.target.value);
+              setScaleExcludedValuesFocused(false);
+              setScaleExcludedValuesInput(formatNumericConfigArray(parsedValues));
+              setConfig({ excludedValues: parsedValues });
+            }}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              setScaleExcludedValuesInput(nextValue);
+              setConfig({ excludedValues: parseNumericListInput(nextValue) });
+            }}
+          />
+        </label>
         <div className="tg-builder-choice-options">
           <span className="tg-builder-choice-options__title">척도 라벨</span>
           <div className="tg-builder-choice-options__grid">
@@ -2014,8 +2043,9 @@ function defaultQuestionConfig(questionType: QuestionKind): QuestionConfig {
   if (questionType === "scale") {
     return {
       scaleMin: 1,
-      scaleMax: 5,
-      labelsKo: ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
+      scaleMax: 7,
+      labelsKo: ["참여경험없음", "매우 불만족", "불만족", "보통", "만족", "매우 만족", "들어본 적 없음"],
+      excludedValues: [1, 7],
     };
   }
   if (questionType === "single_choice") {
@@ -2118,6 +2148,17 @@ function normalizeQuestionConfigForKind(questionType: QuestionKind, config: Json
       excludeIfFailed: true,
     } as QuestionConfig;
   }
+  if (questionType === "scale") {
+    const scaleMax = typeof config.scaleMax === "number" ? config.scaleMax : 5;
+    const hasExcludedValues = Array.isArray(config.excludedValues);
+    return {
+      ...config,
+      scaleMin: typeof config.scaleMin === "number" ? config.scaleMin : 1,
+      scaleMax,
+      labelsKo: Array.isArray(config.labelsKo) ? config.labelsKo : ["1점", "2점", "3점", "4점", "5점"],
+      excludedValues: hasExcludedValues ? getNumericConfigArray(config.excludedValues) : scaleMax >= 7 ? [1, scaleMax] : [],
+    } as QuestionConfig;
+  }
   return config as QuestionConfig;
 }
 
@@ -2206,6 +2247,26 @@ function stripItemNumber(value: string): string {
 
 function stringifyConfig(config: QuestionConfig): string {
   return JSON.stringify(config, null, 2);
+}
+
+function parseNumericListInput(value: string): number[] {
+  return Array.from(
+    new Set(
+      value
+        .split(/[,\s]+/)
+        .map((item) => Number(item.trim()))
+        .filter((item) => Number.isFinite(item)),
+    ),
+  ).sort((a, b) => a - b);
+}
+
+function getNumericConfigArray(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.map((item) => Number(item)).filter((item) => Number.isFinite(item)))).sort((a, b) => a - b);
+}
+
+function formatNumericConfigArray(value: unknown): string {
+  return getNumericConfigArray(value).join(", ");
 }
 
 function parseJsonRecord(value: string): JsonRecord | null {

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   canEditSurvey,
+  canInviteSurvey,
   canManageSurvey,
   getAdminRoleLabel,
   type AdminRole,
@@ -124,7 +125,7 @@ function getSelectedSurveyId(pathname: string): string | undefined {
 function shouldShowSurveyLink(segment: (typeof surveyLinks)[number]["segment"], accessRole: SurveyAccessRole | undefined): boolean {
   if (!accessRole) return true;
   if (segment === "builder") return canEditSurvey(accessRole);
-  if (segment === "settings") return canManageSurvey(accessRole);
+  if (segment === "settings") return canManageSurvey(accessRole) || canInviteSurvey(accessRole);
   return true;
 }
 

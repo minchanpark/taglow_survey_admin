@@ -52,7 +52,7 @@ describe("SurveyListPage", () => {
 
     expect(await screen.findByText("생활관 만족도 조사")).toBeInTheDocument();
     expect(screen.getByText("공유받음")).toBeInTheDocument();
-    expect(screen.getByText("결과 보기")).toBeInTheDocument();
+    expect(screen.getByText("결과보기")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "생활관 만족도 조사 분석 보기" })).toHaveAttribute(
       "href",
       "/admin/surveys/survey-1/analysis",
@@ -71,6 +71,22 @@ describe("SurveyListPage", () => {
     );
 
     expect(await screen.findByText("작업 가능")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "생활관 만족도 조사 수정" })).toHaveAttribute(
+      "href",
+      "/admin/surveys/survey-1/builder",
+    );
+    expect(screen.queryByRole("button", { name: "생활관 만족도 조사 삭제" })).not.toBeInTheDocument();
+  });
+
+  it("shows shared invitation manager surveys as editable rows without owner actions", async () => {
+    renderSurveyList(
+      createFakeAdminApiController({
+        getAdminSessionState: async () => sharedSurveySession,
+        listSurveys: async () => [{ ...fakeSurvey, accessRole: "manager" }],
+      }),
+    );
+
+    expect(await screen.findByText("초대 가능")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "생활관 만족도 조사 수정" })).toHaveAttribute(
       "href",
       "/admin/surveys/survey-1/builder",

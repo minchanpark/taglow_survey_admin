@@ -140,7 +140,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
       gateway.createSurveyCollaborator({
         survey_id: "survey-1",
         email: "viewer@example.com",
-        role: "viewer",
+        role: "manager",
         invited_by: "user-1",
       }),
     ).resolves.toEqual(collaborator);
@@ -156,7 +156,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     expect(insertQuery.insert).toHaveBeenCalledWith({
       survey_id: "survey-1",
       email: "viewer@example.com",
-      role: "viewer",
+      role: "manager",
       invited_by: "user-1",
     });
     expect(updateQuery.update).toHaveBeenCalledWith({ role: "editor" });
@@ -168,6 +168,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
       { status: "submitted", gender: "남성", dormitory: "비전관", room_type: "2인실" },
       { status: "submitted", gender: "여성", dormitory: "비전관", room_type: "3인실" },
       { status: "submitted", gender: "여성", dormitory: "예상 밖", room_type: "2인실" },
+      { status: "submitted", passed_attention_check: false, gender: "남성", dormitory: "비전관", room_type: "2인실" },
       { status: "in_progress", gender: "남성", dormitory: "비전관", room_type: "2인실" },
     ]);
     const questionsQuery = createTableQuery([
@@ -235,7 +236,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     const summary = await gateway.getResponseSummary({ surveyId: "survey-1", filters: { dormitory: "비전관" } });
 
     expect(summary).toMatchObject({
-      total_responses: 4,
+      total_responses: 5,
       submitted_responses: 3,
       filtered_responses: 2,
     });
@@ -693,6 +694,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
 
     expect(calls.select).toContain("responses!answers_response_same_survey_fk!inner");
     expect(calls.eq).toContainEqual(["responses.status", "submitted"]);
+    expect(calls.eq).toContainEqual(["responses.passed_attention_check", true]);
   });
 
   it("falls back to the generic answers to responses relationship when the named relationship is unavailable", async () => {

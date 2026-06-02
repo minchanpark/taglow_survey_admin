@@ -4,8 +4,8 @@ import type { SurveyAsset } from "./asset";
 import type { SurveySection } from "./section";
 
 export type SurveyStatus = "draft" | "published" | "closed" | "archived";
-export type SurveyAccessRole = "owner" | "editor" | "viewer";
-export type SurveyCollaboratorRole = "editor" | "viewer";
+export type SurveyAccessRole = "owner" | "manager" | "editor" | "viewer";
+export type SurveyCollaboratorRole = "manager" | "editor" | "viewer";
 
 export type SurveySettings = JsonRecord;
 
@@ -57,7 +57,11 @@ export type SurveyCollaborator = Readonly<{
 }>;
 
 export function canEditSurvey(accessRole: SurveyAccessRole): boolean {
-  return accessRole === "owner" || accessRole === "editor";
+  return accessRole === "owner" || accessRole === "manager" || accessRole === "editor";
+}
+
+export function canInviteSurvey(accessRole: SurveyAccessRole): boolean {
+  return accessRole === "owner" || accessRole === "manager";
 }
 
 export function canManageSurvey(accessRole: SurveyAccessRole): boolean {
@@ -66,6 +70,7 @@ export function canManageSurvey(accessRole: SurveyAccessRole): boolean {
 
 export function getSurveyAccessRoleLabel(accessRole: SurveyAccessRole): string {
   if (accessRole === "owner") return "내 설문";
+  if (accessRole === "manager") return "초대 가능";
   if (accessRole === "editor") return "작업 가능";
-  return "결과 보기";
+  return "결과보기";
 }

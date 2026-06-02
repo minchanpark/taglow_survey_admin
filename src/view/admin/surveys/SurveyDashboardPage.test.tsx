@@ -42,7 +42,7 @@ describe("SurveyDashboardPage", () => {
     renderDashboard({ ...fakeSurvey, accessRole: "viewer" });
 
     expect(await screen.findByRole("heading", { name: "생활관 만족도 조사" })).toBeInTheDocument();
-    expect(screen.getByText("결과 보기")).toBeInTheDocument();
+    expect(screen.getByText("결과보기")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "빌더에서 수정" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "설정" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "분석 보기" })).toHaveAttribute("href", "/admin/surveys/survey-1/analysis");
@@ -57,5 +57,16 @@ describe("SurveyDashboardPage", () => {
       "/admin/surveys/survey-1/builder",
     );
     expect(screen.queryByRole("link", { name: "설정" })).not.toBeInTheDocument();
+  });
+
+  it("shows builder and settings for shared invitation manager surveys", async () => {
+    renderDashboard({ ...fakeSurvey, accessRole: "manager" });
+
+    expect(await screen.findByText("초대 가능")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "빌더에서 수정" })).toHaveAttribute(
+      "href",
+      "/admin/surveys/survey-1/builder",
+    );
+    expect(screen.getByRole("link", { name: "설정" })).toHaveAttribute("href", "/admin/surveys/survey-1/settings");
   });
 });

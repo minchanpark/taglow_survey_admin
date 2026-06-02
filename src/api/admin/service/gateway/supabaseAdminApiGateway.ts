@@ -45,6 +45,7 @@ type SupabaseResult<T> = PromiseLike<{ data: T | null; error: unknown }>;
 
 type RawAnalysisResponseRow = Readonly<{
   status?: string | null;
+  passed_attention_check?: boolean | null;
   gender?: string | null;
   semester_group?: string | null;
   department?: string | null;
@@ -597,6 +598,7 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
           created_at,
           ${responseRelation}(
             status,
+            passed_attention_check,
             gender,
             semester_group,
             department,
@@ -622,6 +624,7 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
       .eq("survey_id", args.surveyId)
       .in("answer_type", ["image_tag", "participant_image_tag"])
       .eq("responses.status", "submitted")
+      .eq("responses.passed_attention_check", true)
       .order("created_at", { ascending: false });
 
     query = applyMaybeEq(query, "responses.gender", filters.gender);
@@ -744,12 +747,12 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
       return await this.many<RawAnalysisResponseRow>(
         this.supabase
           .from("responses")
-          .select("status, gender, semester_group, department, rc, dormitory, room_type, dorm_experience, profile_json, raw_payload")
+          .select("status, passed_attention_check, gender, semester_group, department, rc, dormitory, room_type, dorm_experience, profile_json, raw_payload")
           .eq("survey_id", surveyId),
         "RPC_FAILED",
       );
     } catch (error) {
-      if (!isMissingColumnError(error, ["profile_json", "raw_payload"])) {
+      if (!isMissingColumnError(error, ["passed_attention_check", "profile_json", "raw_payload"])) {
         throw error;
       }
       return this.many<RawAnalysisResponseRow>(
@@ -923,7 +926,7 @@ function buildRawResponseSummary(
   questions: readonly RawQuestion[],
   filters: JsonRecord,
 ): RawResponseSummary {
-  const submitted = responses.filter((response) => response.status === "submitted");
+  const submitted = responses.filter((response) => response.status === "submitted" && response.passed_attention_check !== false);
   const filtered = submitted.filter((response) => matchesResponseFilters(response, filters));
   const profileOptions = buildProfileOptionsByDimension(questions);
   const lowSampleThreshold = 10;
