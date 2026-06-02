@@ -843,6 +843,67 @@ describe("SurveyBuilderPage", () => {
     });
   });
 
+  it("syncs profile option values from labels when saving advanced config JSON", async () => {
+    const user = userEvent.setup();
+    const semesterProfileQuestion: Question = {
+      ...profileQuestion,
+      questionKey: "profile_semester",
+      title: { ko: "학기" },
+      config: {
+        profileField: "semester_group",
+        inputType: "single_choice",
+        options: [
+          { value: "1학기", labelKo: "1-2학기", labelEn: "1st-2nd semester" },
+          { value: "option_2", labelKo: "3-4학기", labelEn: "3rd-4th semester" },
+        ],
+      },
+    };
+    const updateQuestion = vi.fn<AdminApiController["updateQuestion"]>(async (command: UpdateQuestionCommand) => ({
+      ...semesterProfileQuestion,
+      id: command.questionId,
+      config: command.config ?? semesterProfileQuestion.config,
+    }));
+    renderBuilder({ updateQuestion }, { questions: [semesterProfileQuestion] });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "학기 질문 선택" }));
+    const editor = screen.getByRole("complementary", { name: "질문 편집" });
+    const configJsonInput = within(editor).getByLabelText("config JSON");
+
+    fireEvent.change(configJsonInput, {
+      target: {
+        value: JSON.stringify(
+          {
+            profileField: "semester_group",
+            inputType: "single_choice",
+            options: [
+              { value: "1학기", labelKo: "1-2학기", labelEn: "1st-2nd semester" },
+              { value: "option_2", labelKo: "3-4학기", labelEn: "3rd-4th semester" },
+            ],
+          },
+          null,
+          2,
+        ),
+      },
+    });
+    await user.click(within(editor).getByRole("button", { name: "저장" }));
+
+    await waitFor(() => {
+      expect(updateQuestion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            profileField: "semester_group",
+            inputType: "single_choice",
+            options: [
+              { value: "1-2학기", labelKo: "1-2학기", labelEn: "1st-2nd semester" },
+              { value: "3-4학기", labelKo: "3-4학기", labelEn: "3rd-4th semester" },
+            ],
+          }),
+        }),
+      );
+    });
+  });
+
   it("saves English labels for scale questions", async () => {
     const user = userEvent.setup();
     const updateQuestion = vi.fn<AdminApiController["updateQuestion"]>(async (command: UpdateQuestionCommand) => ({
