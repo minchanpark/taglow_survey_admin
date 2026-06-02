@@ -116,6 +116,17 @@ export function getTagTypes(question: Question): string[] {
   return getStringArray(toRecord(question.config).tagTypes);
 }
 
+export function getLocalizedTagTypeOptions(question: Question, locale: Locale): ChoiceOption[] {
+  const config = toRecord(question.config);
+  const tagTypes = getStringArray(config.tagTypes);
+  const tagTypesEn = getStringArray(config.tagTypesEn);
+  return tagTypes.map((tagType, index) => ({
+    value: tagType,
+    labelKo: tagType,
+    ...(tagTypesEn[index] ? { labelEn: tagTypesEn[index] } : {}),
+  }));
+}
+
 export function getConfiguredAssetId(question: Question): string | undefined {
   const config = toRecord(question.config);
   return getString(config.assetId) ?? getString(config.asset_id);

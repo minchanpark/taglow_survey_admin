@@ -41,6 +41,7 @@ export type ImageTagQuestionConfig = Readonly<{
   assetId?: string;
   maxTags: number;
   tagTypes: string[];
+  tagTypesEn?: string[];
   requireText: boolean;
   enableZoom: boolean;
 }>;
@@ -48,6 +49,7 @@ export type ImageTagQuestionConfig = Readonly<{
 export type ParticipantImageTagQuestionConfig = Readonly<{
   maxTags: number;
   tagTypes: string[];
+  tagTypesEn?: string[];
   requireText: boolean;
   enableZoom: boolean;
   acceptedMimeTypes: string[];

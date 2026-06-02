@@ -76,6 +76,47 @@ const imageTagQuestion: Question = {
   validation: {},
 };
 
+const participantImageTagQuestion: Question = {
+  id: "question-participant-image",
+  surveyId: "survey-1",
+  sectionId: "section-1",
+  questionKey: "facility_upload_tag",
+  questionType: "participant_image_tag",
+  title: { ko: "건의할 사진을 올리고 위치를 표시해주세요." },
+  orderIndex: 2,
+  isRequired: false,
+  metricType: "none",
+  config: {
+    maxTags: 3,
+    tagTypes: ["불편", "수리 요청", "개선 제안"],
+    requireText: true,
+    enableZoom: true,
+    acceptedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+    maxFileSizeMb: 10,
+  },
+  validation: {},
+};
+
+const attentionCheckQuestion: Question = {
+  id: "question-attention",
+  surveyId: "survey-1",
+  sectionId: "section-1",
+  questionKey: "attention_select_3",
+  questionType: "attention_check",
+  title: { ko: "3을 선택해주세요." },
+  orderIndex: 3,
+  isRequired: true,
+  metricType: "none",
+  config: {
+    scaleMin: 1,
+    scaleMax: 5,
+    labelsKo: ["1점", "2점", "3점", "4점", "5점"],
+    expectedValue: "3",
+    excludeIfFailed: true,
+  },
+  validation: {},
+};
+
 const groupedFullTitleQuestion: Question = {
   ...question,
   id: "question-grouped",
@@ -782,6 +823,100 @@ describe("SurveyBuilderPage", () => {
               { value: "여성", labelKo: "여성", labelEn: "Female" },
             ],
           },
+        }),
+      );
+    });
+  });
+
+  it("saves English labels for scale questions", async () => {
+    const user = userEvent.setup();
+    const updateQuestion = vi.fn<AdminApiController["updateQuestion"]>(async (command: UpdateQuestionCommand) => ({
+      ...question,
+      id: command.questionId,
+      config: command.config ?? question.config,
+    }));
+    renderBuilder({ updateQuestion });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "침대 상태에 만족하시나요? 질문 선택" }));
+    const editor = screen.getByRole("complementary", { name: "질문 편집" });
+
+    fireEvent.change(within(editor).getByLabelText("척도 라벨 영어"), {
+      target: { value: "Very dissatisfied\nDissatisfied\nNeutral\nSatisfied\nVery satisfied" },
+    });
+    await user.click(within(editor).getByRole("button", { name: "저장" }));
+
+    await waitFor(() => {
+      expect(updateQuestion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          questionId: "question-1",
+          config: expect.objectContaining({
+            labelsKo: ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
+            labelsEn: ["Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied"],
+          }),
+        }),
+      );
+    });
+  });
+
+  it("saves English score labels for attention-check questions", async () => {
+    const user = userEvent.setup();
+    const updateQuestion = vi.fn<AdminApiController["updateQuestion"]>(async (command: UpdateQuestionCommand) => ({
+      ...attentionCheckQuestion,
+      id: command.questionId,
+      config: command.config ?? attentionCheckQuestion.config,
+    }));
+    renderBuilder({ updateQuestion }, { questions: [attentionCheckQuestion] });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "3을 선택해주세요. 질문 선택" }));
+    const editor = screen.getByRole("complementary", { name: "질문 편집" });
+
+    fireEvent.change(within(editor).getByLabelText("점수 라벨 영어"), {
+      target: { value: "1 point\n2 points\n3 points\n4 points\n5 points" },
+    });
+    await user.click(within(editor).getByRole("button", { name: "저장" }));
+
+    await waitFor(() => {
+      expect(updateQuestion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          questionId: "question-attention",
+          config: expect.objectContaining({
+            labelsKo: ["1점", "2점", "3점", "4점", "5점"],
+            labelsEn: ["1 point", "2 points", "3 points", "4 points", "5 points"],
+            excludeIfFailed: true,
+          }),
+        }),
+      );
+    });
+  });
+
+  it("saves English tagging categories for tagging suggestion questions", async () => {
+    const user = userEvent.setup();
+    const updateQuestion = vi.fn<AdminApiController["updateQuestion"]>(async (command: UpdateQuestionCommand) => ({
+      ...participantImageTagQuestion,
+      id: command.questionId,
+      config: command.config ?? participantImageTagQuestion.config,
+    }));
+    renderBuilder({ updateQuestion }, { questions: [participantImageTagQuestion] });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "건의할 사진을 올리고 위치를 표시해주세요. 질문 선택" }));
+    const editor = screen.getByRole("complementary", { name: "질문 편집" });
+
+    fireEvent.change(within(editor).getByLabelText("태깅 카테고리 영어"), {
+      target: { value: "Inconvenience\nRepair Request\nImprovement Suggestion" },
+    });
+    await user.click(within(editor).getByRole("button", { name: "저장" }));
+
+    await waitFor(() => {
+      expect(updateQuestion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          questionId: "question-participant-image",
+          config: expect.objectContaining({
+            tagTypes: ["불편", "수리 요청", "개선 제안"],
+            tagTypesEn: ["Inconvenience", "Repair Request", "Improvement Suggestion"],
+          }),
         }),
       );
     });

@@ -1379,7 +1379,8 @@ function QuestionConfigFields(props: {
   }
 
   if (props.questionType === "scale") {
-    const labels = Array.isArray(config.labelsKo) ? config.labelsKo.filter((label): label is string => typeof label === "string") : [];
+    const labelsKo = Array.isArray(config.labelsKo) ? config.labelsKo.filter((label): label is string => typeof label === "string") : [];
+    const labelsEn = Array.isArray(config.labelsEn) ? config.labelsEn.filter((label): label is string => typeof label === "string") : [];
     return (
       <div className="tg-builder-config-panel">
         {displayGroupField}
@@ -1403,15 +1404,32 @@ function QuestionConfigFields(props: {
             />
           </label>
         </div>
-        <label className="tg-builder-field">
-          <span>척도 라벨</span>
-          <textarea
-            rows={5}
-            value={labels.join("\n")}
-            disabled={props.disabled}
-            onChange={(event) => setConfig({ labelsKo: splitLines(event.target.value) })}
-          />
-        </label>
+        <div className="tg-builder-choice-options">
+          <span className="tg-builder-choice-options__title">척도 라벨</span>
+          <div className="tg-builder-choice-options__grid">
+            <label className="tg-builder-field">
+              <span>한국어</span>
+              <textarea
+                aria-label="척도 라벨 한국어"
+                rows={5}
+                value={labelsKo.join("\n")}
+                disabled={props.disabled}
+                onChange={(event) => setConfig({ labelsKo: splitLines(event.target.value) })}
+              />
+            </label>
+            <label className="tg-builder-field">
+              <span>영어</span>
+              <textarea
+                aria-label="척도 라벨 영어"
+                rows={5}
+                value={labelsEn.join("\n")}
+                disabled={props.disabled}
+                placeholder={"Very dissatisfied\nDissatisfied\nNeutral\nSatisfied\nVery satisfied"}
+                onChange={(event) => setConfig({ labelsEn: splitLines(event.target.value) })}
+              />
+            </label>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1518,6 +1536,8 @@ function QuestionConfigFields(props: {
     const scaleMin = typeof config.scaleMin === "number" ? config.scaleMin : 1;
     const scaleMax = typeof config.scaleMax === "number" ? config.scaleMax : 5;
     const expectedValue = typeof config.expectedValue === "number" || typeof config.expectedValue === "string" ? String(config.expectedValue) : "3";
+    const labelsKo = Array.isArray(config.labelsKo) ? config.labelsKo.filter((label): label is string => typeof label === "string") : [];
+    const labelsEn = Array.isArray(config.labelsEn) ? config.labelsEn.filter((label): label is string => typeof label === "string") : [];
     return (
       <div className="tg-builder-config-panel">
         {displayGroupField}
@@ -1558,27 +1578,50 @@ function QuestionConfigFields(props: {
             onChange={(event) => setConfig({ expectedValue: event.target.value, excludeIfFailed: true })}
           />
         </label>
-        <label className="tg-builder-field">
-          <span>점수 라벨</span>
-          <textarea
-            rows={3}
-            value={Array.isArray(config.labelsKo) ? config.labelsKo.filter((label): label is string => typeof label === "string").join("\n") : ""}
-            disabled={props.disabled}
-            placeholder={"1점\n2점\n3점\n4점\n5점"}
-            onChange={(event) =>
-              setConfig({
-                labelsKo: splitLines(event.target.value),
-                excludeIfFailed: true,
-              })
-            }
-          />
-        </label>
+        <div className="tg-builder-choice-options">
+          <span className="tg-builder-choice-options__title">점수 라벨</span>
+          <div className="tg-builder-choice-options__grid">
+            <label className="tg-builder-field">
+              <span>한국어</span>
+              <textarea
+                aria-label="점수 라벨 한국어"
+                rows={3}
+                value={labelsKo.join("\n")}
+                disabled={props.disabled}
+                placeholder={"1점\n2점\n3점\n4점\n5점"}
+                onChange={(event) =>
+                  setConfig({
+                    labelsKo: splitLines(event.target.value),
+                    excludeIfFailed: true,
+                  })
+                }
+              />
+            </label>
+            <label className="tg-builder-field">
+              <span>영어</span>
+              <textarea
+                aria-label="점수 라벨 영어"
+                rows={3}
+                value={labelsEn.join("\n")}
+                disabled={props.disabled}
+                placeholder={"1 point\n2 points\n3 points\n4 points\n5 points"}
+                onChange={(event) =>
+                  setConfig({
+                    labelsEn: splitLines(event.target.value),
+                    excludeIfFailed: true,
+                  })
+                }
+              />
+            </label>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (props.questionType === "image_tag") {
     const tagTypes = Array.isArray(config.tagTypes) ? config.tagTypes.filter((tag): tag is string => typeof tag === "string") : [];
+    const tagTypesEn = Array.isArray(config.tagTypesEn) ? config.tagTypesEn.filter((tag): tag is string => typeof tag === "string") : [];
     const assetId = typeof config.assetId === "string" ? config.assetId : undefined;
     const asset = props.assets.find((item) => item.id === assetId);
     return (
@@ -1630,21 +1673,39 @@ function QuestionConfigFields(props: {
             onChange={(event) => setConfig({ maxTags: Number(event.target.value) })}
           />
         </label>
-        <label className="tg-builder-field">
-          <span>태그 유형</span>
-          <textarea
-            rows={4}
-            value={tagTypes.join("\n")}
-            disabled={props.disabled}
-            onChange={(event) => setConfig({ tagTypes: splitLines(event.target.value) })}
-          />
-        </label>
+        <div className="tg-builder-choice-options">
+          <span className="tg-builder-choice-options__title">태그 유형</span>
+          <div className="tg-builder-choice-options__grid">
+            <label className="tg-builder-field">
+              <span>한국어</span>
+              <textarea
+                aria-label="태그 유형 한국어"
+                rows={4}
+                value={tagTypes.join("\n")}
+                disabled={props.disabled}
+                onChange={(event) => setConfig({ tagTypes: splitLines(event.target.value) })}
+              />
+            </label>
+            <label className="tg-builder-field">
+              <span>영어</span>
+              <textarea
+                aria-label="태그 유형 영어"
+                rows={4}
+                value={tagTypesEn.join("\n")}
+                disabled={props.disabled}
+                placeholder={"Inconvenience\nRepair Request\nImprovement Suggestion"}
+                onChange={(event) => setConfig({ tagTypesEn: splitLines(event.target.value) })}
+              />
+            </label>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (props.questionType === "participant_image_tag") {
     const tagTypes = Array.isArray(config.tagTypes) ? config.tagTypes.filter((tag): tag is string => typeof tag === "string") : [];
+    const tagTypesEn = Array.isArray(config.tagTypesEn) ? config.tagTypesEn.filter((tag): tag is string => typeof tag === "string") : [];
     return (
       <div className="tg-builder-config-panel">
         {displayGroupField}
@@ -1652,15 +1713,32 @@ function QuestionConfigFields(props: {
           <ImageIcon size={16} aria-hidden="true" />
           <span>관리자는 태깅 카테고리만 정하고, 참여자가 직접 사진을 올려 지점을 표시합니다.</span>
         </div>
-        <label className="tg-builder-field">
-          <span>태깅 카테고리</span>
-          <textarea
-            rows={5}
-            value={tagTypes.join("\n")}
-            disabled={props.disabled}
-            onChange={(event) => setConfig({ tagTypes: splitLines(event.target.value) })}
-          />
-        </label>
+        <div className="tg-builder-choice-options">
+          <span className="tg-builder-choice-options__title">태깅 카테고리</span>
+          <div className="tg-builder-choice-options__grid">
+            <label className="tg-builder-field">
+              <span>한국어</span>
+              <textarea
+                aria-label="태깅 카테고리 한국어"
+                rows={5}
+                value={tagTypes.join("\n")}
+                disabled={props.disabled}
+                onChange={(event) => setConfig({ tagTypes: splitLines(event.target.value) })}
+              />
+            </label>
+            <label className="tg-builder-field">
+              <span>영어</span>
+              <textarea
+                aria-label="태깅 카테고리 영어"
+                rows={5}
+                value={tagTypesEn.join("\n")}
+                disabled={props.disabled}
+                placeholder={"Inconvenience\nRepair Request\nImprovement Suggestion\nOther"}
+                onChange={(event) => setConfig({ tagTypesEn: splitLines(event.target.value) })}
+              />
+            </label>
+          </div>
+        </div>
       </div>
     );
   }

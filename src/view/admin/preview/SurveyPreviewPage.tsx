@@ -6,6 +6,7 @@ import {
   getAssetUrl,
   getChoiceOptions,
   getConfiguredAssetId,
+  getLocalizedTagTypeOptions,
   getExperienceFallbackOptions,
   getMaxSelect,
   getMaxTags,
@@ -573,6 +574,7 @@ function RankingControl(props: {
 function ImageTagControl(props: {
   question: Question;
   assets: SurveyAsset[];
+  locale: Locale;
   answer: PreviewAnswer | undefined;
   onAnswerChange: (answer: PreviewAnswer | undefined) => void;
 }) {
@@ -581,6 +583,7 @@ function ImageTagControl(props: {
   const tags = isImageTagAnswer(props.answer) ? props.answer : [];
   const maxTags = getMaxTags(props.question);
   const imageUrl = getAssetUrl(asset);
+  const tagOptions = getLocalizedTagTypeOptions(props.question, props.locale);
 
   return (
     <div className="tg-preview-image-tag">
@@ -593,7 +596,7 @@ function ImageTagControl(props: {
           const rect = event.currentTarget.getBoundingClientRect();
           const xRatio = ratioFromPoint(event.clientX - rect.left, rect.width);
           const yRatio = ratioFromPoint(event.clientY - rect.top, rect.height);
-          props.onAnswerChange([...tags, { id: crypto.randomUUID(), xRatio, yRatio }]);
+          props.onAnswerChange([...tags, { id: crypto.randomUUID(), xRatio, yRatio, tagType: tagOptions[0]?.value }]);
         }}
       >
         {imageUrl ? <img src={imageUrl} alt="" /> : <span className="tg-preview-image-tag__placeholder">{asset?.storagePath ?? "선택할 이미지를 불러오지 못했습니다."}</span>}
@@ -611,12 +614,35 @@ function ImageTagControl(props: {
         <MousePointer2 size={14} aria-hidden="true" />
         <span>위치 {tags.length} / {maxTags}</span>
       </p>
+      {tags.length && tagOptions.length ? (
+        <div className="tg-preview-ranking">
+          {tags.map((tag, index) => (
+            <label key={tag.id} className="tg-preview-ranking__row">
+              <span>태그 {index + 1}</span>
+              <select
+                aria-label={`태그 ${index + 1} 카테고리`}
+                value={tag.tagType ?? tagOptions[0]?.value}
+                onChange={(event) =>
+                  props.onAnswerChange(tags.map((item) => (item.id === tag.id ? { ...item, tagType: event.target.value } : item)))
+                }
+              >
+                {tagOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {localizedOption(option, props.locale)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function ParticipantImageTagControl(props: {
   question: Question;
+  locale: Locale;
   answer: PreviewAnswer | undefined;
   onAnswerChange: (answer: PreviewAnswer | undefined) => void;
 }) {
@@ -624,6 +650,7 @@ function ParticipantImageTagControl(props: {
   const answer = isParticipantImageTagAnswer(props.answer) ? props.answer : { tags: [] };
   const tags = answer.tags;
   const maxTags = getMaxTags(props.question);
+  const tagOptions = getLocalizedTagTypeOptions(props.question, props.locale);
 
   return (
     <div className="tg-preview-participant-image-tag">
@@ -652,7 +679,7 @@ function ParticipantImageTagControl(props: {
             const rect = event.currentTarget.getBoundingClientRect();
             const xRatio = ratioFromPoint(event.clientX - rect.left, rect.width);
             const yRatio = ratioFromPoint(event.clientY - rect.top, rect.height);
-            props.onAnswerChange({ ...answer, tags: [...tags, { id: crypto.randomUUID(), xRatio, yRatio }] });
+            props.onAnswerChange({ ...answer, tags: [...tags, { id: crypto.randomUUID(), xRatio, yRatio, tagType: tagOptions[0]?.value }] });
           }}
         >
           {answer.imageUrl ? <img src={answer.imageUrl} alt="" /> : <span className="tg-preview-image-tag__placeholder">사진을 올리면 위치를 선택할 수 있습니다.</span>}
@@ -671,6 +698,31 @@ function ParticipantImageTagControl(props: {
           <span>위치 {tags.length} / {maxTags}</span>
           {answer.fileName ? <span>{answer.fileName}</span> : null}
         </p>
+        {tags.length && tagOptions.length ? (
+          <div className="tg-preview-ranking">
+            {tags.map((tag, index) => (
+              <label key={tag.id} className="tg-preview-ranking__row">
+                <span>태그 {index + 1}</span>
+                <select
+                  aria-label={`태그 ${index + 1} 카테고리`}
+                  value={tag.tagType ?? tagOptions[0]?.value}
+                  onChange={(event) =>
+                    props.onAnswerChange({
+                      ...answer,
+                      tags: tags.map((item) => (item.id === tag.id ? { ...item, tagType: event.target.value } : item)),
+                    })
+                  }
+                >
+                  {tagOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {localizedOption(option, props.locale)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );

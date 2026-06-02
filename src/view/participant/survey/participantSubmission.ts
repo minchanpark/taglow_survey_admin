@@ -12,6 +12,7 @@ import type { ChoiceTextAnswer, ImageTagAnswer, ParticipantAnswer, ParticipantAn
 export function buildSubmitSurveyResponseCommand(args: {
   surveyId: string;
   clientSubmissionId: string;
+  locale?: string;
   startedAt: string;
   questions: Question[];
   answers: ParticipantAnswers;
@@ -22,7 +23,7 @@ export function buildSubmitSurveyResponseCommand(args: {
   return {
     surveyId: args.surveyId,
     clientSubmissionId: args.clientSubmissionId,
-    locale: "ko",
+    locale: args.locale ?? "ko",
     startedAt: args.startedAt,
     profile,
     rawPayload: {

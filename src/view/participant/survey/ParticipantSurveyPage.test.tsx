@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -162,6 +162,78 @@ describe("ParticipantSurveyPage", () => {
 
     expect(screen.getByText("태그 1")).toBeInTheDocument();
     expect(screen.getByLabelText("태그 1 카테고리")).toHaveValue("수리 요청");
+  });
+
+  it("renders configured English scale labels and tagging categories when locale is English", async () => {
+    const user = userEvent.setup();
+    const detail: ParticipantSurveyDetail = {
+      ...fakeParticipantSurveyDetail,
+      sections: [
+        {
+          ...fakeParticipantSurveyDetail.sections[0],
+          title: { ko: "생활관 시설", en: "Dormitory Facilities" },
+        },
+      ],
+      questions: [
+        {
+          ...fakeParticipantSurveyDetail.questions[0],
+          title: { ko: "침대 만족도는 어떤가요?", en: "How satisfied are you with your bed?" },
+          config: {
+            scaleMin: 1,
+            scaleMax: 5,
+            labelsKo: ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
+            labelsEn: ["Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied"],
+          },
+        },
+        {
+          ...fakeParticipantSurveyDetail.questions[0],
+          id: "question-upload",
+          questionKey: "facility_upload_tag",
+          questionType: "participant_image_tag",
+          title: { ko: "건의할 사진을 올리고 위치를 표시해주세요.", en: "Upload a suggestion photo and tag the area." },
+          orderIndex: 1,
+          isRequired: false,
+          metricType: "none",
+          config: {
+            maxTags: 2,
+            tagTypes: ["수리 요청", "개선 제안"],
+            tagTypesEn: ["Repair Request", "Improvement Suggestion"],
+            requireText: true,
+            enableZoom: true,
+            acceptedMimeTypes: ["image/png"],
+            maxFileSizeMb: 10,
+          },
+        },
+      ],
+    };
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/survey/handong-dorm-2026?locale=en"]}>
+        <Routes>
+          <Route path="/survey/:publicIdentifier" element={<ParticipantSurveyPage />} />
+        </Routes>
+      </MemoryRouter>,
+      {
+        participantController: createFakeParticipantSurveyController({
+          getPublishedSurveyByIdentifier: async () => detail,
+        }),
+      },
+    );
+
+    expect(await screen.findByRole("heading", { name: "로그인" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "인트로로 이동" }));
+    await user.click(screen.getByRole("button", { name: "섹션 시작" }));
+
+    expect(await screen.findByRole("heading", { name: "Dormitory Facilities" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "How satisfied are you with your bed?" })).toBeInTheDocument();
+    expect(screen.getByText("Very dissatisfied")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Upload a suggestion photo and tag the area." })).toBeInTheDocument();
+
+    await user.upload(screen.getByLabelText("사진 업로드"), new File(["image"], "upload.png", { type: "image/png" }));
+    await user.click(screen.getByRole("button", { name: "이미지 태깅 영역" }));
+
+    const categorySelect = screen.getByLabelText("태그 1 카테고리");
+    expect(categorySelect).toHaveValue("수리 요청");
+    expect(within(categorySelect).getByRole("option", { name: "Repair Request" })).toBeInTheDocument();
   });
 
   it("submits collected answers from the complete step", async () => {

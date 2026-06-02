@@ -1,6 +1,6 @@
 import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, CircleHelp, LogIn, MousePointer2, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   useParticipantGoogleSignInMutation,
   useParticipantQuestionImageUploadMutation,
@@ -13,6 +13,7 @@ import {
   getAssetUrl,
   getChoiceOptions,
   getConfiguredAssetId,
+  getLocalizedTagTypeOptions,
   getMaxSelect,
   getMaxTags,
   getNumber,
@@ -21,13 +22,15 @@ import {
   getScaleLabels,
   getString,
   getStringArray,
-  getTagTypes,
   groupQuestionsBySection,
   isIntroSection,
+  localizedOption,
+  localizedText,
   ratioFromPoint,
   shouldShowQuestion,
   sortByOrder,
   toRecord,
+  type Locale,
 } from "../../../api/admin/model";
 import type { JsonRecord, ParticipantSurvey, Question, SubmitSurveyResponseResult, SurveyAsset, SurveySection } from "../../../api/participant/model";
 import { Button, EmptyState, ErrorState, LoadingState } from "../../../components";
@@ -37,6 +40,7 @@ import "./css/ParticipantSurveyPage.css";
 
 export function ParticipantSurveyPage() {
   const { publicIdentifier = "" } = useParams();
+  const [searchParams] = useSearchParams();
   const sessionQuery = useParticipantSessionQuery();
   const signInMutation = useParticipantGoogleSignInMutation();
   const submitMutation = useSubmitSurveyResponseMutation();
@@ -47,6 +51,7 @@ export function ParticipantSurveyPage() {
   const [startedAt, setStartedAt] = useState(() => new Date().toISOString());
   const [clientSubmissionId, setClientSubmissionId] = useState(() => crypto.randomUUID());
   const [submittedResult, setSubmittedResult] = useState<SubmitSurveyResponseResult | undefined>();
+  const locale = normalizeLocale(searchParams.get("locale"));
   const questionsBySection = useMemo(
     () => groupQuestionsBySection(surveyQuery.data?.questions ?? []),
     [surveyQuery.data?.questions],
@@ -121,6 +126,7 @@ export function ParticipantSurveyPage() {
               introQuestions={introSection ? getVisibleQuestions(questionsBySection.get(introSection.id) ?? [], allQuestions, answers) : []}
               assets={surveyQuery.data.assets}
               answers={answers}
+              locale={locale}
               onAnswerChange={(questionId, answer) => setAnswers((current) => ({ ...current, [questionId]: answer }))}
               onStart={() => setStep(answerSections.length ? { type: "section", sectionIndex: 0 } : { type: "complete" })}
             />
@@ -139,6 +145,7 @@ export function ParticipantSurveyPage() {
               questions={getVisibleQuestions(questionsBySection.get(currentSection.id) ?? [], allQuestions, answers)}
               assets={surveyQuery.data.assets}
               answers={answers}
+              locale={locale}
               onAnswerChange={(questionId, answer) => setAnswers((current) => ({ ...current, [questionId]: answer }))}
               onBack={() => setStep(currentSectionIndex === 0 ? { type: "intro" } : { type: "section", sectionIndex: currentSectionIndex - 1 })}
               onNext={() =>
@@ -160,6 +167,7 @@ export function ParticipantSurveyPage() {
                   buildSubmitSurveyResponseCommand({
                     surveyId: surveyQuery.data.survey.id,
                     clientSubmissionId,
+                    locale,
                     startedAt,
                     questions: surveyQuery.data.questions,
                     answers,
@@ -223,6 +231,7 @@ function ParticipantIntroStep(props: {
   introQuestions: Question[];
   assets: SurveyAsset[];
   answers: ParticipantAnswers;
+  locale: Locale;
   onAnswerChange: (questionId: string, answer: ParticipantAnswer) => void;
   onStart: () => void;
 }) {
@@ -231,12 +240,12 @@ function ParticipantIntroStep(props: {
       <section className="tg-participant-flow-card" aria-labelledby="participant-survey-title">
         <p className="tg-participant-survey-page__eyebrow">인트로</p>
         <h1 id="participant-survey-title">{props.survey.title}</h1>
-        {props.survey.description?.ko ? (
+        {props.survey.description ? (
           <p className="tg-participant-survey-page__intro-copy">
-            <AutoLinkedText text={props.survey.description.ko} />
+            <AutoLinkedText text={localizedText(props.survey.description, props.locale)} />
           </p>
         ) : null}
-        {props.introSection?.description?.ko ? <p>{props.introSection.description.ko}</p> : null}
+        {props.introSection?.description ? <p>{localizedText(props.introSection.description, props.locale)}</p> : null}
         <div className="tg-participant-survey-page__meta" aria-label="설문 공개 정보">
           <span>
             <CheckCircle2 size={14} aria-hidden="true" />
@@ -252,14 +261,15 @@ function ParticipantIntroStep(props: {
         </div>
       </section>
       {props.introSection && props.introQuestions.length ? (
-        <SectionView
-          surveyId={props.survey.id}
-          section={props.introSection}
-          questions={props.introQuestions}
-          assets={props.assets}
-          answers={props.answers}
-          onAnswerChange={props.onAnswerChange}
-        />
+          <SectionView
+            surveyId={props.survey.id}
+            section={props.introSection}
+            questions={props.introQuestions}
+            assets={props.assets}
+            answers={props.answers}
+            locale={props.locale}
+            onAnswerChange={props.onAnswerChange}
+          />
       ) : null}
     </>
   );
@@ -330,6 +340,7 @@ function ParticipantSectionStep(props: {
   questions: Question[];
   assets: SurveyAsset[];
   answers: ParticipantAnswers;
+  locale: Locale;
   onAnswerChange: (questionId: string, answer: ParticipantAnswer) => void;
   onBack: () => void;
   onNext: () => void;
@@ -347,6 +358,7 @@ function ParticipantSectionStep(props: {
         questions={props.questions}
         assets={props.assets}
         answers={props.answers}
+        locale={props.locale}
         onAnswerChange={props.onAnswerChange}
       />
       <div className="tg-participant-step__actions">
@@ -404,14 +416,15 @@ function SectionView(props: {
   questions: Question[];
   assets: SurveyAsset[];
   answers: ParticipantAnswers;
+  locale: Locale;
   onAnswerChange: (questionId: string, answer: ParticipantAnswer) => void;
 }) {
   return (
     <section className="tg-participant-section" aria-labelledby={`participant-section-${props.section.id}`}>
       <header className="tg-participant-section__header">
         <p>Section {props.section.orderIndex + 1}</p>
-        <h2 id={`participant-section-${props.section.id}`}>{props.section.title.ko}</h2>
-        {props.section.description?.ko ? <span>{props.section.description.ko}</span> : null}
+        <h2 id={`participant-section-${props.section.id}`}>{localizedText(props.section.title, props.locale)}</h2>
+        {props.section.description ? <span>{localizedText(props.section.description, props.locale)}</span> : null}
       </header>
 
       {props.questions.length === 0 ? (
@@ -425,6 +438,7 @@ function SectionView(props: {
               question={question}
               assets={props.assets}
               answer={props.answers[question.id]}
+              locale={props.locale}
               onAnswerChange={(answer) => props.onAnswerChange(question.id, answer)}
             />
           ))}
@@ -439,6 +453,7 @@ function QuestionView(props: {
   question: Question;
   assets: SurveyAsset[];
   answer: ParticipantAnswer;
+  locale: Locale;
   onAnswerChange: (answer: ParticipantAnswer) => void;
 }) {
   const questionKind = getQuestionKind(props.question);
@@ -448,16 +463,16 @@ function QuestionView(props: {
         <span>{formatQuestionType(props.question)}</span>
         {props.question.isRequired ? <strong>필수</strong> : null}
       </div>
-      <h3>{props.question.title.ko}</h3>
-      {props.question.description?.ko ? <p>{props.question.description.ko}</p> : null}
+      <h3>{localizedText(props.question.title, props.locale)}</h3>
+      {props.question.description ? <p>{localizedText(props.question.description, props.locale)}</p> : null}
       {questionKind === "scale" ? (
-        <ScaleQuestionControl question={props.question} answer={props.answer} onAnswerChange={props.onAnswerChange} />
+        <ScaleQuestionControl question={props.question} locale={props.locale} answer={props.answer} onAnswerChange={props.onAnswerChange} />
       ) : questionKind === "single_choice" ? (
-        <SingleChoiceQuestionControl question={props.question} answer={props.answer} onAnswerChange={props.onAnswerChange} />
+        <SingleChoiceQuestionControl question={props.question} locale={props.locale} answer={props.answer} onAnswerChange={props.onAnswerChange} />
       ) : questionKind === "multi_select" ? (
-        <MultiSelectQuestionControl question={props.question} answer={props.answer} onAnswerChange={props.onAnswerChange} />
+        <MultiSelectQuestionControl question={props.question} locale={props.locale} answer={props.answer} onAnswerChange={props.onAnswerChange} />
       ) : questionKind === "choice_text" ? (
-        <ChoiceTextQuestionControl question={props.question} answer={props.answer} onAnswerChange={props.onAnswerChange} />
+        <ChoiceTextQuestionControl question={props.question} locale={props.locale} answer={props.answer} onAnswerChange={props.onAnswerChange} />
       ) : questionKind === "short_text" ? (
         <ShortTextQuestionControl question={props.question} answer={props.answer} onAnswerChange={props.onAnswerChange} />
       ) : questionKind === "text" ? (
@@ -467,6 +482,7 @@ function QuestionView(props: {
           question={props.question}
           assets={props.assets}
           answer={props.answer}
+          locale={props.locale}
           onAnswerChange={props.onAnswerChange}
         />
       ) : props.question.questionType === "participant_image_tag" ? (
@@ -474,6 +490,7 @@ function QuestionView(props: {
           surveyId={props.surveyId}
           question={props.question}
           answer={props.answer}
+          locale={props.locale}
           onAnswerChange={props.onAnswerChange}
         />
       ) : (
@@ -488,15 +505,16 @@ function QuestionView(props: {
 
 function ScaleQuestionControl(props: {
   question: Question;
+  locale: Locale;
   answer: ParticipantAnswer;
   onAnswerChange: (answer: ParticipantAnswer) => void;
 }) {
   const { min, max } = getScaleBounds(props.question);
-  const labels = getScaleLabels(props.question, "ko");
+  const labels = getScaleLabels(props.question, props.locale);
   const values = Array.from({ length: Math.max(1, max - min + 1) }, (_, index) => min + index);
 
   return (
-    <div className="tg-participant-scale" role="radiogroup" aria-label={`${props.question.title.ko} 척도`}>
+    <div className="tg-participant-scale" role="radiogroup" aria-label={`${localizedText(props.question.title, props.locale)} 척도`}>
       {values.map((value, index) => (
         <button
           key={value}
@@ -515,6 +533,7 @@ function ScaleQuestionControl(props: {
 
 function SingleChoiceQuestionControl(props: {
   question: Question;
+  locale: Locale;
   answer: ParticipantAnswer;
   onAnswerChange: (answer: ParticipantAnswer) => void;
 }) {
@@ -531,7 +550,7 @@ function SingleChoiceQuestionControl(props: {
             checked={selected === option.value}
             onChange={() => props.onAnswerChange(option.value)}
           />
-          <span>{option.labelKo}</span>
+          <span>{localizedOption(option, props.locale)}</span>
         </label>
       ))}
     </div>
@@ -540,6 +559,7 @@ function SingleChoiceQuestionControl(props: {
 
 function MultiSelectQuestionControl(props: {
   question: Question;
+  locale: Locale;
   answer: ParticipantAnswer;
   onAnswerChange: (answer: ParticipantAnswer) => void;
 }) {
@@ -565,7 +585,7 @@ function MultiSelectQuestionControl(props: {
                 props.onAnswerChange(next.length ? next : undefined);
               }}
             />
-            <span>{option.labelKo}</span>
+            <span>{localizedOption(option, props.locale)}</span>
           </label>
         );
       })}
@@ -611,6 +631,7 @@ function ShortTextQuestionControl(props: {
 
 function ChoiceTextQuestionControl(props: {
   question: Question;
+  locale: Locale;
   answer: ParticipantAnswer;
   onAnswerChange: (answer: ParticipantAnswer) => void;
 }) {
@@ -628,7 +649,7 @@ function ChoiceTextQuestionControl(props: {
               checked={answer.choiceValue === option.value}
               onChange={() => props.onAnswerChange({ ...answer, choiceValue: option.value })}
             />
-            <span>{option.labelKo}</span>
+            <span>{localizedOption(option, props.locale)}</span>
           </label>
         ))}
       </div>
@@ -648,6 +669,7 @@ function ImageTagQuestionControl(props: {
   question: Question;
   assets: SurveyAsset[];
   answer: ParticipantAnswer;
+  locale: Locale;
   onAnswerChange: (answer: ParticipantAnswer) => void;
 }) {
   const assetId = getConfiguredAssetId(props.question);
@@ -655,14 +677,15 @@ function ImageTagQuestionControl(props: {
   const imageUrl = getAssetUrl(asset);
   const answer = isImageTagAnswer(props.answer) ? props.answer : { tags: [] };
   const maxTags = getMaxTags(props.question);
-  const tagTypes = getTagTypes(props.question);
+  const tagOptions = getLocalizedTagTypeOptions(props.question, props.locale);
 
   return (
     <ImageTagSurface
       imageUrl={imageUrl}
       placeholder={asset ? asset.storagePath : "이미지가 연결되지 않았습니다."}
       tags={answer.tags}
-      tagTypes={tagTypes}
+      tagOptions={tagOptions}
+      locale={props.locale}
       maxTags={maxTags}
       disabled={!imageUrl}
       onAddTag={(pin) => props.onAnswerChange({ ...answer, tags: [...answer.tags, pin] })}
@@ -675,12 +698,13 @@ function ParticipantImageTagQuestionControl(props: {
   surveyId: string;
   question: Question;
   answer: ParticipantAnswer;
+  locale: Locale;
   onAnswerChange: (answer: ParticipantAnswer) => void;
 }) {
   const uploadMutation = useParticipantQuestionImageUploadMutation();
   const config = toRecord(props.question.config);
   const answer = isImageTagAnswer(props.answer) ? props.answer : { tags: [] };
-  const tagTypes = getTagTypes(props.question);
+  const tagOptions = getLocalizedTagTypeOptions(props.question, props.locale);
   const maxTags = getMaxTags(props.question);
   const acceptedMimeTypes = getStringArray(config.acceptedMimeTypes);
   const accept = acceptedMimeTypes.length ? acceptedMimeTypes.join(",") : "image/*";
@@ -722,7 +746,8 @@ function ParticipantImageTagQuestionControl(props: {
         imageUrl={answer.image?.signedUrl}
         placeholder={answer.image?.storagePath ?? "사진을 올리면 태깅 영역이 표시됩니다."}
         tags={answer.tags}
-        tagTypes={tagTypes}
+        tagOptions={tagOptions}
+        locale={props.locale}
         maxTags={maxTags}
         disabled={!answer.image?.signedUrl}
         onAddTag={(pin) => props.onAnswerChange({ ...answer, tags: [...answer.tags, pin] })}
@@ -736,7 +761,8 @@ function ImageTagSurface(props: {
   imageUrl?: string;
   placeholder: string;
   tags: ImageTagPin[];
-  tagTypes: string[];
+  tagOptions: Array<{ value: string; labelKo: string; labelEn?: string }>;
+  locale: Locale;
   maxTags: number;
   disabled: boolean;
   onAddTag: (pin: ImageTagPin) => void;
@@ -755,7 +781,7 @@ function ImageTagSurface(props: {
             id: crypto.randomUUID(),
             xRatio: ratioFromPoint(event.clientX - rect.left, rect.width),
             yRatio: ratioFromPoint(event.clientY - rect.top, rect.height),
-            tagType: props.tagTypes[0],
+            tagType: props.tagOptions[0]?.value,
           });
         }}
       >
@@ -775,15 +801,15 @@ function ImageTagSurface(props: {
           {props.tags.map((tag, index) => (
             <div key={tag.id}>
               <strong>태그 {index + 1}</strong>
-              {props.tagTypes.length ? (
+              {props.tagOptions.length ? (
                 <select
                   aria-label={`태그 ${index + 1} 카테고리`}
-                  value={tag.tagType ?? props.tagTypes[0]}
+                  value={tag.tagType ?? props.tagOptions[0]?.value}
                   onChange={(event) => props.onUpdateTag({ ...tag, tagType: event.target.value })}
                 >
-                  {props.tagTypes.map((tagType) => (
-                    <option key={tagType} value={tagType}>
-                      {tagType}
+                  {props.tagOptions.map((tagOption) => (
+                    <option key={tagOption.value} value={tagOption.value}>
+                      {localizedOption(tagOption, props.locale)}
                     </option>
                   ))}
                 </select>
@@ -839,4 +865,8 @@ function formatAnswerHint(type: Question["questionType"]): string {
   if (type === "participant_image_tag") return "사진 업로드 후 태깅 응답 영역";
   if (type === "ranking") return "순위 응답 영역";
   return "응답 영역";
+}
+
+function normalizeLocale(value: string | null): Locale {
+  return value === "en" ? "en" : "ko";
 }
