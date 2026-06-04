@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminApiController } from "../../../api/admin/controller";
-import type { IdentityResponse, ImageTagAnswer, Question, ResponseSummary, SurveyAsset, SurveySection } from "../../../api/admin/model";
+import type { ImageTagAnswer, Question, ResponseSummary, SurveyAsset, SurveySection } from "../../../api/admin/model";
 import { useAdminFilterStore } from "../../../store";
 import { createFakeAdminApiController, fakeSurvey } from "../../../test/fakeAdminApiController";
 import { renderWithProviders } from "../../../test/renderWithProviders";
@@ -183,16 +183,6 @@ const imageTagAnswers: ImageTagAnswer[] = [
   },
 ];
 
-const identityResponses: IdentityResponse[] = [
-  {
-    responseId: "response-1",
-    studentNumber: "22000123",
-    name: "김태글",
-    profile: { dormitory: "비전관", roomType: "2인실", rc: "장기려" },
-    submittedAt: "2026-05-28T00:00:00.000Z",
-  },
-];
-
 const baseResponseSummary: ResponseSummary = {
   totalResponses: 5,
   submittedResponses: 4,
@@ -233,7 +223,6 @@ function renderAnalysis(overrides: Partial<AdminApiController> = {}) {
           assets,
         }),
         listImageTagAnswers: async () => ({ items: imageTagAnswers }),
-        listIdentityResponses: async () => ({ items: identityResponses }),
         ...overrides,
       }),
     },
@@ -376,33 +365,11 @@ describe("SurveyAnalysisPage", () => {
     expect(within(distributionCard!).queryByText("커스텀관")).not.toBeInTheDocument();
   });
 
-  it("shows student number and name responses that passed attention checks", async () => {
-    const user = userEvent.setup();
+  it("keeps detailed roster out of the analysis tabs", async () => {
     renderAnalysis();
 
     expect(await screen.findByRole("heading", { name: "생활관 만족도 조사" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "상세 명단" }));
-
-    const identityCard = (await screen.findByRole("heading", { name: "상세 명단" })).closest("article");
-    expect(identityCard).toBeTruthy();
-    expect(within(identityCard!).getByText(/주의력 확인 통과 응답만/)).toBeInTheDocument();
-    expect(within(identityCard!).getByText("22000123")).toBeInTheDocument();
-    expect(within(identityCard!).getByText("김태글")).toBeInTheDocument();
-    expect(within(identityCard!).getByText("비전관 · 2인실 · 장기려")).toBeInTheDocument();
-  });
-
-  it("requests identity responses again when a global filter changes", async () => {
-    const user = userEvent.setup();
-    const listIdentityResponses = vi.fn<AdminApiController["listIdentityResponses"]>(async () => ({ items: identityResponses }));
-    renderAnalysis({ listIdentityResponses });
-
-    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
-    await user.click(screen.getByRole("button", { name: "상세 명단" }));
-    await user.selectOptions(screen.getByLabelText("거주 생활관"), "비전관");
-
-    await waitFor(() => {
-      expect(listIdentityResponses).toHaveBeenLastCalledWith({ surveyId: "survey-1", filters: { dormitory: "비전관", cursor: undefined, limit: 100 } });
-    });
+    expect(screen.queryByRole("button", { name: "상세 명단" })).not.toBeInTheDocument();
   });
 
   it("shows improvement priority TOP 5 with evidence counts and low sample caution", async () => {

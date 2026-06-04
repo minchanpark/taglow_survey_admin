@@ -212,7 +212,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
         topic_key: null,
         space_key: null,
         config: {
-          profileField: "dormitory",
+          profileField: "Dormitory",
           options: [
             { value: "비전관", labelKo: "비전관" },
             { value: "은혜관", labelKo: "은혜관" },
@@ -367,7 +367,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
         topic_key: null,
         space_key: null,
         config: {
-          profileField: "room_type",
+          profileField: "Room_type",
           options: [
             { value: "2인실", labelKo: "2인실" },
             { value: "3인실", labelKo: "3인실" },

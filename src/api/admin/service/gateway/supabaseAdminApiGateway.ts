@@ -1094,15 +1094,18 @@ function matchesFilter(value: unknown, filter: unknown): boolean {
 
 function normalizeProfileFieldKey(value: string | undefined): string | undefined {
   if (!value) return undefined;
-  if (value === "student_number" || value === "studentNumber" || value === "student_id" || value === "studentId") return "student_number";
-  if (value === "name" || value === "full_name" || value === "fullName") return "name";
-  if (value === "gender") return "gender";
-  if (value === "semester" || value === "semester_group" || value === "semesterGroup") return "semester_group";
-  if (value === "department") return "department";
-  if (value === "rc") return "rc";
-  if (value === "dormitory") return "dormitory";
-  if (value === "room_type" || value === "roomType") return "room_type";
-  if (value === "dorm_experience" || value === "dormExperience") return "dorm_experience";
+  const normalized = value.trim().replace(/[\s-]+/g, "_");
+  if (!normalized) return undefined;
+  const compact = normalized.replace(/_/g, "").toLowerCase();
+  if (compact === "studentnumber" || compact === "studentid") return "student_number";
+  if (compact === "name" || compact === "fullname") return "name";
+  if (compact === "gender") return "gender";
+  if (compact === "semester" || compact === "semestergroup") return "semester_group";
+  if (compact === "department") return "department";
+  if (compact === "rc") return "rc";
+  if (compact === "dormitory") return "dormitory";
+  if (compact === "roomtype") return "room_type";
+  if (compact === "dormexperience") return "dorm_experience";
   return undefined;
 }
 

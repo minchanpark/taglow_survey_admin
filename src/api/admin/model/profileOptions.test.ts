@@ -105,6 +105,49 @@ describe("profile filter definitions", () => {
     });
   });
 
+  it("normalizes profile field casing from imported survey configs", () => {
+    const importedQuestions: Question[] = [
+      {
+        ...profileQuestions[0],
+        id: "question-imported-gender",
+        questionKey: "profile_imported_gender",
+        config: {
+          profileField: "Gender",
+          inputType: "single_choice",
+          options: [{ value: "여성", labelKo: "여성" }],
+        },
+      },
+      {
+        ...profileQuestions[1],
+        id: "question-imported-room",
+        questionKey: "profile_imported_room",
+        config: {
+          profileField: "Room_type",
+          inputType: "single_choice",
+          options: [{ value: "2인실", labelKo: "2인실" }],
+        },
+      },
+      {
+        ...profileQuestions[1],
+        id: "question-imported-semester",
+        questionKey: "profile_imported_semester",
+        title: { ko: "학기" },
+        orderIndex: 2,
+        config: {
+          profileField: "Semester_group",
+          inputType: "single_choice",
+          options: [{ value: "1-2학기", labelKo: "1-2학기" }],
+        },
+      },
+    ];
+
+    expect(buildProfileFilterDefinitions(importedQuestions)).toMatchObject([
+      { key: "gender", profileField: "gender", options: [{ value: "여성", label: "여성" }] },
+      { key: "roomType", profileField: "room_type", options: [{ value: "2인실", label: "2인실" }] },
+      { key: "semesterGroup", profileField: "semester_group", options: [{ value: "1-2학기", label: "1-2학기" }] },
+    ]);
+  });
+
   it("narrows filter definitions to analysis option values while preserving configured labels", () => {
     const definitions = buildProfileFilterDefinitions(profileQuestions);
 
