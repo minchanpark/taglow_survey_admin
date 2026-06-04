@@ -2,6 +2,8 @@ import {
   getConfiguredAssetId,
   getQuestionKind,
   getString,
+  normalizeProfileFilterKey,
+  toProfileFieldValue,
   toRecord,
   type JsonRecord,
   type Question,
@@ -114,21 +116,8 @@ function buildSubmittedProfile(questions: Question[], answers: ParticipantAnswer
 
 function normalizeProfileField(value: string | undefined): string | undefined {
   if (!value) return undefined;
-  if (value === "semesterGroup") return "semester_group";
-  if (value === "roomType") return "room_type";
-  if (value === "dormExperience") return "dorm_experience";
-  if (
-    value === "gender" ||
-    value === "semester_group" ||
-    value === "department" ||
-    value === "rc" ||
-    value === "dormitory" ||
-    value === "room_type" ||
-    value === "dorm_experience"
-  ) {
-    return value;
-  }
-  return undefined;
+  const key = normalizeProfileFilterKey(value);
+  return key ? toProfileFieldValue(key) : undefined;
 }
 
 function getProfileAnswerValue(answer: ParticipantAnswer): string | undefined {

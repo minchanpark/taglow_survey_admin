@@ -38,6 +38,8 @@ export function GlobalFilterBar(props: {
               </label>
             );
           })
+        ) : props.isLoading ? (
+          <p className="tg-analysis-filter__empty">기본 정보 필터를 불러오는 중입니다.</p>
         ) : (
           <p className="tg-analysis-filter__empty">선택형 기본 정보 질문이 없습니다.</p>
         )}

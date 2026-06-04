@@ -70,15 +70,16 @@ export function toChoiceOptions(values: readonly string[]): ChoiceOption[] {
 
 export function normalizeProfileFilterKey(value: unknown): ProfileDistributionKey | undefined {
   if (typeof value !== "string") return undefined;
-  const normalized = value.trim();
+  const normalized = value.trim().replace(/[\s-]+/g, "_");
   if (!normalized) return undefined;
-  if (normalized === "gender") return "gender";
-  if (normalized === "semester" || normalized === "semester_group" || normalized === "semesterGroup") return "semesterGroup";
-  if (normalized === "department") return "department";
-  if (normalized === "rc") return "rc";
-  if (normalized === "dormitory") return "dormitory";
-  if (normalized === "room_type" || normalized === "roomType") return "roomType";
-  if (normalized === "dorm_experience" || normalized === "dormExperience") return "dormExperience";
+  const compact = normalized.replace(/_/g, "").toLowerCase();
+  if (compact === "gender") return "gender";
+  if (compact === "semester" || compact === "semestergroup") return "semesterGroup";
+  if (compact === "department") return "department";
+  if (compact === "rc") return "rc";
+  if (compact === "dormitory") return "dormitory";
+  if (compact === "roomtype") return "roomType";
+  if (compact === "dormexperience") return "dormExperience";
   return undefined;
 }
 
@@ -111,7 +112,7 @@ export function buildProfileFilterDefinitions(questions: readonly Question[]): P
     if (!options.length) continue;
     definitions.set(key, {
       key,
-      profileField: getString(config.profileField) ?? toProfileFieldValue(key),
+      profileField: toProfileFieldValue(key),
       label: question.title.ko || profileFilterLabels[key],
       options,
       questionId: question.id,
