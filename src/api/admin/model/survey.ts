@@ -22,6 +22,8 @@ export type Survey = Readonly<{
   isLatestVersion: boolean;
   settings: SurveySettings;
   createdBy: string;
+  startsAt?: string;
+  endsAt?: string;
   publishedAt?: string;
   closedAt?: string;
   createdAt: string;

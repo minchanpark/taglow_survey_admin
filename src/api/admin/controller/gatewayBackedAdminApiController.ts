@@ -209,6 +209,8 @@ export class GatewayBackedAdminApiController implements AdminApiController {
         status: command.status,
         public_slug: hasOwn(command, "publicSlug") ? nullableText(command.publicSlug) : undefined,
         public_code: hasOwn(command, "publicCode") ? normalizePublicCode(command.publicCode) : undefined,
+        starts_at: hasOwn(command, "startsAt") ? nullableTimestamp(command.startsAt) : undefined,
+        ends_at: hasOwn(command, "endsAt") ? nullableTimestamp(command.endsAt) : undefined,
         settings: command.settings,
       }),
     });
@@ -614,6 +616,10 @@ function toUpdateQuestionPayload(command: UpdateQuestionCommand): RawUpdateQuest
 }
 
 function nullableText(value: string | null | undefined): string | null {
+  return value?.trim() ? value : null;
+}
+
+function nullableTimestamp(value: string | null | undefined): string | null {
   return value?.trim() ? value : null;
 }
 

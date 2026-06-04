@@ -119,6 +119,7 @@
 }
 
 .tg-settings-page__input-row input,
+.tg-settings-page__schedule input,
 .tg-settings-page__share-row input,
 .tg-settings-page__share-row select,
 .tg-settings-page__collaborator-row select {
@@ -136,6 +137,21 @@
 .tg-settings-page__share-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(132px, auto) auto;
+  gap: var(--tg-space-6);
+}
+
+.tg-settings-page__schedule {
+  display: grid;
+  gap: var(--tg-space-8);
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  padding: var(--tg-space-10);
+  background: var(--tg-bg-raised);
+}
+
+.tg-settings-page__schedule-actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--tg-space-6);
 }
 

@@ -37,6 +37,8 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
       is_latest_version: true,
       settings: null,
       created_by: "user-1",
+      starts_at: "2026-06-05T00:00:00.000Z",
+      ends_at: "2026-06-12T00:00:00.000Z",
       published_at: null,
       closed_at: null,
       created_at: "2026-05-28T00:00:00.000Z",
@@ -51,6 +53,8 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
       },
       publicSlug: "handong-dorm-2026",
       publicCode: "8K2PQA",
+      startsAt: "2026-06-05T00:00:00.000Z",
+      endsAt: "2026-06-12T00:00:00.000Z",
       accessRole: "owner",
     });
   });

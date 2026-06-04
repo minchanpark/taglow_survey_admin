@@ -19,6 +19,8 @@ export type UpdateSurveyCommand = Readonly<{
   status?: SurveyStatus;
   publicSlug?: string;
   publicCode?: string;
+  startsAt?: string;
+  endsAt?: string;
   settings?: SurveySettings;
 }>;
 

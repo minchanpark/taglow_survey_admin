@@ -125,4 +125,23 @@ describe("SurveySettingsPage", () => {
     expect(screen.getByText("https://taglow.newdawn.co.kr/survey/handong-dorm-2026")).toBeInTheDocument();
     expect(openLink).toHaveAttribute("href", "https://taglow.newdawn.co.kr/survey/handong-dorm-2026");
   });
+
+  it("saves scheduled publish and close times through the admin update mutation", async () => {
+    const user = userEvent.setup();
+    const updateSurvey = vi.fn(async () => fakeSurvey);
+    renderSettings({ updateSurvey });
+
+    const startsAtInput = await screen.findByLabelText("설문 게시 시간");
+    const endsAtInput = screen.getByLabelText("설문 종료 시간");
+
+    await user.type(startsAtInput, "2026-06-05T09:30");
+    await user.type(endsAtInput, "2026-06-12T18:00");
+    await user.click(screen.getByRole("button", { name: "예약 저장" }));
+
+    expect(updateSurvey).toHaveBeenCalledWith({
+      surveyId: "survey-1",
+      startsAt: new Date("2026-06-05T09:30").toISOString(),
+      endsAt: new Date("2026-06-12T18:00").toISOString(),
+    });
+  });
 });

@@ -81,6 +81,8 @@ export class AdminPayloadMapper {
       isLatestVersion: row.is_latest_version,
       settings: normalizeRecord(row.settings),
       createdBy: row.created_by,
+      startsAt: row.starts_at ?? undefined,
+      endsAt: row.ends_at ?? undefined,
       publishedAt: row.published_at ?? undefined,
       closedAt: row.closed_at ?? undefined,
       createdAt: row.created_at,

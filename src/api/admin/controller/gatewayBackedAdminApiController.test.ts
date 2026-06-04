@@ -347,6 +347,49 @@ describe("GatewayBackedAdminApiController question updates", () => {
     });
   });
 
+  it("maps survey schedule updates to nullable raw timestamp columns", async () => {
+    const updateSurvey = vi.fn(
+      async (args: { surveyId: string; payload: RawUpdateSurveyPayload }): Promise<RawSurvey> => ({
+        id: args.surveyId,
+        title: "생활관 만족도 조사",
+        description: null,
+        status: "draft",
+        public_slug: null,
+        public_code: "8K2PQA",
+        version_group_id: "version-group-1",
+        version_number: 1,
+        parent_survey_id: null,
+        is_latest_version: true,
+        settings: {},
+        created_by: "user-1",
+        starts_at: args.payload.starts_at ?? null,
+        ends_at: args.payload.ends_at ?? null,
+        published_at: null,
+        closed_at: null,
+        created_at: "2026-05-28T00:00:00.000Z",
+        updated_at: "2026-05-28T00:00:00.000Z",
+      }),
+    );
+    const controller = new GatewayBackedAdminApiController(
+      { updateSurvey } as unknown as AdminApiGateway,
+      {} as AdminStorageGateway,
+    );
+
+    await controller.updateSurvey({
+      surveyId: "survey-1",
+      startsAt: "2026-06-05T00:00:00.000Z",
+      endsAt: undefined,
+    });
+
+    expect(updateSurvey).toHaveBeenCalledWith({
+      surveyId: "survey-1",
+      payload: {
+        starts_at: "2026-06-05T00:00:00.000Z",
+        ends_at: null,
+      },
+    });
+  });
+
   it("sends question type updates and nullable clears to the gateway", async () => {
     const updateQuestion = vi.fn(
       async (args: { questionId: string; payload: RawUpdateQuestionPayload }): Promise<RawQuestion> => ({

@@ -11,6 +11,8 @@ export type ParticipantSurvey = Readonly<{
   publicIdentifier: string;
   versionNumber: number;
   settings: JsonRecord;
+  startsAt?: string;
+  endsAt?: string;
   publishedAt?: string;
 }>;
 

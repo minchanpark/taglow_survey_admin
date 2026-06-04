@@ -17,6 +17,8 @@ export class ParticipantSurveyMapper {
       publicIdentifier: getSurveyPublicIdentifier(survey) ?? "",
       versionNumber: survey.versionNumber,
       settings: survey.settings,
+      startsAt: survey.startsAt,
+      endsAt: survey.endsAt,
       publishedAt: survey.publishedAt,
     };
   }

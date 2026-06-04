@@ -169,7 +169,14 @@ export class SupabaseParticipantSurveyGateway implements ParticipantSurveyGatewa
   }
 
   private baseSurveyQuery() {
-    return this.supabase.from("surveys").select("*").eq("status", "published").eq("is_latest_version", true);
+    const now = new Date().toISOString();
+    return this.supabase
+      .from("surveys")
+      .select("*")
+      .eq("status", "published")
+      .eq("is_latest_version", true)
+      .or(`starts_at.is.null,starts_at.lte.${now}`)
+      .or(`ends_at.is.null,ends_at.gt.${now}`);
   }
 
   private async maybeOne<T>(query: SupabaseResult<unknown>): Promise<T | null> {

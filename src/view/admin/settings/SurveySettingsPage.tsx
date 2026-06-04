@@ -1,4 +1,4 @@
-import { CheckCircle2, Copy, ExternalLink, Globe2, RefreshCcw, Rocket, Save, UserPlus, Users, XCircle } from "lucide-react";
+import { CalendarClock, CheckCircle2, Copy, ExternalLink, Globe2, RefreshCcw, Rocket, Save, UserPlus, Users, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { canInviteSurvey, canManageSurvey, getSurveyPublicPath, type SurveyCollaboratorRole } from "../../../api/admin/model";
@@ -42,6 +42,8 @@ export function SurveySettingsPage() {
   const updateCollaboratorRoleMutation = useUpdateSurveyCollaboratorRoleMutation();
   const revokeCollaboratorMutation = useRevokeSurveyCollaboratorMutation();
   const [publicSlugInput, setPublicSlugInput] = useState("");
+  const [startsAtInput, setStartsAtInput] = useState("");
+  const [endsAtInput, setEndsAtInput] = useState("");
   const [collaboratorEmailInput, setCollaboratorEmailInput] = useState("");
   const [collaboratorRoleInput, setCollaboratorRoleInput] = useState<SurveyCollaboratorRole>("viewer");
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -60,6 +62,8 @@ export function SurveySettingsPage() {
   useEffect(() => {
     if (survey) {
       setPublicSlugInput(survey.publicSlug ?? "");
+      setStartsAtInput(toDateTimeLocalValue(survey.startsAt));
+      setEndsAtInput(toDateTimeLocalValue(survey.endsAt));
     }
   }, [survey]);
 
@@ -85,6 +89,9 @@ export function SurveySettingsPage() {
   const canOpenSettings = canManageSettings || canManageSharing;
   const normalizedSlug = normalizePublicSlug(publicSlugInput);
   const hasSlugChange = normalizedSlug !== (activeSurvey.publicSlug ?? "");
+  const startsAtIso = parseDateTimeLocalValue(startsAtInput);
+  const endsAtIso = parseDateTimeLocalValue(endsAtInput);
+  const hasScheduleChange = (startsAtIso ?? "") !== (activeSurvey.startsAt ?? "") || (endsAtIso ?? "") !== (activeSurvey.endsAt ?? "");
   const validationIssues = validationQuery.data?.issues ?? [];
   const canPublish = validationQuery.data?.canPublish ?? false;
 
@@ -175,6 +182,8 @@ export function SurveySettingsPage() {
             <StatusRow label="섹션" value={`${surveyQuery.data.sections.length}개`} />
             <StatusRow label="질문" value={`${surveyQuery.data.questions.length}개`} />
             <StatusRow label="게시 검증" value={validationQuery.isPending ? "확인 중" : canPublish ? "통과" : `${validationIssues.length}개 이슈`} />
+            <StatusRow label="게시 예약" value={formatScheduleValue(activeSurvey.startsAt)} />
+            <StatusRow label="종료 예약" value={formatScheduleValue(activeSurvey.endsAt)} />
           </div>
 
           {validationIssues.length ? (
@@ -184,6 +193,49 @@ export function SurveySettingsPage() {
               ))}
             </ul>
           ) : null}
+
+          <div className="tg-settings-page__schedule" aria-label="게시 예약 설정">
+            <div className="tg-settings-page__field">
+              <label htmlFor="survey-starts-at">설문 게시 시간</label>
+              <input
+                id="survey-starts-at"
+                type="datetime-local"
+                value={startsAtInput}
+                onChange={(event) => setStartsAtInput(event.target.value)}
+              />
+              <p>저장된 시간 이후 draft 설문이 자동으로 published 상태가 됩니다.</p>
+            </div>
+            <div className="tg-settings-page__field">
+              <label htmlFor="survey-ends-at">설문 종료 시간</label>
+              <input
+                id="survey-ends-at"
+                type="datetime-local"
+                value={endsAtInput}
+                onChange={(event) => setEndsAtInput(event.target.value)}
+              />
+              <p>저장된 시간 이후 published 설문이 자동으로 closed 상태가 되고 추가 응답을 막습니다.</p>
+            </div>
+            <div className="tg-settings-page__schedule-actions">
+              <Button
+                variant="secondary"
+                icon={<CalendarClock size={15} aria-hidden="true" />}
+                disabled={!hasScheduleChange || updateSurveyMutation.isPending}
+                onClick={() => void saveSchedule()}
+              >
+                예약 저장
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={(!startsAtInput && !endsAtInput) || updateSurveyMutation.isPending}
+                onClick={() => {
+                  setStartsAtInput("");
+                  setEndsAtInput("");
+                }}
+              >
+                비우기
+              </Button>
+            </div>
+          </div>
 
           <div className="tg-settings-page__actions">
             <Button
@@ -390,6 +442,40 @@ export function SurveySettingsPage() {
     }
   }
 
+  async function saveSchedule() {
+    setNotice(null);
+    if (!canManageSettings) {
+      setNotice({ tone: "error", message: "게시 예약은 초대 가능 권한 이상만 변경할 수 있습니다." });
+      return;
+    }
+
+    if (startsAtInput && !startsAtIso) {
+      setNotice({ tone: "error", message: "설문 게시 시간을 정확히 입력해주세요." });
+      return;
+    }
+
+    if (endsAtInput && !endsAtIso) {
+      setNotice({ tone: "error", message: "설문 종료 시간을 정확히 입력해주세요." });
+      return;
+    }
+
+    if (startsAtIso && endsAtIso && Date.parse(startsAtIso) >= Date.parse(endsAtIso)) {
+      setNotice({ tone: "error", message: "설문 종료 시간은 게시 시간보다 늦어야 합니다." });
+      return;
+    }
+
+    try {
+      await updateSurveyMutation.mutateAsync({
+        surveyId: activeSurvey.id,
+        startsAt: startsAtIso,
+        endsAt: endsAtIso,
+      });
+      setNotice({ tone: "success", message: "설문 게시/종료 예약을 저장했습니다." });
+    } catch {
+      setNotice({ tone: "error", message: "설문 게시/종료 예약을 저장하지 못했습니다." });
+    }
+  }
+
   async function closeSurvey() {
     setNotice(null);
     if (!canManageSettings) {
@@ -428,6 +514,33 @@ function StatusRow(props: { label: string; value: string }) {
       <strong>{props.value}</strong>
     </div>
   );
+}
+
+function toDateTimeLocalValue(value: string | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
+function parseDateTimeLocalValue(value: string): string | undefined {
+  if (!value.trim()) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+function formatScheduleValue(value: string | undefined): string {
+  if (!value) return "설정 안 됨";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "설정 안 됨";
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function normalizePublicSlug(value: string): string {

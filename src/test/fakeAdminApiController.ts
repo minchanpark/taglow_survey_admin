@@ -107,6 +107,8 @@ export const fakeSurvey: Survey = {
   isLatestVersion: true,
   settings: {},
   createdBy: "user-1",
+  startsAt: undefined,
+  endsAt: undefined,
   publishedAt: undefined,
   closedAt: undefined,
   createdAt: "2026-05-28T00:00:00.000Z",
