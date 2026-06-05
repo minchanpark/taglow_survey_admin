@@ -63,6 +63,7 @@ export class SupabaseParticipantSurveyGateway implements ParticipantSurveyGatewa
 
     const content: RawParticipantLoginContent = {
       title: getString(result.title),
+      title_en: getString(result.titleEn),
       headline: getString(result.headline),
       headline_en: getString(result.headlineEn),
       body_paragraphs: normalizeStringArray(result.bodyParagraphs),

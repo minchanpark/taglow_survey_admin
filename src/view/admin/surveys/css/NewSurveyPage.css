@@ -76,6 +76,12 @@
   gap: var(--tg-space-4);
 }
 
+.tg-new-survey-page__field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
+  gap: var(--tg-space-8);
+}
+
 .tg-new-survey-page__field span {
   color: var(--tg-text-strong);
   font-size: var(--tg-font-size-caption);
@@ -178,5 +184,9 @@
   .tg-new-survey-page__actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .tg-new-survey-page__field-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -141,6 +141,7 @@ const editSectionSchema = z.object({
 
 const editSurveySchema = z.object({
   title: z.string().trim().min(1, "설문 제목을 입력해주세요.").max(120, "설문 제목은 120자 이하로 입력해주세요."),
+  titleEn: z.string().trim().max(120, "영문 설문 제목은 120자 이하로 입력해주세요.").optional(),
   descriptionKo: z.string().trim().max(800, "소개 문구는 800자 이하로 입력해주세요.").optional(),
   descriptionEn: z.string().trim().optional(),
 });
@@ -363,6 +364,7 @@ export function SurveyBuilderPage() {
 function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
   const updateSurveyMutation = useUpdateSurveyMutation();
   const [savedTitle, setSavedTitle] = useState(props.survey.title);
+  const [savedTitleEn, setSavedTitleEn] = useState(props.survey.titleEn ?? "");
   const [savedDescriptionKo, setSavedDescriptionKo] = useState(props.survey.description?.ko ?? "");
   const [savedDescriptionEn, setSavedDescriptionEn] = useState(props.survey.description?.en ?? "");
   const titleForm = useForm<EditSurveyForm>({
@@ -370,20 +372,27 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
     defaultValues: surveyToTitleForm(props.survey),
   });
   const titleValue = titleForm.watch("title");
+  const titleEnValue = titleForm.watch("titleEn") ?? "";
   const descriptionKoValue = titleForm.watch("descriptionKo") ?? "";
   const descriptionEnValue = titleForm.watch("descriptionEn") ?? "";
   const normalizedTitle = titleValue.trim();
+  const normalizedTitleEn = titleEnValue.trim();
   const normalizedDescriptionKo = descriptionKoValue.trim();
   const normalizedDescriptionEn = descriptionEnValue.trim();
-  const isUnchanged = normalizedTitle === savedTitle && normalizedDescriptionKo === savedDescriptionKo && normalizedDescriptionEn === savedDescriptionEn;
+  const isUnchanged =
+    normalizedTitle === savedTitle &&
+    normalizedTitleEn === savedTitleEn &&
+    normalizedDescriptionKo === savedDescriptionKo &&
+    normalizedDescriptionEn === savedDescriptionEn;
   const isBusy = props.isDisabled || updateSurveyMutation.isPending;
 
   useEffect(() => {
     setSavedTitle(props.survey.title);
+    setSavedTitleEn(props.survey.titleEn ?? "");
     setSavedDescriptionKo(props.survey.description?.ko ?? "");
     setSavedDescriptionEn(props.survey.description?.en ?? "");
     titleForm.reset(surveyToTitleForm(props.survey));
-  }, [props.survey.description, props.survey.title, titleForm]);
+  }, [props.survey.description, props.survey.title, props.survey.titleEn, titleForm]);
 
   return (
     <div className="tg-builder-title-block">
@@ -399,11 +408,13 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
             {
               surveyId: props.survey.id,
               title: values.title.trim(),
+              titleEn: values.titleEn?.trim() ?? "",
               description: toOptionalLocalizedText(values.descriptionKo, values.descriptionEn),
             },
             {
               onSuccess: (survey) => {
                 setSavedTitle(survey.title);
+                setSavedTitleEn(survey.titleEn ?? "");
                 setSavedDescriptionKo(survey.description?.ko ?? "");
                 setSavedDescriptionEn(survey.description?.en ?? "");
                 titleForm.reset(surveyToTitleForm(survey));
@@ -412,10 +423,21 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
           );
         })}
       >
-        <label className="tg-builder-title-form__field">
-          <span>설문 제목</span>
-          <input aria-label="설문 제목" {...titleForm.register("title")} disabled={isBusy} />
-        </label>
+        <div className="tg-builder-title-form__title-row">
+          <label className="tg-builder-title-form__field">
+            <span>설문 제목</span>
+            <input aria-label="설문 제목" {...titleForm.register("title")} disabled={isBusy} />
+          </label>
+          <label className="tg-builder-title-form__field">
+            <span>영어 제목</span>
+            <input
+              aria-label="영어 제목"
+              placeholder="Example: 2026 Spring Dormitory Survey"
+              {...titleForm.register("titleEn")}
+              disabled={isBusy}
+            />
+          </label>
+        </div>
         <label className="tg-builder-title-form__field tg-builder-title-form__field--intro">
           <span>한국어 소개 문구</span>
           <textarea
@@ -444,6 +466,7 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
         </div>
       </form>
       {titleForm.formState.errors.title ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.title.message}</small> : null}
+      {titleForm.formState.errors.titleEn ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.titleEn.message}</small> : null}
       {titleForm.formState.errors.descriptionKo ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.descriptionKo.message}</small> : null}
       {titleForm.formState.errors.descriptionEn ? <small className="tg-builder-title-form__error">{titleForm.formState.errors.descriptionEn.message}</small> : null}
       {updateSurveyMutation.isError ? (
@@ -1982,6 +2005,7 @@ function getErrorDetail(error: unknown): string | undefined {
 function surveyToTitleForm(survey: Survey): EditSurveyForm {
   return {
     title: survey.title,
+    titleEn: survey.titleEn ?? "",
     descriptionKo: survey.description?.ko ?? "",
     descriptionEn: survey.description?.en ?? "",
   };

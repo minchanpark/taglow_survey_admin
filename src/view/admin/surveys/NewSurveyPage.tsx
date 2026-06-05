@@ -9,6 +9,7 @@ import "./css/NewSurveyPage.css";
 
 const newSurveySchema = z.object({
   title: z.string().trim().min(1, "설문 제목을 입력해주세요.").max(120, "제목은 120자 이하로 입력해주세요."),
+  titleEn: z.string().trim().max(120, "영어 제목은 120자 이하로 입력해주세요.").optional(),
   description: z.string().trim().max(500, "설명은 500자 이하로 입력해주세요.").optional(),
   enableEnglish: z.boolean(),
   collectBasicProfile: z.boolean(),
@@ -24,6 +25,7 @@ export function NewSurveyPage() {
     resolver: zodResolver(newSurveySchema),
     defaultValues: {
       title: "",
+      titleEn: "",
       description: "",
       enableEnglish: true,
       collectBasicProfile: true,
@@ -34,6 +36,7 @@ export function NewSurveyPage() {
     createSurveyMutation.mutate(
       {
         title: values.title,
+        ...(values.titleEn?.trim() ? { titleEn: values.titleEn.trim() } : {}),
         description: values.description ? { ko: values.description } : undefined,
         settings: {
           locales: values.enableEnglish ? ["ko", "en"] : ["ko"],
@@ -97,18 +100,33 @@ export function NewSurveyPage() {
       <form className="tg-new-survey-page__form" onSubmit={onSubmit} noValidate>
         <fieldset className="tg-new-survey-page__section" disabled={createSurveyMutation.isPending}>
           <legend>기본 정보</legend>
-          <label className="tg-new-survey-page__field">
-            <span>설문 제목</span>
-            <input
-              type="text"
-              placeholder="예: 2026 봄학기 생활관 만족도 조사"
-              aria-invalid={Boolean(form.formState.errors.title)}
-              {...form.register("title")}
-            />
-            {form.formState.errors.title ? (
-              <small className="tg-new-survey-page__error">{form.formState.errors.title.message}</small>
-            ) : null}
-          </label>
+          <div className="tg-new-survey-page__field-row">
+            <label className="tg-new-survey-page__field">
+              <span>설문 제목</span>
+              <input
+                type="text"
+                placeholder="예: 2026 봄학기 생활관 만족도 조사"
+                aria-invalid={Boolean(form.formState.errors.title)}
+                {...form.register("title")}
+              />
+              {form.formState.errors.title ? (
+                <small className="tg-new-survey-page__error">{form.formState.errors.title.message}</small>
+              ) : null}
+            </label>
+
+            <label className="tg-new-survey-page__field">
+              <span>영어 제목</span>
+              <input
+                type="text"
+                placeholder="Example: 2026 Spring Dormitory Survey"
+                aria-invalid={Boolean(form.formState.errors.titleEn)}
+                {...form.register("titleEn")}
+              />
+              {form.formState.errors.titleEn ? (
+                <small className="tg-new-survey-page__error">{form.formState.errors.titleEn.message}</small>
+              ) : null}
+            </label>
+          </div>
 
           <label className="tg-new-survey-page__field">
             <span>설명</span>

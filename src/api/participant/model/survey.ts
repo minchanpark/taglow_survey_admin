@@ -5,6 +5,7 @@ export type { JsonRecord, LocalizedText, Question, SurveyAsset, SurveySection } 
 export type ParticipantSurvey = Readonly<{
   id: string;
   title: string;
+  titleEn?: string;
   description?: LocalizedText;
   publicSlug?: string;
   publicCode?: string;
@@ -32,6 +33,7 @@ export type ParticipantLoginImage = Readonly<{
 
 export type ParticipantLoginContent = Readonly<{
   title?: string;
+  titleEn?: string;
   headline?: string;
   headlineEn?: string;
   bodyParagraphs: readonly string[];

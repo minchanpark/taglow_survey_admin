@@ -8,6 +8,7 @@ import type { ApprovableAdminRole, UpgradableAdminRole } from "./adminMember";
 
 export type CreateSurveyCommand = Readonly<{
   title: string;
+  titleEn?: string;
   description?: LocalizedText;
   settings?: SurveySettings;
 }>;
@@ -15,6 +16,7 @@ export type CreateSurveyCommand = Readonly<{
 export type UpdateSurveyCommand = Readonly<{
   surveyId: string;
   title?: string;
+  titleEn?: string;
   description?: LocalizedText;
   status?: SurveyStatus;
   publicSlug?: string;

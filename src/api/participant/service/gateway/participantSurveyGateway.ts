@@ -23,6 +23,7 @@ export type RawParticipantLoginImage = Readonly<{
 
 export type RawParticipantLoginContent = Readonly<{
   title?: string;
+  title_en?: string;
   headline?: string;
   headline_en?: string;
   body_paragraphs?: string[];

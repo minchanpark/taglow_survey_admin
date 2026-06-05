@@ -148,7 +148,7 @@ describe("SurveyPreviewPage", () => {
       "/admin/surveys/survey-1/preview?locale=en&device=desktop&section_id=section-2",
     );
 
-    await screen.findByRole("heading", { name: "생활관 만족도 조사", level: 1 });
+    await screen.findByRole("heading", { name: "Dormitory Satisfaction Survey", level: 1 });
     expect(screen.getByRole("heading", { name: "Cafeteria" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Facilities" })).not.toBeInTheDocument();
 

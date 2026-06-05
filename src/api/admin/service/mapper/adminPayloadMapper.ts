@@ -71,6 +71,7 @@ export class AdminPayloadMapper {
     return {
       id: row.id,
       title: row.title,
+      titleEn: row.title_en ?? undefined,
       description: row.description || row.description_en ? compactLocalizedText(row.description ?? "", row.description_en) : undefined,
       status: normalizeSurveyStatus(row.status),
       publicSlug: row.public_slug ?? undefined,

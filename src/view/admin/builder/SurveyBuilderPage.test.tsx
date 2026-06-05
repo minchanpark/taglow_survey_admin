@@ -213,6 +213,7 @@ describe("SurveyBuilderPage", () => {
       expect(updateSurvey).toHaveBeenCalledWith({
         surveyId: "survey-1",
         title: "생활관 만족도 조사 2차",
+        titleEn: "Dormitory Satisfaction Survey",
         description: { ko: "2026 봄학기" },
       });
     });
@@ -241,10 +242,39 @@ describe("SurveyBuilderPage", () => {
       expect(updateSurvey).toHaveBeenCalledWith({
         surveyId: "survey-1",
         title: "생활관 만족도 조사",
+        titleEn: "Dormitory Satisfaction Survey",
         description: {
           ko: "생활관 생활 경험을 바탕으로 솔직하게 응답해주세요.",
           en: "Please answer honestly based on your dormitory experience.",
         },
+      });
+    });
+  });
+
+  it("updates the English survey title from the same title row", async () => {
+    const user = userEvent.setup();
+    const updateSurvey = vi.fn<AdminApiController["updateSurvey"]>(async (command: UpdateSurveyCommand) => ({
+      ...fakeSurvey,
+      id: command.surveyId,
+      title: command.title ?? fakeSurvey.title,
+      titleEn: command.titleEn ?? fakeSurvey.titleEn,
+      description: command.description ?? fakeSurvey.description,
+    }));
+    renderBuilder({ updateSurvey });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    const titleForm = screen.getByRole("form", { name: "설문 제목 편집" });
+    const titleEnInput = within(titleForm).getByLabelText("영어 제목");
+    await user.clear(titleEnInput);
+    await user.type(titleEnInput, "Dormitory Experience Survey");
+    await user.click(screen.getByRole("button", { name: "기본 정보 저장" }));
+
+    await waitFor(() => {
+      expect(updateSurvey).toHaveBeenCalledWith({
+        surveyId: "survey-1",
+        title: "생활관 만족도 조사",
+        titleEn: "Dormitory Experience Survey",
+        description: { ko: "2026 봄학기" },
       });
     });
   });

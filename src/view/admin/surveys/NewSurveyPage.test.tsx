@@ -52,12 +52,14 @@ describe("NewSurveyPage", () => {
     renderNewSurveyPage({ createSurvey });
 
     await user.type(await screen.findByLabelText("설문 제목"), "2026 생활관 만족도 조사");
+    await user.type(screen.getByLabelText("영어 제목"), "2026 Dormitory Satisfaction Survey");
     await user.type(screen.getByLabelText("설명"), "봄학기 생활관 경험을 확인합니다.");
     await user.click(screen.getByRole("button", { name: "설문 생성" }));
 
     expect(await screen.findByText("builder route")).toBeInTheDocument();
     expect(createSurvey).toHaveBeenCalledWith({
       title: "2026 생활관 만족도 조사",
+      titleEn: "2026 Dormitory Satisfaction Survey",
       description: { ko: "봄학기 생활관 경험을 확인합니다." },
       settings: {
         locales: ["ko", "en"],

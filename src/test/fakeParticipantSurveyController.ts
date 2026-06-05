@@ -4,6 +4,7 @@ export const fakeParticipantSurveyDetail: ParticipantSurveyDetail = {
   survey: {
     id: "survey-1",
     title: "생활관 만족도 조사",
+    titleEn: "Dormitory Satisfaction Survey",
     description: { ko: "2026 봄학기" },
     publicSlug: "handong-dorm-2026",
     publicCode: "8K2PQA",

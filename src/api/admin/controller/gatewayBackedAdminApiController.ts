@@ -194,6 +194,7 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     assertCreateSurveyCommand(command);
     const row = await this.gateway.createSurvey({
       title: command.title,
+      title_en: nullableText(command.titleEn),
       description: command.description?.ko ?? null,
       description_en: command.description?.en ?? null,
       settings: command.settings ?? {},
@@ -207,6 +208,7 @@ export class GatewayBackedAdminApiController implements AdminApiController {
       surveyId: command.surveyId,
       payload: compactPayload({
         title: command.title,
+        title_en: hasOwn(command, "titleEn") ? nullableText(command.titleEn) : undefined,
         description: hasOwn(command, "description") ? nullableText(command.description?.ko) : undefined,
         description_en: hasOwn(command, "description") ? nullableText(command.description?.en) : undefined,
         status: command.status,

@@ -1,4 +1,4 @@
-import type { JsonRecord, LocalizedText } from "./common";
+import type { JsonRecord, Locale, LocalizedText } from "./common";
 import type { Question } from "./question";
 import type { SurveyAsset } from "./asset";
 import type { SurveySection } from "./section";
@@ -23,6 +23,7 @@ export type ParticipantLoginContentSettings = Readonly<{
 export type Survey = Readonly<{
   id: string;
   title: string;
+  titleEn?: string;
   description?: LocalizedText;
   status: SurveyStatus;
   publicSlug?: string;
@@ -56,6 +57,10 @@ export function getSurveyPublicIdentifier(survey: Pick<Survey, "publicSlug" | "p
 export function getSurveyPublicPath(survey: Pick<Survey, "publicSlug" | "publicCode">): string | undefined {
   const identifier = getSurveyPublicIdentifier(survey);
   return identifier ? `/survey/${encodeURIComponent(identifier)}` : undefined;
+}
+
+export function localizedSurveyTitle(survey: Pick<Survey, "title" | "titleEn">, locale: Locale): string {
+  return locale === "en" ? survey.titleEn?.trim() || survey.title : survey.title;
 }
 
 export function getParticipantLoginContentSettings(settings: SurveySettings | undefined): ParticipantLoginContentSettings {

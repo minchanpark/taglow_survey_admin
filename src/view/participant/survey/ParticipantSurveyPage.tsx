@@ -26,6 +26,7 @@ import {
   getStringArray,
   groupQuestionsBySection,
   isIntroSection,
+  localizedSurveyTitle,
   localizedOption,
   localizedText,
   ratioFromPoint,
@@ -121,7 +122,7 @@ export function ParticipantSurveyPage() {
               email={sessionQuery.data.email}
               loginContent={loginContent}
               locale={locale}
-              surveyTitle={surveyQuery.data.survey.title}
+              surveyTitle={localizedSurveyTitle(surveyQuery.data.survey, locale)}
               onContinue={() => setStep({ type: "intro" })}
               onSignIn={() => signInMutation.mutate({ redirectTo: signInRedirectTo })}
             />
@@ -262,6 +263,7 @@ function buildLoginContentFromSurveyDetail(detail: ParticipantSurveyDetail): Par
   if (!settings.headline && !settings.headlineEn && !bodyParagraphs.length && !bodyParagraphsEn.length && !headerImage && !bottomImage) return null;
   return {
     title: detail.survey.title,
+    titleEn: detail.survey.titleEn,
     headline: settings.headline,
     headlineEn: settings.headlineEn,
     bodyParagraphs,
@@ -273,7 +275,8 @@ function buildLoginContentFromSurveyDetail(detail: ParticipantSurveyDetail): Par
 
 function getLoginHeadline(content: ParticipantLoginContent | null | undefined, locale: Locale): string | undefined {
   if (!content) return undefined;
-  return locale === "en" ? content.headlineEn || content.headline : content.headline || content.headlineEn;
+  if (locale === "en") return content.headlineEn || content.headline || content.titleEn || content.title;
+  return content.headline || content.headlineEn || content.title;
 }
 
 function getLoginBodyParagraphs(content: ParticipantLoginContent | null | undefined, locale: Locale): string[] {
@@ -310,7 +313,7 @@ function ParticipantIntroStep(props: {
     <>
       <section className="tg-participant-flow-card" aria-labelledby="participant-survey-title">
         <p className="tg-participant-survey-page__eyebrow">인트로</p>
-        <h1 id="participant-survey-title">{props.survey.title}</h1>
+        <h1 id="participant-survey-title">{localizedSurveyTitle(props.survey, props.locale)}</h1>
         {props.survey.description ? (
           <p className="tg-participant-survey-page__intro-copy">
             <AutoLinkedText text={localizedText(props.survey.description, props.locale)} />

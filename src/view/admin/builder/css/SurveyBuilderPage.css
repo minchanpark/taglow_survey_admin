@@ -38,6 +38,13 @@
   gap: var(--tg-space-5);
 }
 
+.tg-builder-title-form__title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
+  gap: var(--tg-space-6);
+  align-items: end;
+}
+
 .tg-builder-title-form__field {
   display: grid;
   flex: 1 1 auto;
@@ -799,6 +806,10 @@
 
   .tg-builder-title-form {
     grid-template-columns: 1fr;
+  }
+
+  .tg-builder-title-form__title-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .tg-builder-page__workspace,

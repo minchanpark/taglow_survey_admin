@@ -18,6 +18,7 @@ export type RawAdminAuthUser = Readonly<{
 export type RawSurvey = Readonly<{
   id: string;
   title: string;
+  title_en?: string | null;
   description: string | null;
   description_en?: string | null;
   status: string;
@@ -98,12 +99,13 @@ export type RawSurveyAsset = Readonly<{
   updated_at?: string;
 }>;
 
-export type RawCreateSurveyPayload = Partial<Pick<RawSurvey, "description" | "description_en" | "settings">> & Pick<RawSurvey, "title">;
+export type RawCreateSurveyPayload = Partial<Pick<RawSurvey, "title_en" | "description" | "description_en" | "settings">> & Pick<RawSurvey, "title">;
 export type RawInsertSurveyPayload = RawCreateSurveyPayload & Pick<RawSurvey, "created_by">;
 export type RawUpdateSurveyPayload = Partial<
   Pick<
     RawSurvey,
     | "title"
+    | "title_en"
     | "description"
     | "description_en"
     | "status"

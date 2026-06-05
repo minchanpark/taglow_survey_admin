@@ -14,6 +14,7 @@ import {
   getQuestionKind,
   getScaleBounds,
   getScaleLabels,
+  localizedSurveyTitle,
   localizedOption,
   localizedText,
   ratioFromPoint,
@@ -120,6 +121,7 @@ export function SurveyPreviewPage() {
   }
 
   const survey = previewQuery.data.survey;
+  const surveyTitle = localizedSurveyTitle(survey, locale);
   const sortedSections = sortByOrder(previewQuery.data.sections);
   const sortedQuestions = sortByOrder(previewQuery.data.questions);
   const activeSections = sectionId ? sortedSections.filter((section) => section.id === sectionId) : sortedSections;
@@ -131,7 +133,7 @@ export function SurveyPreviewPage() {
       <header className="tg-preview-page__header">
         <div>
           <p className="tg-preview-page__eyebrow">참여자 화면 미리보기</p>
-          <h1 id="survey-preview-title">{survey.title}</h1>
+          <h1 id="survey-preview-title">{surveyTitle}</h1>
         </div>
         <div className="tg-preview-page__status">
           <StatusBadge tone="info">preview</StatusBadge>
@@ -206,7 +208,7 @@ export function SurveyPreviewPage() {
                   <Eye size={16} aria-hidden="true" />
                   <span>Taglow Survey</span>
                 </div>
-                <h2>{survey.title}</h2>
+                <h2>{surveyTitle}</h2>
                 {survey.description ? <p>{localizedText(survey.description, locale)}</p> : null}
               </header>
 

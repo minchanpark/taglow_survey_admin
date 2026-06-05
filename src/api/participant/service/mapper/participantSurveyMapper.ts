@@ -12,6 +12,7 @@ export class ParticipantSurveyMapper {
     return {
       id: survey.id,
       title: survey.title,
+      titleEn: survey.titleEn,
       description: survey.description,
       publicSlug: survey.publicSlug,
       publicCode: survey.publicCode,
@@ -42,6 +43,7 @@ export class ParticipantSurveyMapper {
     if (!row) return null;
     return {
       title: row.title,
+      titleEn: row.title_en,
       headline: row.headline,
       headlineEn: row.headline_en,
       bodyParagraphs: normalizeBodyParagraphs(row.body_paragraphs),
