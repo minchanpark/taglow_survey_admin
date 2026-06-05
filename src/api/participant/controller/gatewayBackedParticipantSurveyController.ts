@@ -1,6 +1,7 @@
 import type {
   ParticipantQuestionImageUpload,
   ParticipantQuestionImageUploadCommand,
+  ParticipantLoginContent,
   ParticipantSessionState,
   ParticipantSignInCommand,
   ParticipantSurveyDetail,
@@ -31,6 +32,11 @@ export class GatewayBackedParticipantSurveyController implements ParticipantSurv
 
   signInWithGoogle(command: ParticipantSignInCommand): Promise<void> {
     return this.gateway.signInWithGoogle(command);
+  }
+
+  async getParticipantLoginContent(publicIdentifier: string): Promise<ParticipantLoginContent | null> {
+    const content = await this.gateway.getParticipantLoginContent(publicIdentifier);
+    return this.mapper.toLoginContent(content);
   }
 
   async getPublishedSurveyByIdentifier(publicIdentifier: string): Promise<ParticipantSurveyDetail> {

@@ -1,5 +1,5 @@
 import type { RawQuestion, RawSection, RawSurvey, RawSurveyAsset } from "../../../admin/service/gateway/rawTypes";
-import type { ParticipantSurveyGateway, RawParticipantQuestionImageUpload } from "./participantSurveyGateway";
+import type { ParticipantSurveyGateway, RawParticipantLoginContent, RawParticipantQuestionImageUpload } from "./participantSurveyGateway";
 import type { SubmitSurveyResponseCommand, SubmitSurveyResponseResult } from "../../model";
 import { ParticipantSurveyApiError, normalizeParticipantSurveyApiError } from "./participantSurveyApiError";
 
@@ -47,6 +47,35 @@ export class SupabaseParticipantSurveyGateway implements ParticipantSurveyGatewa
       },
     });
     if (error) throw normalizeParticipantSurveyApiError(error, "UNAUTHENTICATED");
+  }
+
+  async getParticipantLoginContent(publicIdentifier: string): Promise<RawParticipantLoginContent | null> {
+    const identifier = publicIdentifier.trim();
+    if (!identifier) return null;
+
+    const { data, error } = await this.supabase.rpc("get_participant_login_content", {
+      p_public_identifier: identifier,
+    });
+    if (error) throw normalizeParticipantSurveyApiError(error);
+
+    const result = isRecord(data) ? data : {};
+    if (getString(result.status) !== "allowed") return null;
+
+    const content: RawParticipantLoginContent = {
+      title: getString(result.title),
+      headline: getString(result.headline),
+      headline_en: getString(result.headlineEn),
+      body_paragraphs: normalizeStringArray(result.bodyParagraphs),
+      body_paragraphs_en: normalizeStringArray(result.bodyParagraphsEn),
+      header_image: normalizeLoginImage(result.headerImage),
+      bottom_image: normalizeLoginImage(result.bottomImage),
+    };
+
+    return {
+      ...content,
+      header_image: await this.withSignedLoginImage(content.header_image),
+      bottom_image: await this.withSignedLoginImage(content.bottom_image),
+    };
   }
 
   async getPublishedSurveyByIdentifier(publicIdentifier: string): Promise<RawSurvey> {
@@ -206,6 +235,20 @@ export class SupabaseParticipantSurveyGateway implements ParticipantSurveyGatewa
       return row;
     }
   }
+
+  private async withSignedLoginImage(image: RawParticipantLoginContent["header_image"]): Promise<RawParticipantLoginContent["header_image"]> {
+    if (!image) return null;
+    try {
+      const { data, error } = await this.supabase.storage.from(image.storage_bucket).createSignedUrl(image.storage_path, 60 * 60);
+      if (error || !data?.signedUrl) return image;
+      return {
+        ...image,
+        signed_url: data.signedUrl,
+      };
+    } catch {
+      return image;
+    }
+  }
 }
 
 function getFileExtension(fileName: string): string {
@@ -225,4 +268,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function getString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).slice(0, 2);
+}
+
+function normalizeLoginImage(value: unknown): RawParticipantLoginContent["header_image"] {
+  if (!isRecord(value)) return null;
+  const assetId = getString(value.assetId);
+  const storageBucket = getString(value.storageBucket);
+  const storagePath = getString(value.storagePath);
+  if (!assetId || !storageBucket || !storagePath) return null;
+  return {
+    asset_id: assetId,
+    storage_bucket: storageBucket,
+    storage_path: storagePath,
+    signed_url: getString(value.signedUrl),
+  };
 }

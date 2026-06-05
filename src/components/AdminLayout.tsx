@@ -1,4 +1,4 @@
-import { BarChart3, Eye, FileText, LayoutDashboard, ListChecks, LogOut, Settings, UserCheck, UserCircle } from "lucide-react";
+import { BarChart3, Eye, FileText, LayoutDashboard, ListChecks, LogOut, NotebookText, Settings, UserCheck, UserCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
@@ -27,7 +27,7 @@ const primaryLinks = [
 ];
 
 const surveyLinks: ReadonlyArray<{
-  segment: "dashboard" | "builder" | "preview" | "analysis" | "settings";
+  segment: "dashboard" | "builder" | "preview" | "analysis" | "report" | "settings";
   label: string;
   icon: ReactNode;
 }> = [
@@ -35,6 +35,7 @@ const surveyLinks: ReadonlyArray<{
   { segment: "builder", label: "빌더", icon: <FileText size={16} aria-hidden="true" /> },
   { segment: "preview", label: "미리보기", icon: <Eye size={16} aria-hidden="true" /> },
   { segment: "analysis", label: "분석", icon: <BarChart3 size={16} aria-hidden="true" /> },
+  { segment: "report", label: "보고서", icon: <NotebookText size={16} aria-hidden="true" /> },
   { segment: "settings", label: "설정", icon: <Settings size={16} aria-hidden="true" /> },
 ];
 

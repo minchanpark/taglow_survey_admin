@@ -5,4 +5,5 @@ export * from "./useAssetMutations";
 export * from "./useBuilderQueries";
 export * from "./usePreviewQueries";
 export * from "./usePublishMutations";
+export * from "./useReportQueries";
 export * from "./useSurveyQueries";

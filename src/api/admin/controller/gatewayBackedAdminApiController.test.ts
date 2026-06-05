@@ -630,3 +630,62 @@ describe("GatewayBackedAdminApiController analysis identity responses", () => {
     });
   });
 });
+
+describe("GatewayBackedAdminApiController report narrative", () => {
+  it("sanitizes narrative payloads and normalizes provider results", async () => {
+    const generateReportNarrative = vi.fn(async (command) => ({
+      generatedAt: "2026-06-05T00:00:00.000Z",
+      blocks: [
+        {
+          blockId: "priority",
+          summary: "세탁실 혼잡을 먼저 확인합니다.",
+          body: ["세탁실 혼잡은 필터 조건에서 반복적으로 확인되는 개선 항목입니다."],
+          evidenceIds: ["priority-1", "bad-id"],
+          suggestedActions: ["혼잡 시간대 확인"],
+        },
+      ],
+      received: command,
+    }));
+    const controller = new GatewayBackedAdminApiController(
+      { generateReportNarrative } as unknown as AdminApiGateway,
+      {} as AdminStorageGateway,
+    );
+
+    const result = await controller.generateReportNarrative({
+      surveyId: "survey-1",
+      metadata: {
+        title: "생활관 보고서",
+        term: "26-1",
+        reportDate: "2026-06-05",
+        author: "생활관자치회",
+        surveyPeriod: "2026.05.01-2026.05.10",
+        audience: "생활관 거주 학생",
+        method: "온라인 설문",
+        purpose: "개선 우선순위 확인",
+      },
+      filters: { dormitory: "비전관" },
+      blocks: [
+        {
+          id: "priority",
+          kind: "priority",
+          title: "주요 요약",
+          summary: "초기 요약",
+          n: 8,
+          filters: { dormitory: "비전관" },
+          isLowSample: true,
+          evidence: [{ id: "priority-1", label: "세탁실 혼잡", source: "priority", n: 8 }],
+          body: ["student_id=22000123 test@example.com 세탁실 혼잡"],
+        },
+      ],
+    });
+
+    expect(JSON.stringify(generateReportNarrative.mock.calls[0]?.[0])).not.toContain("test@example.com");
+    expect(JSON.stringify(generateReportNarrative.mock.calls[0]?.[0])).not.toContain("22000123");
+    expect(result.blocks[0]).toMatchObject({
+      blockId: "priority",
+      body: ["세탁실 혼잡은 필터 조건에서 반복적으로 확인되는 개선 항목입니다."],
+      evidenceIds: ["priority-1"],
+      caution: "N이 낮아 방향성 참고용으로 해석해야 합니다.",
+    });
+  });
+});

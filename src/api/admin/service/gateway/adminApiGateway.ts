@@ -1,4 +1,8 @@
 import type {
+  ReportNarrativeCommand,
+  ReportNarrativeResult,
+} from "../../model";
+import type {
   AnalysisQueryArgs,
   IdentityResponseQueryArgs,
   RawChoiceDistribution,
@@ -98,4 +102,5 @@ export interface AdminApiGateway {
   listIdentityResponses(args: IdentityResponseQueryArgs): Promise<RawPaginatedResult<RawIdentityResponse>>;
   getTextGroups(args: TextAnswerQueryArgs): Promise<RawTextGroup[]>;
   listTextAnswers(args: TextAnswerQueryArgs): Promise<RawPaginatedResult<RawTextAnswer>>;
+  generateReportNarrative(command: ReportNarrativeCommand): Promise<ReportNarrativeResult>;
 }

@@ -10,6 +10,7 @@ export * from "./profileOptions";
 export * from "./question";
 export * from "./questionInterpretation";
 export * from "./questionSet";
+export * from "./report";
 export * from "./response";
 export * from "./section";
 export * from "./survey";

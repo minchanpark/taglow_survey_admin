@@ -34,6 +34,8 @@ import type {
   QuestionSummary,
   ReorderQuestionsCommand,
   ReorderSectionsCommand,
+  ReportNarrativeCommand,
+  ReportNarrativeResult,
   RevokeSurveyCollaboratorCommand,
   ResponseSummary,
   SectionSummary,
@@ -113,4 +115,5 @@ export interface AdminApiController {
   listIdentityResponses(command: IdentityResponseFilterCommand): Promise<PaginatedResult<IdentityResponse>>;
   getTextGroups(command: TextAnswerFilterCommand): Promise<TextGroup[]>;
   listTextAnswers(command: TextAnswerFilterCommand): Promise<PaginatedResult<TextAnswer>>;
+  generateReportNarrative(command: ReportNarrativeCommand): Promise<ReportNarrativeResult>;
 }

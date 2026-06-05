@@ -50,6 +50,7 @@ export function createFakeParticipantSurveyController(
       email: "participant@example.com",
     }),
     signInWithGoogle: async () => undefined,
+    getParticipantLoginContent: async () => null,
     getPublishedSurveyByIdentifier: async () => fakeParticipantSurveyDetail,
     uploadQuestionImage: async (command) => ({
       storageBucket: "survey-assets",

@@ -15,6 +15,7 @@ import { assertCreateSurveyCommand, assertUpdateSurveyCommand } from "../service
 import { assertUploadSurveyImageCommand } from "../service/validation/assetSchema";
 import { toAnalysisFilterPayload } from "../service/validation/filterSchema";
 import { validatePublishSurveyDetail } from "../service/validation/publishValidation";
+import { normalizeReportNarrativeResult, sanitizeReportNarrativeCommand } from "../service/validation/reportNarrative";
 import { buildFilterOptionsFromQuestions, isAdminAccessRole } from "../model";
 import type {
   AdminMember,
@@ -57,6 +58,8 @@ import type {
   QuestionSummary,
   ReorderQuestionsCommand,
   ReorderSectionsCommand,
+  ReportNarrativeCommand,
+  ReportNarrativeResult,
   RevokeSurveyCollaboratorCommand,
   ResponseSummary,
   SectionSummary,
@@ -547,6 +550,12 @@ export class GatewayBackedAdminApiController implements AdminApiController {
       items: page.items.map((row) => this.mapper.toTextAnswer(row)),
       nextCursor: page.next_cursor ?? undefined,
     };
+  }
+
+  async generateReportNarrative(command: ReportNarrativeCommand): Promise<ReportNarrativeResult> {
+    const sanitized = sanitizeReportNarrativeCommand(command);
+    const result = await this.gateway.generateReportNarrative(sanitized);
+    return normalizeReportNarrativeResult(result, sanitized);
   }
 }
 

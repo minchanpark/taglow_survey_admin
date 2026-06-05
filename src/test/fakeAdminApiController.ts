@@ -25,6 +25,7 @@ import type {
   PublishValidationResult,
   Question,
   QuestionSummary,
+  ReportNarrativeResult,
   ResponseSummary,
   SectionSummary,
   Survey,
@@ -188,6 +189,7 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
       id: command.surveyId,
       title: command.title ?? fakeSurvey.title,
       description: command.description ?? fakeSurvey.description,
+      settings: command.settings ?? fakeSurvey.settings,
     }),
     archiveSurvey: async (surveyId: string) => ({ ...fakeSurvey, id: surveyId, status: "archived" }),
     deleteSurvey: async () => undefined,
@@ -321,6 +323,17 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
     listIdentityResponses: async () => ({ items: [] as IdentityResponse[] }),
     getTextGroups: async (): Promise<TextGroup[]> => [],
     listTextAnswers: async () => ({ items: [] as TextAnswer[] }),
+    generateReportNarrative: async (command): Promise<ReportNarrativeResult> => ({
+      generatedAt: "2026-06-05T00:00:00.000Z",
+      blocks: command.blocks.map((block) => ({
+        blockId: block.id,
+        summary: `${block.title} AI 요약입니다.`,
+        body: [`${block.title} 데이터를 바탕으로 보고서 본문을 확장합니다.`],
+        evidenceIds: block.evidence.slice(0, 2).map((evidence) => evidence.id),
+        caution: block.isLowSample ? "N이 낮아 방향성 참고용으로 해석해야 합니다." : undefined,
+        suggestedActions: [`${block.title} 후속 확인`],
+      })),
+    }),
   };
 
   return { ...controller, ...overrides };

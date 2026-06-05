@@ -1,6 +1,6 @@
 import { AdminApiError, normalizeAdminApiError } from "./apiErrors";
 import type { AdminApiGateway } from "./adminApiGateway";
-import type { JsonRecord } from "../../model";
+import type { JsonRecord, ReportNarrativeCommand, ReportNarrativeResult } from "../../model";
 import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
@@ -88,6 +88,9 @@ type SupabaseClientLike = {
     from(bucket: string): {
       createSignedUrl(path: string, expiresIn: number): Promise<{ data: { signedUrl?: string } | null; error: unknown }>;
     };
+  };
+  functions?: {
+    invoke(name: string, args: { body?: Record<string, unknown> }): Promise<{ data: unknown; error: unknown }>;
   };
   from(table: string): any;
   rpc(fn: string, args?: Record<string, unknown>): SupabaseResult<unknown>;
@@ -719,6 +722,20 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     return toRawPage(rows);
   }
 
+  async generateReportNarrative(command: ReportNarrativeCommand): Promise<ReportNarrativeResult> {
+    await this.requireCurrentAuthUser();
+    if (!this.supabase.functions) {
+      throw new AdminApiError("RPC_FAILED", "Supabase Functions client is unavailable.");
+    }
+    const { data, error } = await this.supabase.functions.invoke("generate-report-narrative", {
+      body: command as unknown as Record<string, unknown>,
+    });
+    if (error) {
+      throw await normalizeFunctionInvokeError(error);
+    }
+    return data as ReportNarrativeResult;
+  }
+
   private async one<T>(
     query: SupabaseResult<unknown>,
     fallbackCode: "SURVEY_NOT_FOUND" | "ADMIN_ACCESS_DENIED" | "RPC_FAILED" | "UNKNOWN" = "UNKNOWN",
@@ -1342,6 +1359,39 @@ function hasImageFields(value: Record<string, unknown>): boolean {
 function compactRecord(value: Record<string, string | number | boolean | null | undefined>): Record<string, string | number | boolean> | undefined {
   const entries = Object.entries(value).filter(([, item]) => item !== null && item !== undefined && item !== "");
   return entries.length ? Object.fromEntries(entries) as Record<string, string | number | boolean> : undefined;
+}
+
+async function normalizeFunctionInvokeError(error: unknown): Promise<AdminApiError> {
+  const response = isRecord(error) && error.context instanceof Response ? error.context : undefined;
+  if (!response) {
+    return normalizeAdminApiError(error, "RPC_FAILED");
+  }
+
+  const body = await readFunctionErrorBody(response);
+  const messageParts = [
+    getString(body?.error),
+    getString(body?.message),
+    body?.provider ? `provider=${body.provider}` : undefined,
+    body?.providerStatus ? `providerStatus=${body.providerStatus}` : undefined,
+    body?.providerCode ? `providerCode=${body.providerCode}` : undefined,
+  ].filter(Boolean);
+
+  return new AdminApiError(
+    "RPC_FAILED",
+    messageParts.length ? messageParts.join(" / ") : `Edge Function failed with status ${response.status}.`,
+    error,
+  );
+}
+
+async function readFunctionErrorBody(response: Response): Promise<Record<string, unknown> | null> {
+  try {
+    const text = await response.clone().text();
+    if (!text.trim()) return null;
+    const parsed = JSON.parse(text);
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function getString(value: unknown): string | undefined {

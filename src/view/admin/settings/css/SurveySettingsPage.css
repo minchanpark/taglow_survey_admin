@@ -122,7 +122,9 @@
 .tg-settings-page__schedule input,
 .tg-settings-page__share-row input,
 .tg-settings-page__share-row select,
-.tg-settings-page__collaborator-row select {
+.tg-settings-page__collaborator-row select,
+.tg-settings-page__login-body-fields input,
+.tg-settings-page__login-body-fields textarea {
   width: 100%;
   min-height: 36px;
   border: 1px solid var(--tg-border-strong);
@@ -132,6 +134,108 @@
   background: var(--tg-bg-panel);
   font-size: var(--tg-font-size-dense);
   line-height: var(--tg-line-dense);
+}
+
+.tg-settings-page__login-body-fields textarea {
+  min-height: 64px;
+  padding: var(--tg-space-6) var(--tg-space-8);
+  resize: vertical;
+}
+
+.tg-settings-page__login-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.75fr) minmax(280px, 1.5fr) minmax(180px, 0.75fr);
+  gap: var(--tg-space-10);
+  align-items: stretch;
+}
+
+.tg-settings-page__login-body-fields,
+.tg-settings-page__login-image-field {
+  display: grid;
+  gap: var(--tg-space-8);
+}
+
+.tg-settings-page__locale-row {
+  display: grid;
+  gap: var(--tg-space-4);
+}
+
+.tg-settings-page__locale-row > span {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-settings-page__locale-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--tg-space-6);
+  align-items: start;
+}
+
+.tg-settings-page__locale-pair label {
+  display: grid;
+  gap: var(--tg-space-3);
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-settings-page__login-image-field > span {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-settings-page__login-image-preview {
+  display: grid;
+  min-height: 156px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px dashed var(--tg-border-strong);
+  border-radius: var(--tg-radius-sm);
+  background: var(--tg-bg-inset);
+}
+
+.tg-settings-page__login-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.tg-settings-page__login-image-preview small {
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
+}
+
+.tg-settings-page__file-button {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tg-space-4);
+  border: 1px solid var(--tg-border-strong);
+  border-radius: var(--tg-radius-sm);
+  padding: 0 var(--tg-space-8);
+  color: var(--tg-text-strong);
+  background: var(--tg-bg-panel);
+  cursor: pointer;
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-settings-page__file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
 .tg-settings-page__share-row {
@@ -147,6 +251,29 @@
   border-radius: var(--tg-radius-sm);
   padding: var(--tg-space-10);
   background: var(--tg-bg-raised);
+}
+
+.tg-settings-page__schedule-rule {
+  display: grid;
+  gap: var(--tg-space-2);
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  padding: var(--tg-space-6);
+  background: var(--tg-bg-panel);
+}
+
+.tg-settings-page__schedule-rule strong {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-settings-page__schedule-rule p {
+  margin: 0;
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  line-height: var(--tg-line-caption);
 }
 
 .tg-settings-page__schedule-actions {
@@ -259,7 +386,8 @@
 }
 
 @media (max-width: 980px) {
-  .tg-settings-page__grid {
+  .tg-settings-page__grid,
+  .tg-settings-page__login-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -275,6 +403,10 @@
   }
 
   .tg-settings-page__input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tg-settings-page__locale-pair {
     grid-template-columns: 1fr;
   }
 

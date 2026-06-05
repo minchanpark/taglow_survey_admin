@@ -18,6 +18,16 @@ export function useParticipantGoogleSignInMutation() {
   });
 }
 
+export function useParticipantLoginContentQuery(publicIdentifier: string) {
+  const controller = useParticipantSurveyController();
+  return useQuery({
+    queryKey: participantSurveyQueryKeys.loginContent(publicIdentifier),
+    queryFn: () => controller.getParticipantLoginContent(publicIdentifier),
+    enabled: Boolean(publicIdentifier),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useParticipantSurveyQuery(publicIdentifier: string, enabled = true) {
   const controller = useParticipantSurveyController();
   return useQuery({

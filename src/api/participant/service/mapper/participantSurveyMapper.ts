@@ -1,5 +1,6 @@
-import type { ParticipantSurvey, ParticipantSurveyDetail } from "../../model";
+import type { ParticipantLoginContent, ParticipantLoginImage, ParticipantSurvey, ParticipantSurveyDetail } from "../../model";
 import type { RawQuestion, RawSection, RawSurvey, RawSurveyAsset } from "../../../admin/service/gateway/rawTypes";
+import type { RawParticipantLoginContent, RawParticipantLoginImage } from "../gateway";
 import { AdminPayloadMapper } from "../../../admin/service/mapper/adminPayloadMapper";
 import { getSurveyPublicIdentifier } from "../../../admin/model";
 
@@ -36,4 +37,31 @@ export class ParticipantSurveyMapper {
       assets: args.assets.map((row) => this.adminMapper.toAsset(row)),
     };
   }
+
+  toLoginContent(row: RawParticipantLoginContent | null): ParticipantLoginContent | null {
+    if (!row) return null;
+    return {
+      title: row.title,
+      headline: row.headline,
+      headlineEn: row.headline_en,
+      bodyParagraphs: normalizeBodyParagraphs(row.body_paragraphs),
+      bodyParagraphsEn: normalizeBodyParagraphs(row.body_paragraphs_en),
+      headerImage: row.header_image ? toLoginImage(row.header_image) : undefined,
+      bottomImage: row.bottom_image ? toLoginImage(row.bottom_image) : undefined,
+    };
+  }
+}
+
+function normalizeBodyParagraphs(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 2);
+}
+
+function toLoginImage(image: RawParticipantLoginImage): ParticipantLoginImage {
+  return {
+    assetId: image.asset_id,
+    storageBucket: image.storage_bucket,
+    storagePath: image.storage_path,
+    signedUrl: image.signed_url,
+  };
 }

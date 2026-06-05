@@ -144,4 +144,71 @@ describe("SurveySettingsPage", () => {
       endsAt: new Date("2026-06-12T18:00").toISOString(),
     });
   });
+
+  it("explains one-sided schedule behavior", async () => {
+    renderSettings();
+
+    expect(await screen.findByText("게시 시간만 설정하면 게시만 자동으로 처리되고, 마감은 수동으로 종료합니다.")).toBeInTheDocument();
+    expect(screen.getByText("마감 시간만 설정하면 이미 게시된 설문만 자동으로 종료되고, 게시는 수동으로 해야 합니다.")).toBeInTheDocument();
+  });
+
+  it("saves participant login screen copy into survey settings", async () => {
+    const user = userEvent.setup();
+    const updateSurvey = vi.fn(async () => fakeSurvey);
+    renderSettings({ updateSurvey });
+
+    await user.type(await screen.findByLabelText("대표 문구 한국어"), "목소리를 더 선명하게 모읍니다.");
+    await user.type(screen.getByLabelText("대표 문구 영어"), "We gather your voice with more clarity.");
+    await user.type(screen.getByLabelText("설명 문단 1 한국어"), "Taglow는 현장의 의견을 기록합니다.");
+    await user.type(screen.getByLabelText("설명 문단 1 영어"), "Taglow records feedback from the field.");
+    await user.type(screen.getByLabelText("설명 문단 2 한국어"), "이번 설문은 자치회와 뉴던이 함께 진행합니다.");
+    await user.type(screen.getByLabelText("설명 문단 2 영어"), "This survey is conducted with NewDawn.");
+    await user.click(screen.getByRole("button", { name: "화면 문구 저장" }));
+
+    expect(updateSurvey).toHaveBeenCalledWith({
+      surveyId: "survey-1",
+      settings: {
+        participantLogin: {
+          headline: "목소리를 더 선명하게 모읍니다.",
+          headlineEn: "We gather your voice with more clarity.",
+          bodyParagraphs: ["Taglow는 현장의 의견을 기록합니다.", "이번 설문은 자치회와 뉴던이 함께 진행합니다."],
+          bodyParagraphsEn: ["Taglow records feedback from the field.", "This survey is conducted with NewDawn."],
+        },
+      },
+    });
+  });
+
+  it("uploads participant login images and stores the asset id in survey settings", async () => {
+    const user = userEvent.setup();
+    const uploadSurveyImage = vi.fn(async () => ({
+      id: "login-header-asset",
+      surveyId: "survey-1",
+      assetType: "image" as const,
+      storageBucket: "survey-assets",
+      storagePath: "surveys/survey-1/images/header.png",
+      metadata: { signedUrl: "https://example.com/header.png" },
+      createdAt: "2026-05-28T00:00:00.000Z",
+    }));
+    const updateSurvey = vi.fn(async () => fakeSurvey);
+    renderSettings({ uploadSurveyImage, updateSurvey });
+
+    const file = new File(["header"], "header.png", { type: "image/png" });
+    await user.upload(await screen.findByLabelText("상단 이미지 업로드"), file);
+
+    expect(uploadSurveyImage).toHaveBeenCalledWith({
+      surveyId: "survey-1",
+      file,
+      metadata: { usage: "participant_login_header" },
+    });
+    expect(updateSurvey).toHaveBeenCalledWith({
+      surveyId: "survey-1",
+      settings: {
+        participantLogin: {
+          headerImageAssetId: "login-header-asset",
+          bodyParagraphs: ["", ""],
+          bodyParagraphsEn: ["", ""],
+        },
+      },
+    });
+  });
 });

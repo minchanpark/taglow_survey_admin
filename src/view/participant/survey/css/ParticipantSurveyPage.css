@@ -84,6 +84,38 @@
   gap: var(--tg-space-6);
 }
 
+.tg-participant-login-card {
+  justify-items: center;
+  text-align: center;
+}
+
+.tg-participant-login-card__header-image {
+  width: min(240px, 72vw);
+  max-height: 120px;
+  object-fit: contain;
+}
+
+.tg-participant-login-card__body {
+  display: grid;
+  width: min(100%, 620px);
+  gap: var(--tg-space-8);
+  margin: var(--tg-space-4) 0;
+  text-align: left;
+}
+
+.tg-participant-login-card__body a {
+  color: var(--tg-accent);
+  font-weight: var(--tg-weight-medium);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tg-participant-login-card__bottom-image {
+  width: min(320px, 78vw);
+  max-height: 96px;
+  object-fit: contain;
+}
+
 .tg-participant-flow-card h1,
 .tg-participant-flow-card p {
   margin: 0;

@@ -1,6 +1,7 @@
 import type {
   ParticipantQuestionImageUpload,
   ParticipantQuestionImageUploadCommand,
+  ParticipantLoginContent,
   ParticipantSessionState,
   ParticipantSignInCommand,
   ParticipantSurveyDetail,
@@ -11,6 +12,7 @@ import type {
 export interface ParticipantSurveyController {
   getParticipantSessionState(): Promise<ParticipantSessionState>;
   signInWithGoogle(command: ParticipantSignInCommand): Promise<void>;
+  getParticipantLoginContent(publicIdentifier: string): Promise<ParticipantLoginContent | null>;
   getPublishedSurveyByIdentifier(publicIdentifier: string): Promise<ParticipantSurveyDetail>;
   uploadQuestionImage(command: ParticipantQuestionImageUploadCommand): Promise<ParticipantQuestionImageUpload>;
   submitSurveyResponse(command: SubmitSurveyResponseCommand): Promise<SubmitSurveyResponseResult>;

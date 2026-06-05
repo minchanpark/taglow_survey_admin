@@ -167,6 +167,8 @@ declare
   v_opened_count integer := 0;
   v_closed_count integer := 0;
 begin
+  -- starts_at only: publish draft surveys automatically; closing remains manual.
+  -- ends_at only: close already-published surveys automatically; publishing remains manual.
   update public.surveys
   set
     status = case
@@ -320,18 +322,9 @@ grant execute on function public.get_participant_survey_access(text) to authenti
 
 do $$
 begin
-  execute 'create extension if not exists pg_cron with schema pg_catalog';
-  execute 'grant usage on schema cron to postgres';
-  execute 'grant all privileges on all tables in schema cron to postgres';
-exception
-  when insufficient_privilege or undefined_file then
-    raise notice 'pg_cron is unavailable; enable Supabase Cron before relying on automatic survey schedule transitions.';
-end;
-$$;
-
-do $$
-begin
-  if exists (select 1 from pg_namespace where nspname = 'cron') then
+  if exists (select 1 from pg_namespace where nspname = 'cron')
+    and to_regprocedure('cron.schedule(text,text,text)') is not null
+    and to_regprocedure('cron.unschedule(text)') is not null then
     execute $cron$
       select cron.unschedule('taglow-apply-survey-schedule')
       where exists (
@@ -348,6 +341,8 @@ begin
         'select private.apply_survey_schedule();'
       )
     $cron$;
+  else
+    raise notice 'Supabase Cron is not enabled; enable Cron/pg_cron in the Supabase dashboard, then rerun this migration or create the taglow-apply-survey-schedule job manually.';
   end if;
 end;
 $$;

@@ -9,6 +9,17 @@ export type SurveyCollaboratorRole = "manager" | "editor" | "viewer";
 
 export type SurveySettings = JsonRecord;
 
+export type ParticipantLoginImageSlot = "header" | "bottom";
+
+export type ParticipantLoginContentSettings = Readonly<{
+  headerImageAssetId?: string;
+  headline?: string;
+  headlineEn?: string;
+  bodyParagraphs: readonly string[];
+  bodyParagraphsEn: readonly string[];
+  bottomImageAssetId?: string;
+}>;
+
 export type Survey = Readonly<{
   id: string;
   title: string;
@@ -47,6 +58,37 @@ export function getSurveyPublicPath(survey: Pick<Survey, "publicSlug" | "publicC
   return identifier ? `/survey/${encodeURIComponent(identifier)}` : undefined;
 }
 
+export function getParticipantLoginContentSettings(settings: SurveySettings | undefined): ParticipantLoginContentSettings {
+  const raw = getRecord(settings, "participantLogin");
+  return {
+    headerImageAssetId: getString(raw, "headerImageAssetId"),
+    headline: getString(raw, "headline"),
+    headlineEn: getString(raw, "headlineEn"),
+    bodyParagraphs: normalizeBodyParagraphs(raw?.bodyParagraphs),
+    bodyParagraphsEn: normalizeBodyParagraphs(raw?.bodyParagraphsEn),
+    bottomImageAssetId: getString(raw, "bottomImageAssetId"),
+  };
+}
+
+export function withParticipantLoginContentSettings(
+  settings: SurveySettings | undefined,
+  loginContent: ParticipantLoginContentSettings,
+): SurveySettings {
+  const bodyParagraphs = normalizeBodyParagraphs(loginContent.bodyParagraphs);
+  const bodyParagraphsEn = normalizeBodyParagraphs(loginContent.bodyParagraphsEn);
+  return {
+    ...(settings ?? {}),
+    participantLogin: {
+      ...(loginContent.headerImageAssetId ? { headerImageAssetId: loginContent.headerImageAssetId } : {}),
+      ...(loginContent.headline ? { headline: loginContent.headline.trim() } : {}),
+      ...(loginContent.headlineEn ? { headlineEn: loginContent.headlineEn.trim() } : {}),
+      bodyParagraphs,
+      bodyParagraphsEn,
+      ...(loginContent.bottomImageAssetId ? { bottomImageAssetId: loginContent.bottomImageAssetId } : {}),
+    },
+  };
+}
+
 export type SurveyCollaborator = Readonly<{
   id: string;
   surveyId: string;
@@ -75,4 +117,19 @@ export function getSurveyAccessRoleLabel(accessRole: SurveyAccessRole): string {
   if (accessRole === "manager") return "초대 가능";
   if (accessRole === "editor") return "작업 가능";
   return "결과보기";
+}
+
+function normalizeBodyParagraphs(value: unknown): string[] {
+  const values = Array.isArray(value) ? value : [];
+  return [0, 1].map((index) => (typeof values[index] === "string" ? values[index].trim() : ""));
+}
+
+function getRecord(settings: SurveySettings | undefined, key: string): JsonRecord | undefined {
+  const value = settings?.[key];
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : undefined;
+}
+
+function getString(record: JsonRecord | undefined, key: string): string | undefined {
+  const value = record?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }

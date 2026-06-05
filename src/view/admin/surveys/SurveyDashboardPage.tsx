@@ -1,4 +1,4 @@
-import { BarChart3, CalendarClock, Copy, Eye, LinkIcon, PencilLine, Settings, UsersRound } from "lucide-react";
+import { BarChart3, CalendarClock, Copy, Eye, LinkIcon, NotebookText, PencilLine, Settings, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -90,6 +90,10 @@ export function SurveyDashboardPage() {
           <Link to={`/admin/surveys/${surveyId}/analysis`} className="tg-survey-dashboard-page__action">
             <BarChart3 size={15} aria-hidden="true" />
             <span>분석 보기</span>
+          </Link>
+          <Link to={`/admin/surveys/${surveyId}/report`} className="tg-survey-dashboard-page__action">
+            <NotebookText size={15} aria-hidden="true" />
+            <span>보고서</span>
           </Link>
           {canOpenSettings ? (
             <Link to={`/admin/surveys/${surveyId}/settings`} className="tg-survey-dashboard-page__action">

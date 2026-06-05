@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import {
   useParticipantGoogleSignInMutation,
+  useParticipantLoginContentQuery,
   useParticipantQuestionImageUploadMutation,
   useParticipantSessionQuery,
   useParticipantSurveyQuery,
@@ -13,6 +14,7 @@ import {
   getAssetUrl,
   getChoiceOptions,
   getConfiguredAssetId,
+  getParticipantLoginContentSettings,
   getLocalizedTagTypeOptions,
   getMaxSelect,
   getMaxTags,
@@ -32,7 +34,7 @@ import {
   toRecord,
   type Locale,
 } from "../../../api/admin/model";
-import type { JsonRecord, ParticipantSurvey, Question, SubmitSurveyResponseResult, SurveyAsset, SurveySection } from "../../../api/participant/model";
+import type { JsonRecord, ParticipantLoginContent, ParticipantSurvey, ParticipantSurveyDetail, Question, SubmitSurveyResponseResult, SurveyAsset, SurveySection } from "../../../api/participant/model";
 import { Button, EmptyState, ErrorState, LoadingState } from "../../../components";
 import { buildSubmitSurveyResponseCommand } from "./participantSubmission";
 import type { ChoiceTextAnswer, ImageTagAnswer, ImageTagPin, ParticipantAnswer, ParticipantAnswers, ParticipantFlowStep } from "./participantSurveyTypes";
@@ -44,6 +46,7 @@ export function ParticipantSurveyPage() {
   const sessionQuery = useParticipantSessionQuery();
   const signInMutation = useParticipantGoogleSignInMutation();
   const submitMutation = useSubmitSurveyResponseMutation();
+  const loginContentQuery = useParticipantLoginContentQuery(publicIdentifier);
   const surveyQuery = useParticipantSurveyQuery(publicIdentifier, Boolean(sessionQuery.data?.isAuthenticated));
   const signInRedirectTo = useMemo(() => new URL(`/survey/${encodeURIComponent(publicIdentifier)}`, window.location.origin).toString(), [publicIdentifier]);
   const [step, setStep] = useState<ParticipantFlowStep>({ type: "login" });
@@ -65,6 +68,7 @@ export function ParticipantSurveyPage() {
   const answerSections = useMemo(() => getAnswerSections(sortedSections), [sortedSections]);
   const currentSectionIndex = step.type === "section" ? Math.min(step.sectionIndex, Math.max(answerSections.length - 1, 0)) : 0;
   const currentSection = answerSections[currentSectionIndex];
+  const loginContent = loginContentQuery.data ?? (surveyQuery.data ? buildLoginContentFromSurveyDetail(surveyQuery.data) : null);
 
   useEffect(() => {
     setStep({ type: "login" });
@@ -92,6 +96,8 @@ export function ParticipantSurveyPage() {
           isAuthenticated={false}
           isBusy={signInMutation.isPending}
           email={sessionQuery.data.email}
+          loginContent={loginContent}
+          locale={locale}
           onSignIn={() => signInMutation.mutate({ redirectTo: signInRedirectTo })}
         />
       ) : null}
@@ -113,6 +119,8 @@ export function ParticipantSurveyPage() {
               isAuthenticated
               isBusy={false}
               email={sessionQuery.data.email}
+              loginContent={loginContent}
+              locale={locale}
               surveyTitle={surveyQuery.data.survey.title}
               onContinue={() => setStep({ type: "intro" })}
               onSignIn={() => signInMutation.mutate({ redirectTo: signInRedirectTo })}
@@ -193,22 +201,42 @@ function ParticipantLoginStep(props: {
   isAuthenticated: boolean;
   isBusy: boolean;
   email?: string;
+  loginContent?: ParticipantLoginContent | null;
+  locale: Locale;
   surveyTitle?: string;
   onSignIn: () => void;
   onContinue?: () => void;
 }) {
+  const headline = getLoginHeadline(props.loginContent, props.locale);
+  const bodyParagraphs = getLoginBodyParagraphs(props.loginContent, props.locale);
   return (
-    <section className="tg-participant-flow-card" aria-labelledby="participant-survey-title">
+    <section className="tg-participant-flow-card tg-participant-login-card" aria-labelledby="participant-survey-title">
+      {props.loginContent?.headerImage?.signedUrl ? (
+        <img className="tg-participant-login-card__header-image" src={props.loginContent.headerImage.signedUrl} alt="" />
+      ) : null}
       <p className="tg-participant-survey-page__eyebrow">Taglow Survey</p>
-      <h1 id="participant-survey-title">로그인</h1>
-      <p>
-        {props.surveyTitle ? `${props.surveyTitle} 응답을 시작하기 전에 Google 계정으로 로그인해주세요.` : "설문 응답을 시작하기 전에 Google 계정으로 로그인해주세요."}
-      </p>
+      <h1 id="participant-survey-title">{headline || "로그인"}</h1>
+      {bodyParagraphs.length ? (
+        <div className="tg-participant-login-card__body">
+          {bodyParagraphs.map((paragraph, index) => (
+            <p key={`${index}-${paragraph}`}>
+              <AutoLinkedText text={paragraph} />
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p>
+          {props.surveyTitle ? `${props.surveyTitle} 응답을 시작하기 전에 Google 계정으로 로그인해주세요.` : "설문 응답을 시작하기 전에 Google 계정으로 로그인해주세요."}
+        </p>
+      )}
       {props.email ? (
         <div className="tg-participant-flow-card__status">
           <CheckCircle2 size={14} aria-hidden="true" />
           <span>{props.email}</span>
         </div>
+      ) : null}
+      {props.loginContent?.bottomImage?.signedUrl ? (
+        <img className="tg-participant-login-card__bottom-image" src={props.loginContent.bottomImage.signedUrl} alt="" />
       ) : null}
       <div className="tg-participant-flow-card__actions">
         {props.isAuthenticated ? (
@@ -223,6 +251,49 @@ function ParticipantLoginStep(props: {
       </div>
     </section>
   );
+}
+
+function buildLoginContentFromSurveyDetail(detail: ParticipantSurveyDetail): ParticipantLoginContent | null {
+  const settings = getParticipantLoginContentSettings(detail.survey.settings);
+  const bodyParagraphs = settings.bodyParagraphs.filter(Boolean);
+  const bodyParagraphsEn = settings.bodyParagraphsEn.filter(Boolean);
+  const headerImage = settings.headerImageAssetId ? toLoginImage(detail.assets, settings.headerImageAssetId) : undefined;
+  const bottomImage = settings.bottomImageAssetId ? toLoginImage(detail.assets, settings.bottomImageAssetId) : undefined;
+  if (!settings.headline && !settings.headlineEn && !bodyParagraphs.length && !bodyParagraphsEn.length && !headerImage && !bottomImage) return null;
+  return {
+    title: detail.survey.title,
+    headline: settings.headline,
+    headlineEn: settings.headlineEn,
+    bodyParagraphs,
+    bodyParagraphsEn,
+    headerImage,
+    bottomImage,
+  };
+}
+
+function getLoginHeadline(content: ParticipantLoginContent | null | undefined, locale: Locale): string | undefined {
+  if (!content) return undefined;
+  return locale === "en" ? content.headlineEn || content.headline : content.headline || content.headlineEn;
+}
+
+function getLoginBodyParagraphs(content: ParticipantLoginContent | null | undefined, locale: Locale): string[] {
+  if (!content) return [];
+  const primary = locale === "en" ? content.bodyParagraphsEn : content.bodyParagraphs;
+  const fallback = locale === "en" ? content.bodyParagraphs : content.bodyParagraphsEn;
+  const paragraphs = primary.map((paragraph, index) => paragraph || fallback[index] || "").filter(Boolean);
+  return paragraphs.length ? paragraphs : fallback.filter(Boolean);
+}
+
+function toLoginImage(assets: SurveyAsset[], assetId: string) {
+  const asset = assets.find((item) => item.id === assetId);
+  const signedUrl = asset ? getAssetUrl(asset) : undefined;
+  if (!asset) return undefined;
+  return {
+    assetId: asset.id,
+    storageBucket: asset.storageBucket,
+    storagePath: asset.storagePath,
+    signedUrl,
+  };
 }
 
 function ParticipantIntroStep(props: {

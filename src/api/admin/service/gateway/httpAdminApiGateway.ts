@@ -1,5 +1,6 @@
 import { normalizeAdminApiError } from "./apiErrors";
 import type { AdminApiGateway } from "./adminApiGateway";
+import type { ReportNarrativeCommand, ReportNarrativeResult } from "../../model";
 import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
@@ -280,6 +281,10 @@ export class HttpAdminApiGateway implements AdminApiGateway {
   async listTextAnswers(args: TextAnswerQueryArgs) {
     const rows = await this.request<RawTextAnswer[]>(`/api/admin/surveys/${args.surveyId}/analysis/text-answers`, { method: "POST", body: args.filters });
     return { items: rows, next_cursor: rows.find((row) => row.next_cursor)?.next_cursor ?? null };
+  }
+
+  generateReportNarrative(command: ReportNarrativeCommand): Promise<ReportNarrativeResult> {
+    return this.request<ReportNarrativeResult>(`/api/admin/surveys/${command.surveyId}/report/narrative`, { method: "POST", body: command });
   }
 
   private async request<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {

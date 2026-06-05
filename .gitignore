@@ -5,6 +5,8 @@ dist/
 build/
 coverage/
 
+supabase/.temp/
+
 .env
 .env.production
 .env.local

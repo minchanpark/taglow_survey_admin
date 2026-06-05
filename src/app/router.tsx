@@ -3,6 +3,7 @@ import { AdminLoginPage } from "../view/admin/auth/AdminLoginPage";
 import { SurveyAnalysisPage } from "../view/admin/analysis/SurveyAnalysisPage";
 import { SurveyBuilderPage } from "../view/admin/builder/SurveyBuilderPage";
 import { SurveyPreviewPage } from "../view/admin/preview/SurveyPreviewPage";
+import { ReportDraftPage } from "../view/admin/report/ReportDraftPage";
 import { SurveySettingsPage } from "../view/admin/settings/SurveySettingsPage";
 import { AdminAccessDeniedPage } from "../view/admin/system/AdminAccessDeniedPage";
 import { AdminMembersPage } from "../view/admin/system/AdminMembersPage";
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
       { path: "surveys/:surveyId/builder", element: <SurveyBuilderPage /> },
       { path: "surveys/:surveyId/preview", element: <SurveyPreviewPage /> },
       { path: "surveys/:surveyId/analysis", element: <SurveyAnalysisPage /> },
+      { path: "surveys/:surveyId/report", element: <ReportDraftPage /> },
       { path: "surveys/:surveyId/settings", element: <SurveySettingsPage /> },
     ],
   },

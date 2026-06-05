@@ -36,6 +36,27 @@
   gap: var(--tg-space-6);
 }
 
+.tg-analysis-page__report-link {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: var(--tg-space-4);
+  border: 1px solid var(--tg-border-strong);
+  border-radius: var(--tg-radius-sm);
+  padding: 0 var(--tg-space-6);
+  color: var(--tg-text-strong);
+  background: var(--tg-bg-panel);
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-dense);
+  text-decoration: none;
+}
+
+.tg-analysis-page__report-link:hover {
+  border-color: var(--tg-accent);
+  color: var(--tg-accent);
+}
+
 .tg-analysis-page__metric {
   display: grid;
   gap: var(--tg-space-2);

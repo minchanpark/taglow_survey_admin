@@ -23,6 +23,23 @@ export type ParticipantSurveyDetail = Readonly<{
   assets: SurveyAsset[];
 }>;
 
+export type ParticipantLoginImage = Readonly<{
+  assetId: string;
+  storageBucket: string;
+  storagePath: string;
+  signedUrl?: string;
+}>;
+
+export type ParticipantLoginContent = Readonly<{
+  title?: string;
+  headline?: string;
+  headlineEn?: string;
+  bodyParagraphs: readonly string[];
+  bodyParagraphsEn: readonly string[];
+  headerImage?: ParticipantLoginImage;
+  bottomImage?: ParticipantLoginImage;
+}>;
+
 export type ParticipantQuestionImageUploadCommand = Readonly<{
   surveyId: string;
   questionId: string;
