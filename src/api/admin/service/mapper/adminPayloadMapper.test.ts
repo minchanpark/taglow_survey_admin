@@ -170,6 +170,48 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
     });
   });
 
+  it("maps matrix choice distribution metadata for analysis tables", () => {
+    expect(
+      mapper.toChoiceDistribution({
+        question_id: "question-matrix",
+        question_title: "세탁기 사용 요일과 시간대",
+        question_type: "matrix_multi_select",
+        section_id: "section-1",
+        section_title: "세탁실",
+        option_value: "mon_05_00_07_00",
+        option_label: "월 - 05:00~07:00",
+        option_order: 1,
+        row_value: "05_00_07_00",
+        row_label: "05:00~07:00",
+        row_order: 1,
+        column_value: "mon",
+        column_label: "월",
+        column_order: 1,
+        count: 4,
+        n: 10,
+        percentage: 40,
+      }),
+    ).toEqual({
+      questionId: "question-matrix",
+      questionTitle: "세탁기 사용 요일과 시간대",
+      questionType: "matrix_multi_select",
+      sectionId: "section-1",
+      sectionTitle: "세탁실",
+      optionValue: "mon_05_00_07_00",
+      optionLabel: "월 - 05:00~07:00",
+      optionOrder: 1,
+      rowValue: "05_00_07_00",
+      rowLabel: "05:00~07:00",
+      rowOrder: 1,
+      columnValue: "mon",
+      columnLabel: "월",
+      columnOrder: 1,
+      count: 4,
+      n: 10,
+      percentage: 40,
+    });
+  });
+
   it("maps response summary distribution and low sample groups", () => {
     expect(
       mapper.toResponseSummary({

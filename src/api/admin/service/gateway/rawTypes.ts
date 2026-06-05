@@ -223,10 +223,18 @@ export type RawQuestionSummary = Readonly<{
 export type RawChoiceDistribution = Readonly<{
   question_id: string;
   question_title: string | null;
+  question_type?: string | null;
   section_id: string | null;
   section_title: string | null;
   option_value: string | null;
   option_label: string | null;
+  option_order?: number | null;
+  row_value?: string | null;
+  row_label?: string | null;
+  row_order?: number | null;
+  column_value?: string | null;
+  column_label?: string | null;
+  column_order?: number | null;
   count: number;
   n: number;
   percentage?: number | null;

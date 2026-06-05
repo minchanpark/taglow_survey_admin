@@ -523,6 +523,68 @@ describe("SurveyAnalysisPage", () => {
     expect(screen.queryByRole("button", { name: "개선 필요도" })).not.toBeInTheDocument();
   });
 
+  it("renders matrix multi-select choice distributions as row and column tables", async () => {
+    const user = userEvent.setup();
+    renderAnalysis({
+      getChoiceDistribution: async () => [
+        {
+          questionId: "question-laundry-matrix",
+          questionTitle: "주로 세탁기 및 건조기를 사용하는 요일과 시간대",
+          questionType: "matrix_multi_select",
+          sectionId: "section-1",
+          sectionTitle: "시설",
+          optionValue: "mon_05_00_07_00",
+          optionLabel: "월 - 05:00~07:00",
+          optionOrder: 1,
+          rowValue: "05_00_07_00",
+          rowLabel: "05:00~07:00",
+          rowOrder: 1,
+          columnValue: "mon",
+          columnLabel: "월",
+          columnOrder: 1,
+          count: 4,
+          n: 10,
+          percentage: 40,
+        },
+        {
+          questionId: "question-laundry-matrix",
+          questionTitle: "주로 세탁기 및 건조기를 사용하는 요일과 시간대",
+          questionType: "matrix_multi_select",
+          sectionId: "section-1",
+          sectionTitle: "시설",
+          optionValue: "tue_07_00_09_00",
+          optionLabel: "화 - 07:00~09:00",
+          optionOrder: 11,
+          rowValue: "07_00_09_00",
+          rowLabel: "07:00~09:00",
+          rowOrder: 2,
+          columnValue: "tue",
+          columnLabel: "화",
+          columnOrder: 2,
+          count: 6,
+          n: 10,
+          percentage: 60,
+        },
+      ],
+    });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "점수 문항" }));
+
+    const distributionCard = screen.getByRole("heading", { name: "문항별 응답 분포" }).closest("article");
+    expect(distributionCard).toBeTruthy();
+    const matrix = within(distributionCard!).getByRole("table", {
+      name: "주로 세탁기 및 건조기를 사용하는 요일과 시간대 행/열 응답 분포",
+    });
+    expect(within(matrix).getByRole("columnheader", { name: "월" })).toBeInTheDocument();
+    expect(within(matrix).getByRole("columnheader", { name: "화" })).toBeInTheDocument();
+    expect(within(matrix).getByRole("rowheader", { name: "05:00~07:00" })).toBeInTheDocument();
+    expect(within(matrix).getByRole("rowheader", { name: "07:00~09:00" })).toBeInTheDocument();
+    expect(within(distributionCard!).getByText("선택 수 10건")).toBeInTheDocument();
+    expect(within(matrix).getByText("4건")).toBeInTheDocument();
+    expect(within(matrix).getByText("6건")).toBeInTheDocument();
+  });
+
   it("shows all question scores and response distributions with search controls", async () => {
     const user = userEvent.setup();
     renderAnalysis({
