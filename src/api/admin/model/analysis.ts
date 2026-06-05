@@ -105,10 +105,18 @@ export type QuestionSummary = Readonly<{
 export type ChoiceDistribution = Readonly<{
   questionId: string;
   questionTitle: string;
+  questionType?: QuestionType;
   sectionId?: string;
   sectionTitle?: string;
   optionValue: string;
   optionLabel: string;
+  optionOrder?: number;
+  rowValue?: string;
+  rowLabel?: string;
+  rowOrder?: number;
+  columnValue?: string;
+  columnLabel?: string;
+  columnOrder?: number;
   count: number;
   n: number;
   percentage: number;

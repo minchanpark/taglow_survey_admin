@@ -309,7 +309,9 @@ export function ChoiceDistributionCard(props: { surveyId: string; distributions:
       .filter((item) => sectionId === "all" || item.sectionId === sectionId)
       .filter((item) => {
         if (!normalizedKeyword) return true;
-        return normalizeSearchText(`${item.questionTitle} ${item.sectionTitle ?? ""} ${item.optionLabel}`).includes(normalizedKeyword);
+        return normalizeSearchText(
+          `${item.questionTitle} ${item.sectionTitle ?? ""} ${item.optionLabel} ${item.rowLabel ?? ""} ${item.columnLabel ?? ""}`,
+        ).includes(normalizedKeyword);
       });
   }, [keyword, props.distributions, sectionId]);
   const grouped = useMemo(() => groupBy(visibleDistributions, (item) => item.questionId), [visibleDistributions]);
@@ -350,10 +352,15 @@ export function ChoiceDistributionCard(props: { surveyId: string; distributions:
               <header className="tg-analysis-choice-group__header">
                 <h3>{rows[0]?.questionTitle ?? "제목 없는 질문"}</h3>
                 <StatusBadge tone={(rows[0]?.n ?? 0) > 0 && (rows[0]?.n ?? 0) < lowSampleThreshold ? "warning" : "info"}>
-                  응답 수 {rows[0]?.n ?? 0}명
+                  {hasMatrixDistribution(rows) ? "선택 수" : "응답 수"} {(rows[0]?.n ?? 0).toLocaleString("ko-KR")}
+                  {hasMatrixDistribution(rows) ? "건" : "명"}
                 </StatusBadge>
               </header>
-              <BarRows rows={rows.map((row) => ({ key: row.optionValue, label: row.optionLabel, value: row.percentage, count: row.count }))} />
+              {hasMatrixDistribution(rows) ? (
+                <ChoiceMatrixDistributionTable questionTitle={rows[0]?.questionTitle ?? "제목 없는 질문"} rows={rows} />
+              ) : (
+                <BarRows rows={rows.map((row) => ({ key: row.optionValue, label: row.optionLabel, value: row.percentage, count: row.count }))} />
+              )}
             </section>
           ))}
         </div>
@@ -361,6 +368,51 @@ export function ChoiceDistributionCard(props: { surveyId: string; distributions:
         <EmptyState title="문항별 응답 분포가 없습니다." description="검색어를 지우거나 조건을 줄여보세요." />
       )}
     </AnalysisCard>
+  );
+}
+
+function ChoiceMatrixDistributionTable(props: { questionTitle: string; rows: ChoiceDistribution[] }) {
+  const matrixRows = uniqueMatrixAxis(props.rows, "row");
+  const matrixColumns = uniqueMatrixAxis(props.rows, "column");
+  const countMax = Math.max(1, ...props.rows.map((row) => row.count));
+  const cellByKey = new Map(props.rows.map((row) => [`${row.rowValue ?? ""}:${row.columnValue ?? ""}`, row] as const));
+
+  return (
+    <div className="tg-analysis-choice-matrix-wrap">
+      <table className="tg-analysis-choice-matrix" aria-label={`${props.questionTitle} 행/열 응답 분포`}>
+        <thead>
+          <tr>
+            <th scope="col">행</th>
+            {matrixColumns.map((column) => (
+              <th key={column.value} scope="col">
+                {column.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {matrixRows.map((row) => (
+            <tr key={row.value}>
+              <th scope="row">{row.label}</th>
+              {matrixColumns.map((column) => {
+                const cell = cellByKey.get(`${row.value}:${column.value}`);
+                return (
+                  <td key={`${row.value}:${column.value}`}>
+                    <div className="tg-analysis-choice-matrix__cell">
+                      <strong>{(cell?.count ?? 0).toLocaleString("ko-KR")}건</strong>
+                      <span>{formatPercent(cell?.percentage ?? 0)}</span>
+                      <i>
+                        <b style={{ width: `${Math.min(100, Math.max(0, ((cell?.count ?? 0) / countMax) * 100))}%` }} />
+                      </i>
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -724,6 +776,22 @@ function BarRows(props: { rows: Array<{ key: string; label: string; value: numbe
       ))}
     </div>
   );
+}
+
+function hasMatrixDistribution(rows: readonly ChoiceDistribution[]): boolean {
+  return rows.some((row) => Boolean(row.rowValue && row.columnValue));
+}
+
+function uniqueMatrixAxis(rows: readonly ChoiceDistribution[], axis: "row" | "column"): Array<{ value: string; label: string; order: number }> {
+  const items = new Map<string, { value: string; label: string; order: number }>();
+  for (const row of rows) {
+    const value = axis === "row" ? row.rowValue : row.columnValue;
+    if (!value) continue;
+    const label = (axis === "row" ? row.rowLabel : row.columnLabel) ?? value;
+    const order = axis === "row" ? row.rowOrder : row.columnOrder;
+    items.set(value, { value, label, order: order ?? Number.MAX_SAFE_INTEGER });
+  }
+  return [...items.values()].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label, "ko-KR"));
 }
 
 function groupBy<T>(items: T[], getKey: (item: T) => string): Array<[string, T[]]> {
