@@ -22,8 +22,7 @@ export type ParticipantLoginContentSettings = Readonly<{
 
 export type Survey = Readonly<{
   id: string;
-  title: string;
-  titleEn?: string;
+  title: LocalizedText;
   description?: LocalizedText;
   status: SurveyStatus;
   publicSlug?: string;
@@ -59,8 +58,8 @@ export function getSurveyPublicPath(survey: Pick<Survey, "publicSlug" | "publicC
   return identifier ? `/survey/${encodeURIComponent(identifier)}` : undefined;
 }
 
-export function localizedSurveyTitle(survey: Pick<Survey, "title" | "titleEn">, locale: Locale): string {
-  return locale === "en" ? survey.titleEn?.trim() || survey.title : survey.title;
+export function localizedSurveyTitle(survey: Pick<Survey, "title">, locale: Locale): string {
+  return locale === "en" ? survey.title.en?.trim() || survey.title.ko : survey.title.ko;
 }
 
 export function getParticipantLoginContentSettings(settings: SurveySettings | undefined): ParticipantLoginContentSettings {

@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { usePreviewSurveyQuery } from "../../../api/admin/query";
 import {
+  buildChoiceMatrixOptions,
   getAssetUrl,
+  getChoiceMatrix,
   getChoiceOptions,
   getConfiguredAssetId,
   getLocalizedTagTypeOptions,
@@ -350,7 +352,7 @@ function QuestionControl(props: {
     return <SingleChoiceControl {...props} options={getChoiceOptions(props.question)} />;
   }
 
-  if (props.question.questionType === "multi_select") {
+  if (props.question.questionType === "multi_select" || props.question.questionType === "matrix_multi_select") {
     return <MultiSelectControl {...props} options={getChoiceOptions(props.question)} />;
   }
 
@@ -502,8 +504,21 @@ function MultiSelectControl(props: {
   options: ChoiceOption[];
   onAnswerChange: (answer: PreviewAnswer | undefined) => void;
 }) {
+  const matrix = getChoiceMatrix(props.question);
   const selected = Array.isArray(props.answer) ? props.answer.filter((value): value is string => typeof value === "string") : [];
   const maxSelect = getMaxSelect(props.question);
+
+  if (matrix) {
+    return (
+      <MultiSelectMatrixControl
+        matrix={matrix}
+        locale={props.locale}
+        selected={selected}
+        maxSelect={maxSelect}
+        onSelectedChange={(next) => props.onAnswerChange(next.length ? next : undefined)}
+      />
+    );
+  }
 
   return (
     <div className="tg-preview-choice-list">
@@ -532,6 +547,66 @@ function MultiSelectControl(props: {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function MultiSelectMatrixControl(props: {
+  matrix: NonNullable<ReturnType<typeof getChoiceMatrix>>;
+  locale: Locale;
+  selected: string[];
+  maxSelect: number | undefined;
+  onSelectedChange: (selected: string[]) => void;
+}) {
+  const optionByValue = new Map(props.matrix.options.map((option) => [option.value, option] as const));
+  return (
+    <div className="tg-preview-choice-matrix-wrap">
+      <p className="tg-preview-choice-list__meta">
+        {props.selected.length}개 선택됨{props.maxSelect ? ` · 최대 ${props.maxSelect}개` : ""}
+      </p>
+      <table className="tg-preview-choice-matrix">
+        <thead>
+          <tr>
+            <th scope="col">행</th>
+            {props.matrix.columns.map((column) => (
+              <th key={column.value} scope="col">
+                {localizedOption(column, props.locale)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {props.matrix.rows.map((row) => (
+            <tr key={row.value}>
+              <th scope="row">{localizedOption(row, props.locale)}</th>
+              {props.matrix.columns.map((column) => {
+                const value = buildChoiceMatrixOptions([row], [column], props.matrix.valueSeparator)[0]?.value ?? `${column.value}_${row.value}`;
+                const option = optionByValue.get(value);
+                const checked = props.selected.includes(value);
+                const disabled = Boolean(props.maxSelect && !checked && props.selected.length >= props.maxSelect);
+                return (
+                  <td key={value}>
+                    <label className="tg-preview-choice-matrix__cell">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={disabled}
+                        aria-label={option ? localizedOption(option, props.locale) : `${localizedOption(column, props.locale)} - ${localizedOption(row, props.locale)}`}
+                        onChange={(event) => {
+                          const next = event.target.checked
+                            ? [...props.selected, value]
+                            : props.selected.filter((item) => item !== value);
+                          props.onSelectedChange(next);
+                        }}
+                      />
+                    </label>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -771,6 +846,7 @@ function formatPreviewQuestionType(question: Question): string {
   if (getQuestionKind(question) === "choice_text") return "선택후 주관식";
   if (question.questionType === "single_choice") return "단일 선택";
   if (question.questionType === "multi_select") return "복수 선택";
+  if (question.questionType === "matrix_multi_select") return "행/열 복수 선택";
   if (question.questionType === "text") return "주관식";
   if (question.questionType === "image_tag") return "위치 선택";
   if (question.questionType === "participant_image_tag") return "사진 위치 선택";

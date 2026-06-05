@@ -200,7 +200,7 @@ export function SurveyAnalysisPage() {
       <header className="tg-analysis-page__header">
         <div>
           <p>분석 화면</p>
-          <h1 id="survey-analysis-title">{detailQuery.data.survey.title}</h1>
+          <h1 id="survey-analysis-title">{detailQuery.data.survey.title.ko}</h1>
         </div>
         <Link to={`/admin/surveys/${surveyId}/report`} className="tg-analysis-page__report-link">
           <FileText size={15} aria-hidden="true" />

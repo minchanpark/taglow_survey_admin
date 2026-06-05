@@ -48,7 +48,7 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
 
     expect(mapper.toSurvey(row)).toMatchObject({
       id: "survey-1",
-      titleEn: "Dormitory Satisfaction Survey",
+      title: { ko: "생활관 만족도 조사", en: "Dormitory Satisfaction Survey" },
       description: {
         ko: "2026 봄학기",
         en: "Spring 2026",

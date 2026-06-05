@@ -1,5 +1,6 @@
 import {
   getChoiceOptions,
+  getChoiceMatrix,
   getConfiguredAssetId,
   getNumber,
   getString,
@@ -53,6 +54,10 @@ export function getPreviewIssues(sections: SurveySection[], questions: Question[
     const options = getChoiceOptions(question);
     if ((question.questionType === "single_choice" || question.questionType === "multi_select" || question.questionType === "ranking" || question.questionType === "text") && Array.isArray(config.options) && !options.length) {
       issues.push({ id: `options-${question.id}`, tone: "danger", label: `${question.questionKey} 선택지가 없습니다.`, questionId: question.id });
+    }
+
+    if (question.questionType === "matrix_multi_select" && !getChoiceMatrix(question)) {
+      issues.push({ id: `matrix-${question.id}`, tone: "danger", label: `${question.questionKey} 행/열 설정이 없습니다.`, questionId: question.id });
     }
 
     if ((question.questionType === "scale" || question.questionType === "attention_check") && (!getNumber(config.scaleMin) || !getNumber(config.scaleMax))) {

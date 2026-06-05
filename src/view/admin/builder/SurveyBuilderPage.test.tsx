@@ -212,8 +212,7 @@ describe("SurveyBuilderPage", () => {
     await waitFor(() => {
       expect(updateSurvey).toHaveBeenCalledWith({
         surveyId: "survey-1",
-        title: "생활관 만족도 조사 2차",
-        titleEn: "Dormitory Satisfaction Survey",
+        title: { ko: "생활관 만족도 조사 2차", en: "Dormitory Satisfaction Survey" },
         description: { ko: "2026 봄학기" },
       });
     });
@@ -241,8 +240,7 @@ describe("SurveyBuilderPage", () => {
     await waitFor(() => {
       expect(updateSurvey).toHaveBeenCalledWith({
         surveyId: "survey-1",
-        title: "생활관 만족도 조사",
-        titleEn: "Dormitory Satisfaction Survey",
+        title: { ko: "생활관 만족도 조사", en: "Dormitory Satisfaction Survey" },
         description: {
           ko: "생활관 생활 경험을 바탕으로 솔직하게 응답해주세요.",
           en: "Please answer honestly based on your dormitory experience.",
@@ -257,7 +255,6 @@ describe("SurveyBuilderPage", () => {
       ...fakeSurvey,
       id: command.surveyId,
       title: command.title ?? fakeSurvey.title,
-      titleEn: command.titleEn ?? fakeSurvey.titleEn,
       description: command.description ?? fakeSurvey.description,
     }));
     renderBuilder({ updateSurvey });
@@ -272,8 +269,7 @@ describe("SurveyBuilderPage", () => {
     await waitFor(() => {
       expect(updateSurvey).toHaveBeenCalledWith({
         surveyId: "survey-1",
-        title: "생활관 만족도 조사",
-        titleEn: "Dormitory Experience Survey",
+        title: { ko: "생활관 만족도 조사", en: "Dormitory Experience Survey" },
         description: { ko: "2026 봄학기" },
       });
     });
@@ -426,6 +422,7 @@ describe("SurveyBuilderPage", () => {
       "척도",
       "단일 선택",
       "복수 선택",
+      "행/열 복수 선택",
       "단답형",
       "주관식",
       "선택후 주관식",
@@ -804,6 +801,55 @@ describe("SurveyBuilderPage", () => {
       });
     });
     expect(await within(editor).findByRole("status")).toHaveTextContent("질문이 저장되었습니다.");
+  });
+
+  it("keeps matrix rows editable when columns are still empty", async () => {
+    const user = userEvent.setup();
+    const matrixQuestion: Question = {
+      ...question,
+      id: "question-matrix",
+      questionKey: "laundry_day_time",
+      questionType: "matrix_multi_select",
+      title: { ko: "주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까?" },
+      metricType: "none",
+      config: {
+        minSelect: 0,
+        matrixRows: [],
+        matrixColumns: [],
+        matrixValueSeparator: "_",
+        options: [],
+      },
+    };
+    const updateQuestion = vi.fn<AdminApiController["updateQuestion"]>(async (command: UpdateQuestionCommand) => ({
+      ...matrixQuestion,
+      id: command.questionId,
+      config: command.config ?? matrixQuestion.config,
+    }));
+    renderBuilder({ updateQuestion }, { questions: [matrixQuestion] });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? 질문 선택" }));
+    const editor = screen.getByRole("complementary", { name: "질문 편집" });
+    const rowKoInput = within(editor).getByLabelText("행 한국어");
+
+    await user.click(rowKoInput);
+    await user.type(rowKoInput, "05:00~07:00 {enter}");
+
+    expect(rowKoInput).toHaveValue("05:00~07:00 \n");
+    await user.click(within(editor).getByRole("button", { name: "저장" }));
+
+    await waitFor(() => {
+      expect(updateQuestion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          questionType: "matrix_multi_select",
+          config: expect.objectContaining({
+            matrixRows: [{ value: "row_1", labelKo: "05:00~07:00" }],
+            matrixColumns: [],
+            options: [],
+          }),
+        }),
+      );
+    });
   });
 
   it("edits profile answer options without opening raw config JSON", async () => {

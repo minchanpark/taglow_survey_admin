@@ -541,6 +541,22 @@
   line-height: var(--tg-line-caption);
 }
 
+.tg-builder-matrix-options {
+  display: grid;
+  gap: var(--tg-space-5);
+}
+
+.tg-builder-matrix-options .tg-builder-choice-options {
+  align-content: start;
+}
+
+.tg-builder-config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--tg-space-4);
+}
+
 .tg-builder-upload-card,
 .tg-builder-config-note {
   display: grid;

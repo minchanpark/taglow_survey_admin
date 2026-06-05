@@ -351,6 +351,61 @@
   accent-color: var(--tg-accent);
 }
 
+.tg-participant-choice-matrix-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  background: var(--tg-bg-panel);
+}
+
+.tg-participant-choice-matrix {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  color: var(--tg-text-body);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-participant-choice-matrix th,
+.tg-participant-choice-matrix td {
+  border-bottom: 1px solid var(--tg-border-subtle);
+  padding: var(--tg-space-4);
+  text-align: center;
+}
+
+.tg-participant-choice-matrix tr:last-child th,
+.tg-participant-choice-matrix tr:last-child td {
+  border-bottom: 0;
+}
+
+.tg-participant-choice-matrix th {
+  color: var(--tg-text-strong);
+  font-weight: var(--tg-weight-medium);
+  white-space: nowrap;
+}
+
+.tg-participant-choice-matrix thead th {
+  background: var(--tg-bg-raised);
+}
+
+.tg-participant-choice-matrix tbody th {
+  text-align: left;
+}
+
+.tg-participant-choice-matrix__cell {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+}
+
+.tg-participant-choice-matrix__cell input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--tg-accent);
+}
+
 .tg-participant-field {
   display: grid;
   gap: var(--tg-space-3);

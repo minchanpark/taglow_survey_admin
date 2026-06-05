@@ -12,7 +12,6 @@ export class ParticipantSurveyMapper {
     return {
       id: survey.id,
       title: survey.title,
-      titleEn: survey.titleEn,
       description: survey.description,
       publicSlug: survey.publicSlug,
       publicCode: survey.publicCode,

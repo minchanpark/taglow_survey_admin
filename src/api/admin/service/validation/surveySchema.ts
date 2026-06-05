@@ -1,7 +1,7 @@
 import type { CreateSurveyCommand, UpdateSurveyCommand } from "../../model";
 
 export function assertCreateSurveyCommand(command: CreateSurveyCommand): void {
-  if (!command.title.trim()) {
+  if (!command.title.ko.trim()) {
     throw new Error("Survey title is required.");
   }
 }

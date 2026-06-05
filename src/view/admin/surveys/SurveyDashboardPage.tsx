@@ -64,7 +64,7 @@ export function SurveyDashboardPage() {
       <header className="tg-survey-dashboard-page__header">
         <div className="tg-survey-dashboard-page__title">
           <p className="tg-survey-dashboard-page__eyebrow">설문 대시보드</p>
-          <h1 id="survey-dashboard-title">{survey.title}</h1>
+          <h1 id="survey-dashboard-title">{survey.title.ko}</h1>
           <div className="tg-survey-dashboard-page__meta">
             <SurveyStatusBadge status={survey.status} />
             <span className={`tg-survey-dashboard-page__access tg-survey-dashboard-page__access--${survey.accessRole}`}>

@@ -35,11 +35,17 @@ import {
   useUpdateSectionMutation,
   useUploadSurveyImageMutation,
 } from "../../../api/admin/query";
-import { canEditSurvey, getChoiceOptions as getNormalizedChoiceOptions } from "../../../api/admin/model";
+import {
+  buildChoiceMatrixOptions,
+  canEditSurvey,
+  getChoiceMatrix,
+  getChoiceOptions as getNormalizedChoiceOptions,
+} from "../../../api/admin/model";
 import type {
   JsonRecord,
   LocalizedText,
   MetricType,
+  ChoiceOption,
   Question,
   QuestionConfig,
   QuestionSetImportPreview,
@@ -79,6 +85,7 @@ const visibleQuestionTypes: Array<{ value: QuestionKind; label: string }> = [
   { value: "scale", label: "척도" },
   { value: "single_choice", label: "단일 선택" },
   { value: "multi_select", label: "복수 선택" },
+  { value: "matrix_multi_select", label: "행/열 복수 선택" },
   { value: shortTextQuestionKind, label: "단답형" },
   { value: "text", label: "주관식" },
   { value: choiceTextQuestionKind, label: "선택후 주관식" },
@@ -149,9 +156,9 @@ const editSurveySchema = z.object({
 const createQuestionSchema = z
   .object({
     createMode: z.enum(["single", "group"]),
-    titleKo: z.string().trim().max(220, "질문 제목은 220자 이하로 입력해주세요.").optional(),
-    displayGroup: z.string().trim().max(220, "큰 질문은 220자 이하로 입력해주세요.").optional(),
-    groupTitleKo: z.string().trim().max(220, "큰 질문은 220자 이하로 입력해주세요.").optional(),
+    titleKo: z.string().trim().max(500, "질문 제목은 500자 이하로 입력해주세요.").optional(),
+    displayGroup: z.string().trim().max(500, "큰 질문은 500자 이하로 입력해주세요.").optional(),
+    groupTitleKo: z.string().trim().max(500, "큰 질문은 500자 이하로 입력해주세요.").optional(),
     groupItems: z.string().trim().max(2000, "세부 항목은 2000자 이하로 입력해주세요.").optional(),
     questionKey: z.string().trim().max(80, "질문 키는 80자 이하로 입력해주세요.").regex(keyRegex, "영문 소문자, 숫자, 밑줄만 사용할 수 있습니다.").optional(),
     questionKeyPrefix: z
@@ -178,8 +185,8 @@ const createQuestionSchema = z
 
 const editQuestionSchema = z.object({
   questionKey: z.string().trim().max(80, "질문 키는 80자 이하로 입력해주세요.").regex(keyRegex, "영문 소문자, 숫자, 밑줄만 사용할 수 있습니다.").optional(),
-  titleKo: z.string().trim().min(1, "질문 제목을 입력해주세요.").max(220, "질문 제목은 220자 이하로 입력해주세요."),
-  titleEn: z.string().trim().max(220, "영문 제목은 220자 이하로 입력해주세요.").optional(),
+  titleKo: z.string().trim().min(1, "질문 제목을 입력해주세요.").max(500, "질문 제목은 500자 이하로 입력해주세요."),
+  titleEn: z.string().trim().max(500, "영문 제목은 500자 이하로 입력해주세요.").optional(),
   descriptionKo: z.string().trim().max(500, "설명은 500자 이하로 입력해주세요.").optional(),
   descriptionEn: z.string().trim().max(500, "영문 설명은 500자 이하로 입력해주세요.").optional(),
   questionType: z.custom<QuestionKind>((value) => allQuestionKinds.some((type) => type.value === value), "질문 유형을 선택해주세요."),
@@ -363,8 +370,8 @@ export function SurveyBuilderPage() {
 
 function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
   const updateSurveyMutation = useUpdateSurveyMutation();
-  const [savedTitle, setSavedTitle] = useState(props.survey.title);
-  const [savedTitleEn, setSavedTitleEn] = useState(props.survey.titleEn ?? "");
+  const [savedTitle, setSavedTitle] = useState(props.survey.title.ko);
+  const [savedTitleEn, setSavedTitleEn] = useState(props.survey.title.en ?? "");
   const [savedDescriptionKo, setSavedDescriptionKo] = useState(props.survey.description?.ko ?? "");
   const [savedDescriptionEn, setSavedDescriptionEn] = useState(props.survey.description?.en ?? "");
   const titleForm = useForm<EditSurveyForm>({
@@ -387,12 +394,12 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
   const isBusy = props.isDisabled || updateSurveyMutation.isPending;
 
   useEffect(() => {
-    setSavedTitle(props.survey.title);
-    setSavedTitleEn(props.survey.titleEn ?? "");
+    setSavedTitle(props.survey.title.ko);
+    setSavedTitleEn(props.survey.title.en ?? "");
     setSavedDescriptionKo(props.survey.description?.ko ?? "");
     setSavedDescriptionEn(props.survey.description?.en ?? "");
     titleForm.reset(surveyToTitleForm(props.survey));
-  }, [props.survey.description, props.survey.title, props.survey.titleEn, titleForm]);
+  }, [props.survey.description, props.survey.title, titleForm]);
 
   return (
     <div className="tg-builder-title-block">
@@ -407,14 +414,13 @@ function SurveyTitleEditor(props: { survey: Survey; isDisabled: boolean }) {
           updateSurveyMutation.mutate(
             {
               surveyId: props.survey.id,
-              title: values.title.trim(),
-              titleEn: values.titleEn?.trim() ?? "",
+              title: toLocalizedText(values.title.trim(), values.titleEn?.trim() || undefined),
               description: toOptionalLocalizedText(values.descriptionKo, values.descriptionEn),
             },
             {
               onSuccess: (survey) => {
-                setSavedTitle(survey.title);
-                setSavedTitleEn(survey.titleEn ?? "");
+                setSavedTitle(survey.title.ko);
+                setSavedTitleEn(survey.title.en ?? "");
                 setSavedDescriptionKo(survey.description?.ko ?? "");
                 setSavedDescriptionEn(survey.description?.en ?? "");
                 titleForm.reset(surveyToTitleForm(survey));
@@ -1502,6 +1508,21 @@ function QuestionConfigFields(props: {
     );
   }
 
+  if (props.questionType === "matrix_multi_select") {
+    return (
+      <div className="tg-builder-config-panel">
+        {displayGroupField}
+        <MatrixOptionsEditor
+          config={config}
+          disabled={props.disabled}
+          onMatrixChange={(matrixRows, matrixColumns) =>
+            setConfig(createMatrixConfigPatch(matrixRows, matrixColumns, getMatrixValueSeparator(config)))
+          }
+        />
+      </div>
+    );
+  }
+
   if (props.questionType === shortTextQuestionKind) {
     return (
       <div className="tg-builder-config-panel">
@@ -1849,6 +1870,126 @@ function ChoiceOptionsEditor(props: {
   );
 }
 
+function MatrixOptionsEditor(props: {
+  config: JsonRecord;
+  disabled: boolean;
+  onMatrixChange: (rows: ChoiceOption[], columns: ChoiceOption[]) => void;
+}) {
+  const matrix = getChoiceMatrix(props.config);
+  const rows = getMatrixConfigItems(props.config.matrixRows);
+  const columns = getMatrixConfigItems(props.config.matrixColumns);
+  const rowKoText = choiceItemsToText(rows, "ko");
+  const rowEnText = choiceItemsToText(rows, "en");
+  const columnKoText = choiceItemsToText(columns, "ko");
+  const columnEnText = choiceItemsToText(columns, "en");
+  const [focusedField, setFocusedField] = useState<string | undefined>();
+  const [draftText, setDraftText] = useState(() => ({
+    rowKo: rowKoText,
+    rowEn: rowEnText,
+    columnKo: columnKoText,
+    columnEn: columnEnText,
+  }));
+
+  useEffect(() => {
+    if (focusedField) return;
+    setDraftText({
+      rowKo: rowKoText,
+      rowEn: rowEnText,
+      columnKo: columnKoText,
+      columnEn: columnEnText,
+    });
+  }, [columnEnText, columnKoText, focusedField, rowEnText, rowKoText]);
+
+  return (
+    <div className="tg-builder-matrix-options">
+      <div className="tg-builder-config-note">
+        <FileText size={16} aria-hidden="true" />
+        <span>행과 열을 조합해 복수 선택 표를 만듭니다. 저장 값은 열 값과 행 값을 조합해 분석 선택지로 사용합니다.</span>
+      </div>
+      <div className="tg-builder-choice-options__grid">
+        <div className="tg-builder-choice-options">
+          <span className="tg-builder-choice-options__title">행</span>
+          <label className="tg-builder-field">
+            <span>한국어</span>
+            <textarea
+              aria-label="행 한국어"
+              rows={6}
+              value={draftText.rowKo}
+              disabled={props.disabled}
+              placeholder={"05:00~07:00\n07:00~09:00"}
+              onFocus={() => setFocusedField("rowKo")}
+              onBlur={() => setFocusedField(undefined)}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                setDraftText((current) => ({ ...current, rowKo: nextValue }));
+                props.onMatrixChange(textToMatrixItems(nextValue, rows, draftText.rowEn, "row"), columns);
+              }}
+            />
+          </label>
+          <label className="tg-builder-field">
+            <span>영어</span>
+            <textarea
+              aria-label="행 영어"
+              rows={6}
+              value={draftText.rowEn}
+              disabled={props.disabled}
+              placeholder={"05:00~07:00\n07:00~09:00"}
+              onFocus={() => setFocusedField("rowEn")}
+              onBlur={() => setFocusedField(undefined)}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                setDraftText((current) => ({ ...current, rowEn: nextValue }));
+                props.onMatrixChange(textToMatrixItems(draftText.rowKo, rows, nextValue, "row"), columns);
+              }}
+            />
+          </label>
+        </div>
+        <div className="tg-builder-choice-options">
+          <span className="tg-builder-choice-options__title">열</span>
+          <label className="tg-builder-field">
+            <span>한국어</span>
+            <textarea
+              aria-label="열 한국어"
+              rows={6}
+              value={draftText.columnKo}
+              disabled={props.disabled}
+              placeholder={"월\n화\n수"}
+              onFocus={() => setFocusedField("columnKo")}
+              onBlur={() => setFocusedField(undefined)}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                setDraftText((current) => ({ ...current, columnKo: nextValue }));
+                props.onMatrixChange(rows, textToMatrixItems(nextValue, columns, draftText.columnEn, "column"));
+              }}
+            />
+          </label>
+          <label className="tg-builder-field">
+            <span>영어</span>
+            <textarea
+              aria-label="열 영어"
+              rows={6}
+              value={draftText.columnEn}
+              disabled={props.disabled}
+              placeholder={"Mon\nTue\nWed"}
+              onFocus={() => setFocusedField("columnEn")}
+              onBlur={() => setFocusedField(undefined)}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                setDraftText((current) => ({ ...current, columnEn: nextValue }));
+                props.onMatrixChange(rows, textToMatrixItems(draftText.columnKo, columns, nextValue, "column"));
+              }}
+            />
+          </label>
+        </div>
+      </div>
+      <div className="tg-builder-config-summary" aria-label="행/열 선택지 미리보기">
+        {matrix?.options.length ? matrix.options.slice(0, 12).map((option) => <span key={option.value}>{option.labelKo}</span>) : <span>행과 열을 입력해주세요.</span>}
+        {(matrix?.options.length ?? 0) > 12 ? <span>외 {(matrix?.options.length ?? 0) - 12}개</span> : null}
+      </div>
+    </div>
+  );
+}
+
 function QuestionSetImportDialog(props: { surveyId: string; onClose: () => void }) {
   const previewQuery = useQuestionSetImportPreviewQuery(props.surveyId, questionSetTemplateId, true);
   const importMutation = useImportQuestionSetMutation();
@@ -2004,8 +2145,8 @@ function getErrorDetail(error: unknown): string | undefined {
 
 function surveyToTitleForm(survey: Survey): EditSurveyForm {
   return {
-    title: survey.title,
-    titleEn: survey.titleEn ?? "",
+    title: survey.title.ko,
+    titleEn: survey.title.en ?? "",
     descriptionKo: survey.description?.ko ?? "",
     descriptionEn: survey.description?.en ?? "",
   };
@@ -2081,6 +2222,17 @@ function defaultQuestionConfig(questionType: QuestionKind): QuestionConfig {
     return {
       minSelect: 1,
       options: [{ value: "option_1", labelKo: "선택지 1" }],
+    };
+  }
+  if (questionType === "matrix_multi_select") {
+    const matrixRows = [{ value: "row_1", labelKo: "행 1" }];
+    const matrixColumns = [{ value: "column_1", labelKo: "열 1" }];
+    return {
+      minSelect: 0,
+      matrixRows,
+      matrixColumns,
+      matrixValueSeparator: "_",
+      options: buildChoiceMatrixOptions(matrixRows, matrixColumns, "_"),
     };
   }
   if (questionType === "text") {
@@ -2165,6 +2317,19 @@ function normalizeQuestionConfigForKind(questionType: QuestionKind, config: Json
       textMode: "choice_then_text",
       multiline: typeof config.multiline === "boolean" ? config.multiline : true,
       options: options.length ? options : defaultChoiceTextOptions,
+    } as QuestionConfig;
+  }
+  if (questionType === "matrix_multi_select") {
+    const matrixRows = getMatrixConfigItems(config.matrixRows);
+    const matrixColumns = getMatrixConfigItems(config.matrixColumns);
+    const matrixValueSeparator = getMatrixValueSeparator(config);
+    return {
+      ...config,
+      minSelect: typeof config.minSelect === "number" ? config.minSelect : 0,
+      matrixRows,
+      matrixColumns,
+      matrixValueSeparator,
+      options: matrixRows.length && matrixColumns.length ? buildChoiceMatrixOptions(matrixRows, matrixColumns, matrixValueSeparator) : [],
     } as QuestionConfig;
   }
   if (questionType === "attention_check") {
@@ -2393,6 +2558,12 @@ function optionsToText(config: JsonRecord, locale: "ko" | "en" = "ko"): string {
   return labels.filter(Boolean).join("\n");
 }
 
+function choiceItemsToText(items: readonly ChoiceOption[], locale: "ko" | "en" = "ko"): string {
+  const labels = items.map((item) => (locale === "en" ? item.labelEn ?? "" : item.labelKo));
+  if (locale === "en") return trimTrailingEmptyLines(labels).join("\n");
+  return labels.filter(Boolean).join("\n");
+}
+
 function textToOptions(
   value: string,
   existingOptions: Array<{ value: string; labelKo: string; labelEn?: string }> = [],
@@ -2410,8 +2581,67 @@ function textToOptions(
   });
 }
 
+function textToMatrixItems(value: string, existingItems: readonly ChoiceOption[] = [], enValue?: string, fallbackPrefix = "item"): ChoiceOption[] {
+  const englishLabels = typeof enValue === "string" ? splitOptionLines(enValue) : undefined;
+  return splitLines(value).map((label, index) => {
+    const labelEn = englishLabels ? englishLabels[index]?.trim() : existingItems[index]?.labelEn?.trim();
+    return {
+      value: existingItems[index]?.value ?? `${fallbackPrefix}_${index + 1}`,
+      labelKo: label,
+      ...(labelEn ? { labelEn } : {}),
+    };
+  });
+}
+
+function getMatrixConfigItems(value: unknown): ChoiceOption[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item, index) => {
+    if (typeof item === "string" && item.trim()) {
+      return [{ value: item.trim(), labelKo: item.trim() }];
+    }
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>;
+    const label = record.label;
+    const labelKo =
+      getStringValue(record.labelKo) ??
+      getStringValue(record.label_ko) ??
+      (label && typeof label === "object" && !Array.isArray(label) ? getStringValue((label as Record<string, unknown>).ko) : undefined) ??
+      getStringValue(label) ??
+      getStringValue(record.value) ??
+      `항목 ${index + 1}`;
+    const labelEn =
+      getStringValue(record.labelEn) ??
+      getStringValue(record.label_en) ??
+      (label && typeof label === "object" && !Array.isArray(label) ? getStringValue((label as Record<string, unknown>).en) : undefined);
+    return [
+      {
+        value: getStringValue(record.value) ?? getStringValue(record.id) ?? getStringValue(record.key) ?? `item_${index + 1}`,
+        labelKo,
+        ...(labelEn ? { labelEn } : {}),
+      },
+    ];
+  });
+}
+
+function getStringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
 function getChoiceOptions(config: JsonRecord): Array<{ value: string; labelKo: string; labelEn?: string }> {
   return getNormalizedChoiceOptions(config);
+}
+
+function createMatrixConfigPatch(rows: readonly ChoiceOption[], columns: readonly ChoiceOption[], separator: string): JsonRecord {
+  return {
+    matrixRows: rows.map((row) => ({ ...row })),
+    matrixColumns: columns.map((column) => ({ ...column })),
+    matrixValueSeparator: separator,
+    options: buildChoiceMatrixOptions(rows, columns, separator),
+  };
+}
+
+function getMatrixValueSeparator(config: JsonRecord): string {
+  return typeof config.matrixValueSeparator === "string" && config.matrixValueSeparator.trim() ? config.matrixValueSeparator.trim() : "_";
 }
 
 function splitOptionLines(value: string): string[] {

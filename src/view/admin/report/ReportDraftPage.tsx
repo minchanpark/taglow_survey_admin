@@ -80,7 +80,7 @@ export function ReportDraftPage() {
   const generateNarrativeMutation = useGenerateReportNarrativeMutation();
 
   useEffect(() => {
-    setSurveyId(surveyId || undefined, detailQuery.data?.survey.title ? `${detailQuery.data.survey.title} 분석 보고서` : undefined);
+    setSurveyId(surveyId || undefined, detailQuery.data?.survey.title ? `${detailQuery.data.survey.title.ko} 분석 보고서` : undefined);
   }, [detailQuery.data?.survey.title, setSurveyId, surveyId]);
 
   const textAnswers = useMemo(
@@ -114,7 +114,7 @@ export function ReportDraftPage() {
   );
   const hasLiveReportSource = hasLiveReportData(liveSource);
   const isUsingSampleData = import.meta.env.DEV && useSampleData;
-  const autoReportTitle = detailQuery.data?.survey.title ? `${detailQuery.data.survey.title} 분석 보고서` : undefined;
+  const autoReportTitle = detailQuery.data?.survey.title ? `${detailQuery.data.survey.title.ko} 분석 보고서` : undefined;
   const reportMetadata = isUsingSampleData ? resolveSampleMetadata(metadata, autoReportTitle) : metadata;
   const reportSource = isUsingSampleData ? sampleReportSource : liveSource;
   const reportFilters = isUsingSampleData && !hasActiveFilters(activeFilters) ? sampleReportFilters : activeFilters;
@@ -200,7 +200,7 @@ export function ReportDraftPage() {
       <header className="tg-report-page__header">
         <div>
           <p>보고서 작성</p>
-          <h1 id="report-draft-title">{detailQuery.data.survey.title}</h1>
+          <h1 id="report-draft-title">{detailQuery.data.survey.title.ko}</h1>
           <small>{formatFilterSummary(reportFilters)}</small>
         </div>
         <div className="tg-report-page__actions">
@@ -365,7 +365,7 @@ export function ReportDraftPage() {
             <Button
               variant="ghost"
               icon={<RefreshCw size={15} aria-hidden="true" />}
-              onClick={() => resetReport(`${detailQuery.data.survey.title} 분석 보고서`)}
+              onClick={() => resetReport(`${detailQuery.data.survey.title.ko} 분석 보고서`)}
             >
               초기화
             </Button>

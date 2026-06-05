@@ -21,6 +21,18 @@ export function validateQuestionConfig(question: Question): string[] {
     issues.push("Multi select questions require options.");
   }
 
+  if (question.questionType === "matrix_multi_select") {
+    if (!Array.isArray(config.matrixRows) || config.matrixRows.length === 0) {
+      issues.push("Matrix multi select questions require matrixRows.");
+    }
+    if (!Array.isArray(config.matrixColumns) || config.matrixColumns.length === 0) {
+      issues.push("Matrix multi select questions require matrixColumns.");
+    }
+    if (!Array.isArray(config.options) || config.options.length === 0) {
+      issues.push("Matrix multi select questions require generated options.");
+    }
+  }
+
   if (question.questionType === "image_tag" && !config.assetId) {
     issues.push("Image tag questions require assetId.");
   }

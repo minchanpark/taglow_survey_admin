@@ -118,7 +118,7 @@ export function SurveySettingsPage() {
       <header className="tg-settings-page__header">
         <div>
           <p className="tg-settings-page__eyebrow">설문 설정</p>
-          <h1 id="survey-settings-title">{activeSurvey.title}</h1>
+          <h1 id="survey-settings-title">{activeSurvey.title.ko}</h1>
         </div>
         <SurveyStatusBadge status={activeSurvey.status} />
       </header>

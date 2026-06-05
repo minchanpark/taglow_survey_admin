@@ -34,7 +34,7 @@ export function SurveyListPage() {
     }
 
     const confirmed = window.confirm(
-      `"${survey.title}" 종료 설문을 보관할까요?\n보관된 설문은 보관함에서만 확인할 수 있습니다.`,
+      `"${survey.title.ko}" 종료 설문을 보관할까요?\n보관된 설문은 보관함에서만 확인할 수 있습니다.`,
     );
 
     if (!confirmed) {
@@ -167,7 +167,7 @@ export function SurveyListPage() {
               >
                 <span className="tg-survey-list-page__survey" role="cell">
                   <Link to={`/admin/surveys/${survey.id}/dashboard`} className="tg-survey-list-page__survey-link">
-                    <strong>{survey.title}</strong>
+                    <strong>{survey.title.ko}</strong>
                     <span className="tg-survey-list-page__survey-meta">
                       <small>{survey.description?.ko ?? "설명 없음"}</small>
                       <span className="tg-survey-list-page__access">
@@ -192,7 +192,7 @@ export function SurveyListPage() {
                     <Link
                       to={`/admin/surveys/${survey.id}/builder`}
                       className="tg-survey-list-page__edit-link"
-                      aria-label={`${survey.title} 수정`}
+                      aria-label={`${survey.title.ko} 수정`}
                     >
                       <PencilLine size={15} aria-hidden="true" />
                       <span>수정</span>
@@ -201,7 +201,7 @@ export function SurveyListPage() {
                     <Link
                       to={`/admin/surveys/${survey.id}/analysis`}
                       className="tg-survey-list-page__edit-link"
-                      aria-label={`${survey.title} 분석 보기`}
+                      aria-label={`${survey.title.ko} 분석 보기`}
                     >
                       <BarChart3 size={15} aria-hidden="true" />
                       <span>분석</span>
@@ -212,7 +212,7 @@ export function SurveyListPage() {
                       className="tg-survey-list-page__action-button"
                       variant="secondary"
                       icon={<Archive size={15} aria-hidden="true" />}
-                      aria-label={`${survey.title} 보관`}
+                      aria-label={`${survey.title.ko} 보관`}
                       disabled={isArchivePending}
                       onClick={() => void handleArchiveSurvey(survey)}
                     >
@@ -224,7 +224,7 @@ export function SurveyListPage() {
                       className="tg-survey-list-page__action-button"
                       variant="danger"
                       icon={<Trash2 size={15} aria-hidden="true" />}
-                      aria-label={`${survey.title} 삭제`}
+                      aria-label={`${survey.title.ko} 삭제`}
                       disabled={!canDeleteSurvey(survey) || isDeletePending}
                       title={canDeleteSurvey(survey) ? undefined : "초안, 종료, 보관 상태의 설문만 삭제할 수 있습니다."}
                       onClick={() => void handleDeleteSurvey(survey)}
@@ -256,8 +256,8 @@ function canDeleteSurvey(survey: Survey): boolean {
 
 function getDeleteConfirmMessage(survey: Survey): string {
   if (survey.status === "draft") {
-    return `"${survey.title}" 초안 설문을 삭제할까요?\n삭제한 섹션/질문은 복구할 수 없습니다.`;
+    return `"${survey.title.ko}" 초안 설문을 삭제할까요?\n삭제한 섹션/질문은 복구할 수 없습니다.`;
   }
 
-  return `"${survey.title}" 설문을 영구 삭제할까요?\n설문 구조, 응답, 분석 데이터가 모두 삭제되며 복구할 수 없습니다.`;
+  return `"${survey.title.ko}" 설문을 영구 삭제할까요?\n설문 구조, 응답, 분석 데이터가 모두 삭제되며 복구할 수 없습니다.`;
 }

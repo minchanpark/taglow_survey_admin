@@ -70,8 +70,7 @@ export class AdminPayloadMapper {
   toSurvey(row: RawSurvey): Survey {
     return {
       id: row.id,
-      title: row.title,
-      titleEn: row.title_en ?? undefined,
+      title: compactLocalizedText(row.title, row.title_en),
       description: row.description || row.description_en ? compactLocalizedText(row.description ?? "", row.description_en) : undefined,
       status: normalizeSurveyStatus(row.status),
       publicSlug: row.public_slug ?? undefined,
@@ -535,6 +534,7 @@ function normalizeQuestionType(value: string): QuestionType {
     "scale",
     "single_choice",
     "multi_select",
+    "matrix_multi_select",
     "ranking",
     "text",
     "image_tag",

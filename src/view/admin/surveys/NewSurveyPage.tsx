@@ -35,8 +35,7 @@ export function NewSurveyPage() {
   const onSubmit = form.handleSubmit((values) => {
     createSurveyMutation.mutate(
       {
-        title: values.title,
-        ...(values.titleEn?.trim() ? { titleEn: values.titleEn.trim() } : {}),
+        title: values.titleEn?.trim() ? { ko: values.title, en: values.titleEn.trim() } : { ko: values.title },
         description: values.description ? { ko: values.description } : undefined,
         settings: {
           locales: values.enableEnglish ? ["ko", "en"] : ["ko"],

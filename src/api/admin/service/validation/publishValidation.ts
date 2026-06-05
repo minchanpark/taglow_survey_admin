@@ -4,7 +4,7 @@ import { validateQuestionConfig } from "./questionConfigSchema";
 export function validatePublishSurveyDetail(detail: SurveyDetail): PublishValidationResult {
   const issues: PublishValidationIssue[] = [];
 
-  if (!detail.survey.title.trim()) {
+  if (!detail.survey.title.ko.trim()) {
     issues.push({ severity: "error", code: "SURVEY_TITLE_REQUIRED", message: "Survey title is required." });
   }
 

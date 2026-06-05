@@ -6,6 +6,7 @@ export type QuestionType =
   | "scale"
   | "single_choice"
   | "multi_select"
+  | "matrix_multi_select"
   | "ranking"
   | "text"
   | "image_tag"
@@ -19,6 +20,8 @@ export type ChoiceOption = Readonly<{
   labelKo: string;
   labelEn?: string;
 }>;
+
+export type ChoiceMatrixItem = ChoiceOption;
 
 export type ScaleQuestionConfig = Readonly<{
   scaleMin: number;
@@ -35,6 +38,15 @@ export type SingleChoiceQuestionConfig = Readonly<{
 export type MultiSelectQuestionConfig = Readonly<{
   minSelect?: number;
   maxSelect?: number;
+  options: ChoiceOption[];
+}>;
+
+export type MatrixMultiSelectQuestionConfig = Readonly<{
+  minSelect?: number;
+  maxSelect?: number;
+  matrixRows?: ChoiceMatrixItem[];
+  matrixColumns?: ChoiceMatrixItem[];
+  matrixValueSeparator?: string;
   options: ChoiceOption[];
 }>;
 
@@ -70,6 +82,7 @@ export type QuestionConfig =
   | ScaleQuestionConfig
   | SingleChoiceQuestionConfig
   | MultiSelectQuestionConfig
+  | MatrixMultiSelectQuestionConfig
   | ImageTagQuestionConfig
   | ParticipantImageTagQuestionConfig
   | AttentionCheckQuestionConfig

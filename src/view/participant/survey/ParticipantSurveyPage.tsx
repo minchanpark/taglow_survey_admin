@@ -12,7 +12,9 @@ import {
 import {
   getAnswerSections,
   getAssetUrl,
+  buildChoiceMatrixOptions,
   getChoiceOptions,
+  getChoiceMatrix,
   getConfiguredAssetId,
   getParticipantLoginContentSettings,
   getLocalizedTagTypeOptions,
@@ -262,8 +264,8 @@ function buildLoginContentFromSurveyDetail(detail: ParticipantSurveyDetail): Par
   const bottomImage = settings.bottomImageAssetId ? toLoginImage(detail.assets, settings.bottomImageAssetId) : undefined;
   if (!settings.headline && !settings.headlineEn && !bodyParagraphs.length && !bodyParagraphsEn.length && !headerImage && !bottomImage) return null;
   return {
-    title: detail.survey.title,
-    titleEn: detail.survey.titleEn,
+    title: detail.survey.title.ko,
+    titleEn: detail.survey.title.en,
     headline: settings.headline,
     headlineEn: settings.headlineEn,
     bodyParagraphs,
@@ -543,7 +545,7 @@ function QuestionView(props: {
         <ScaleQuestionControl question={props.question} locale={props.locale} answer={props.answer} onAnswerChange={props.onAnswerChange} />
       ) : questionKind === "single_choice" ? (
         <SingleChoiceQuestionControl question={props.question} locale={props.locale} answer={props.answer} onAnswerChange={props.onAnswerChange} />
-      ) : questionKind === "multi_select" ? (
+      ) : questionKind === "multi_select" || questionKind === "matrix_multi_select" ? (
         <MultiSelectQuestionControl question={props.question} locale={props.locale} answer={props.answer} onAnswerChange={props.onAnswerChange} />
       ) : questionKind === "choice_text" ? (
         <ChoiceTextQuestionControl question={props.question} locale={props.locale} answer={props.answer} onAnswerChange={props.onAnswerChange} />
@@ -637,9 +639,22 @@ function MultiSelectQuestionControl(props: {
   answer: ParticipantAnswer;
   onAnswerChange: (answer: ParticipantAnswer) => void;
 }) {
+  const matrix = getChoiceMatrix(props.question);
   const options = getChoiceOptions(props.question.config);
   const selected = Array.isArray(props.answer) ? props.answer.filter((value): value is string => typeof value === "string") : [];
   const maxSelect = getMaxSelect(props.question);
+
+  if (matrix) {
+    return (
+      <MultiSelectMatrixControl
+        matrix={matrix}
+        locale={props.locale}
+        selected={selected}
+        maxSelect={maxSelect}
+        onSelectedChange={(next) => props.onAnswerChange(next.length ? next : undefined)}
+      />
+    );
+  }
 
   return (
     <div className="tg-participant-choice-list">
@@ -663,6 +678,63 @@ function MultiSelectQuestionControl(props: {
           </label>
         );
       })}
+    </div>
+  );
+}
+
+function MultiSelectMatrixControl(props: {
+  matrix: NonNullable<ReturnType<typeof getChoiceMatrix>>;
+  locale: Locale;
+  selected: string[];
+  maxSelect: number | undefined;
+  onSelectedChange: (selected: string[]) => void;
+}) {
+  const optionByValue = new Map(props.matrix.options.map((option) => [option.value, option] as const));
+  return (
+    <div className="tg-participant-choice-matrix-wrap">
+      <table className="tg-participant-choice-matrix">
+        <thead>
+          <tr>
+            <th scope="col">행</th>
+            {props.matrix.columns.map((column) => (
+              <th key={column.value} scope="col">
+                {localizedOption(column, props.locale)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {props.matrix.rows.map((row) => (
+            <tr key={row.value}>
+              <th scope="row">{localizedOption(row, props.locale)}</th>
+              {props.matrix.columns.map((column) => {
+                const value = buildChoiceMatrixOptions([row], [column], props.matrix.valueSeparator)[0]?.value ?? `${column.value}_${row.value}`;
+                const option = optionByValue.get(value);
+                const checked = props.selected.includes(value);
+                const disabled = Boolean(props.maxSelect && !checked && props.selected.length >= props.maxSelect);
+                return (
+                  <td key={value}>
+                    <label className="tg-participant-choice-matrix__cell">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={disabled}
+                        aria-label={option ? localizedOption(option, props.locale) : `${localizedOption(column, props.locale)} - ${localizedOption(row, props.locale)}`}
+                        onChange={(event) => {
+                          const next = event.target.checked
+                            ? [...props.selected, value]
+                            : props.selected.filter((item) => item !== value);
+                          props.onSelectedChange(next);
+                        }}
+                      />
+                    </label>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -923,6 +995,7 @@ function formatQuestionType(question: Question): string {
     scale: "척도",
     single_choice: "단일 선택",
     multi_select: "복수 선택",
+    matrix_multi_select: "행/열 복수 선택",
     ranking: "순위",
     text: "주관식",
     image_tag: "이미지 태깅",
@@ -938,6 +1011,7 @@ function formatAnswerHint(type: Question["questionType"]): string {
   if (type === "image_tag") return "이미지 태깅 응답 영역";
   if (type === "participant_image_tag") return "사진 업로드 후 태깅 응답 영역";
   if (type === "ranking") return "순위 응답 영역";
+  if (type === "matrix_multi_select") return "행/열 복수 선택 응답 영역";
   return "응답 영역";
 }
 

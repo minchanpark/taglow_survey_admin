@@ -376,8 +376,7 @@ describe("GatewayBackedAdminApiController question updates", () => {
 
     await controller.updateSurvey({
       surveyId: "survey-1",
-      title: "생활관 만족도 조사",
-      titleEn: "Dormitory Satisfaction Survey",
+      title: { ko: "생활관 만족도 조사", en: "Dormitory Satisfaction Survey" },
     });
 
     expect(updateSurvey).toHaveBeenCalledWith({
@@ -531,9 +530,9 @@ describe("GatewayBackedAdminApiController question set import", () => {
 
     expect(preview.title).toBe("2026년도 1학기 생활관 정기 설문조사 질문 목록");
     expect(preview.totalSectionCount).toBe(7);
-    expect(preview.totalQuestionCount).toBe(199);
+    expect(preview.totalQuestionCount).toBe(191);
     expect(preview.importableSectionCount).toBe(6);
-    expect(preview.importableQuestionCount).toBe(198);
+    expect(preview.importableQuestionCount).toBe(190);
     expect(preview.skippedQuestionCount).toBe(1);
     expect(preview.sections.find((section) => section.sectionKey === "dorm_25_2_profile")?.isExisting).toBe(true);
     expect(preview.questions.find((question) => question.questionKey === "dorm_25_2_q001")?.isExisting).toBe(true);
@@ -597,12 +596,36 @@ describe("GatewayBackedAdminApiController question set import", () => {
 
     expect(createSections).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ section_key: "dorm_25_2_facilities" })]));
     expect(createSections.mock.calls[0]?.[0]).toHaveLength(6);
-    expect(createQuestions.mock.calls[0]?.[0]).toHaveLength(198);
+    expect(createQuestions.mock.calls[0]?.[0]).toHaveLength(190);
     expect(createQuestions.mock.calls[0]?.[0]).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ question_key: "dorm_25_2_q001" })]),
     );
     expect(createQuestions.mock.calls[0]?.[0]).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          question_key: "dorm_25_2_q154",
+          question_type: "matrix_multi_select",
+          title_ko: "주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능)",
+          config: expect.objectContaining({
+            importSource: "handong-dom-survey-2026-1",
+            sourceNumber: 154,
+            minSelect: 0,
+            matrixRows: expect.arrayContaining([{ value: "05_00_07_00", labelKo: "05:00~07:00", labelEn: "05:00~07:00" }]),
+            matrixColumns: expect.arrayContaining([{ value: "mon", labelKo: "월", labelEn: "Mon" }]),
+            options: expect.arrayContaining([
+              {
+                value: "mon_05_00_07_00",
+                labelKo: "월 - 05:00~07:00",
+                labelEn: "Mon - 05:00~07:00",
+              },
+              {
+                value: "sun_21_00_23_00",
+                labelKo: "일 - 21:00~23:00",
+                labelEn: "Sun - 21:00~23:00",
+              },
+            ]),
+          }),
+        }),
         expect.objectContaining({
           question_key: "question_mpqzy65n",
           question_type: "participant_image_tag",
@@ -616,7 +639,7 @@ describe("GatewayBackedAdminApiController question set import", () => {
       ]),
     );
     expect(result.sectionsCreated).toBe(6);
-    expect(result.questionsCreated).toBe(198);
+    expect(result.questionsCreated).toBe(190);
     expect(result.questionsSkipped).toBe(1);
   });
 });

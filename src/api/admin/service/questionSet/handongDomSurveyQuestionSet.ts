@@ -5,6 +5,7 @@ import {
   rcOptions,
   roomTypeOptions,
   semesterGroupOptions,
+  buildChoiceMatrixOptions,
 } from "../../model";
 import type {
   MetricType,
@@ -359,15 +360,7 @@ const rawQuestionText = `
 151. 세탁기 및 건조기 관리가 잘 이루어지고 있습니까? [건조기]
 152. 불만족 또는 매우 불만족을 선택하셨다면, 그 이유는 무엇인가요?
 153. 세탁기 및 건조기 청소 및 관리에 있어서 부족하다고 생각하는 점은 무엇입니까?
-154. 주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능) [05:00~07:00]
-155. 주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능) [07:00~09:00]
-156. 주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능) [09:00~11:00]
-157. 주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능) [11:00~13:00]
-158. 주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능) [13:00~15:00]
-159. 주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능) [15:00~17:00]
-160. 주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능) [17:00~19:00]
-161. 주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능) [19:00~21:00]
-162. 주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능) [21:00~23:00]
+154. 주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능)
 163. 세탁기 및 건조기를 사용하지 않아 청소 및 점검이 이루어지기를 선호하는 시간대는 언제입니까? (평일 기준, 하나만 선택 가능)
 164. '기타 생활'과 관련된 다음 항목에 대한 중요도에 대해 어떻게 생각하십니까? [(1) 방 배정]
 165. '기타 생활'과 관련된 다음 항목에 대한 중요도에 대해 어떻게 생각하십니까? [(2) RC별 행사 및 사업]
@@ -548,15 +541,7 @@ const rawEnglishQuestionText = `
 151. Is the management of the washing machines and dryers being carried out effectively? [Dryer]
 152. If you selected 'Dissatisfied' or 'Very Dissatisfied', what is the reason?
 153. What do you think is lacking in the cleaning and maintenance of the washing machines and dryers?
-154. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [05:00~07:00]
-155. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [07:00~09:00]
-156. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [09:00~11:00]
-157. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [11:00~13:00]
-158. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [13:00~15:00]
-159. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [15:00~17:00]
-160. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [17:00~19:00]
-161. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [19:00~21:00]
-162. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed) [21:00~23:00]
+154. What days and times do you primarily use the washing machines and dryers? (Multiple selections are allowed)
 163. What time of day would you prefer cleaning and inspections of the washing machines and dryers to be conducted, considering you do not use them? (Weekdays only, please select one option)
 164. What is your opinion on the importance of the following aspects related to 'Other Living Conditions'? [(1) Room Assignment]
 165. What is your opinion on the importance of the following aspects related to 'Other Living Conditions'? [(2) RC-specific Events and Programs]
@@ -758,6 +743,7 @@ function inferQuestionType(source: SourceQuestion): QuestionType {
   if (text.includes("선택해주세요")) return "attention_check";
   if (source.number <= 6 || isIdentityProfileQuestion(source)) return "profile";
   if (hasAny(text, ["자유롭게", "이유", "부족", "건의/문의"])) return "text";
+  if (source.number === 154) return "matrix_multi_select";
   if (text.includes("중복 선택 가능")) return "multi_select";
   if (text.includes("하나만 선택 가능")) return "single_choice";
   if (hasAny(text, ["만족도", "중요도", "관리가 잘 이루어지고"])) return "scale";
@@ -816,6 +802,20 @@ function inferConfig(source: SourceQuestion, questionType: QuestionType, metricT
           ? timeSlotOptions
           : yesNoOptions(),
     };
+  }
+
+  if (questionType === "matrix_multi_select") {
+    if (source.number === 154) {
+      const matrixRows = washerDryerTimeRows();
+      const matrixColumns = washerDryerDayColumns();
+      return {
+        minSelect: 0,
+        matrixRows,
+        matrixColumns,
+        matrixValueSeparator: "_",
+        options: buildChoiceMatrixOptions(matrixRows, matrixColumns, "_"),
+      };
+    }
   }
 
   if (questionType === "multi_select") {
@@ -1020,4 +1020,30 @@ function stableValue(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9가-힣]+/g, "_")
     .replace(/^_+|_+$/g, "") || "option";
+}
+
+function washerDryerDayColumns() {
+  return [
+    { value: "mon", labelKo: "월", labelEn: "Mon" },
+    { value: "tue", labelKo: "화", labelEn: "Tue" },
+    { value: "wed", labelKo: "수", labelEn: "Wed" },
+    { value: "thu", labelKo: "목", labelEn: "Thu" },
+    { value: "fri", labelKo: "금", labelEn: "Fri" },
+    { value: "sat", labelKo: "토", labelEn: "Sat" },
+    { value: "sun", labelKo: "일", labelEn: "Sun" },
+  ];
+}
+
+function washerDryerTimeRows() {
+  return [
+    "05:00~07:00",
+    "07:00~09:00",
+    "09:00~11:00",
+    "11:00~13:00",
+    "13:00~15:00",
+    "15:00~17:00",
+    "17:00~19:00",
+    "19:00~21:00",
+    "21:00~23:00",
+  ].map((label) => ({ value: label.replace(/[^0-9]/g, "_"), labelKo: label, labelEn: label }));
 }

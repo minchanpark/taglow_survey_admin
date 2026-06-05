@@ -97,8 +97,7 @@ export const sharedSurveySession: AdminSessionState = {
 
 export const fakeSurvey: Survey = {
   id: "survey-1",
-  title: "생활관 만족도 조사",
-  titleEn: "Dormitory Satisfaction Survey",
+  title: { ko: "생활관 만족도 조사", en: "Dormitory Satisfaction Survey" },
   description: { ko: "2026 봄학기" },
   status: "draft",
   publicSlug: undefined,
@@ -187,14 +186,12 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
     createSurvey: async (command: CreateSurveyCommand) => ({
       ...fakeSurvey,
       title: command.title,
-      ...(command.titleEn ? { titleEn: command.titleEn } : {}),
       description: command.description,
     }),
     updateSurvey: async (command: UpdateSurveyCommand) => ({
       ...fakeSurvey,
       id: command.surveyId,
       title: command.title ?? fakeSurvey.title,
-      titleEn: Object.prototype.hasOwnProperty.call(command, "titleEn") ? command.titleEn || undefined : fakeSurvey.titleEn,
       description: command.description ?? fakeSurvey.description,
       settings: command.settings ?? fakeSurvey.settings,
     }),

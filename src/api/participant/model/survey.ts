@@ -4,8 +4,7 @@ export type { JsonRecord, LocalizedText, Question, SurveyAsset, SurveySection } 
 
 export type ParticipantSurvey = Readonly<{
   id: string;
-  title: string;
-  titleEn?: string;
+  title: LocalizedText;
   description?: LocalizedText;
   publicSlug?: string;
   publicCode?: string;

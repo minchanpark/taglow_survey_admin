@@ -119,7 +119,7 @@ describe("SurveyListPage", () => {
       createFakeAdminApiController({
         listSurveys: async () => [
           fakeSurvey,
-          { ...fakeSurvey, id: "survey-archived", title: "보관된 설문", status: "archived" },
+          { ...fakeSurvey, id: "survey-archived", title: { ko: "보관된 설문" }, status: "archived" },
         ],
       }),
     );

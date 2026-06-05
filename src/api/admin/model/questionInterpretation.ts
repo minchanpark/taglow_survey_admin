@@ -83,6 +83,38 @@ export function getChoiceOptions(source: Question | QuestionConfig): ChoiceOptio
     .filter((option): option is ChoiceOption => Boolean(option));
 }
 
+export type ChoiceMatrix = Readonly<{
+  rows: ChoiceOption[];
+  columns: ChoiceOption[];
+  valueSeparator: string;
+  options: ChoiceOption[];
+}>;
+
+export function getChoiceMatrix(source: Question | QuestionConfig): ChoiceMatrix | undefined {
+  const config = "config" in Object(source) ? toRecord((source as Question).config) : toRecord(source);
+  const rows = getMatrixItems(config.matrixRows);
+  const columns = getMatrixItems(config.matrixColumns);
+  if (!rows.length || !columns.length) return undefined;
+
+  const separator = getString(config.matrixValueSeparator) ?? "_";
+  return {
+    rows,
+    columns,
+    valueSeparator: separator,
+    options: buildChoiceMatrixOptions(rows, columns, separator),
+  };
+}
+
+export function buildChoiceMatrixOptions(rows: readonly ChoiceOption[], columns: readonly ChoiceOption[], separator = "_"): ChoiceOption[] {
+  return columns.flatMap((column) =>
+    rows.map((row) => ({
+      value: `${column.value}${separator}${row.value}`,
+      labelKo: `${column.labelKo} - ${row.labelKo}`,
+      ...(column.labelEn || row.labelEn ? { labelEn: `${column.labelEn ?? column.labelKo} - ${row.labelEn ?? row.labelKo}` } : {}),
+    })),
+  );
+}
+
 export function getExperienceFallbackOptions(): ChoiceOption[] {
   return [
     { value: "yes", labelKo: "예", labelEn: "Yes" },
@@ -163,7 +195,7 @@ export function isAnsweredValue(question: Question, value: unknown): boolean {
 
   const kind = getQuestionKind(question);
   if (kind === "choice_text") return Boolean(getString(value.choiceValue) || getString(value.text));
-  if (kind === "multi_select") return getStringArray(value.selectedOptions).length > 0;
+  if (kind === "multi_select" || kind === "matrix_multi_select") return getStringArray(value.selectedOptions).length > 0;
   if (kind === "ranking") return Array.isArray(value.rankedOptions) && value.rankedOptions.length > 0;
   if (kind === "text" || kind === "short_text") return Boolean(getString(value.textValue));
   if (question.questionType === "image_tag") return Array.isArray(value.tags) ? value.tags.length > 0 : Array.isArray(value.points) && value.points.length > 0;
@@ -186,6 +218,13 @@ function getRawOptions(config: JsonRecord): unknown[] {
   if (Array.isArray(config.choices)) return config.choices;
   if (Array.isArray(config.items)) return config.items;
   return [];
+}
+
+function getMatrixItems(value: unknown): ChoiceOption[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => normalizeChoiceOption(item, index))
+    .filter((item): item is ChoiceOption => Boolean(item));
 }
 
 function normalizeChoiceOption(option: unknown, index: number): ChoiceOption | undefined {

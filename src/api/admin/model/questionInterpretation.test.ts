@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Question } from "./question";
-import { getChoiceOptions, getQuestionKind, shouldShowQuestion } from "./questionInterpretation";
+import { getChoiceMatrix, getChoiceOptions, getQuestionKind, shouldShowQuestion } from "./questionInterpretation";
 
 const sourceQuestion: Question = {
   id: "question-source",
@@ -52,6 +52,21 @@ describe("question interpretation", () => {
       { value: "yes", labelKo: "예", labelEn: "Yes" },
       { value: "no", labelKo: "아니오" },
     ]);
+  });
+
+  it("builds matrix options from configured rows and columns", () => {
+    const matrix = getChoiceMatrix({
+      matrixRows: [{ value: "05_00_07_00", labelKo: "05:00~07:00" }],
+      matrixColumns: [{ value: "mon", labelKo: "월", labelEn: "Mon" }],
+      matrixValueSeparator: "_",
+    });
+
+    expect(matrix).toEqual({
+      rows: [{ value: "05_00_07_00", labelKo: "05:00~07:00" }],
+      columns: [{ value: "mon", labelKo: "월", labelEn: "Mon" }],
+      valueSeparator: "_",
+      options: [{ value: "mon_05_00_07_00", labelKo: "월 - 05:00~07:00", labelEn: "Mon - 05:00~07:00" }],
+    });
   });
 
   it("evaluates branch rules through questionKey to question id mapping", () => {

@@ -12,11 +12,11 @@ describe("handongDomSurveyQuestionSet", () => {
       ["자치회 사업", 17],
       ["입출입 및 점호 시스템", 26],
       ["생활관 시설", 112],
-      ["세탁 및 건조기", 14],
+      ["세탁 및 건조기", 6],
       ["기타 생활", 14],
       ["글로벌 라운지", 8],
     ]);
-    expect(template.sections.flatMap((section) => section.questions)).toHaveLength(199);
+    expect(template.sections.flatMap((section) => section.questions)).toHaveLength(191);
   });
 
   it("infers representative question types and metrics", () => {
@@ -62,7 +62,24 @@ describe("handongDomSurveyQuestionSet", () => {
       expectedValue: "5",
       excludeIfFailed: true,
     });
-    expect(questions.get(154)?.questionType).toBe("multi_select");
+    expect(questions.get(154)?.questionType).toBe("matrix_multi_select");
+    const config154 = questions.get(154)?.config as any;
+    expect(config154.minSelect).toBe(0);
+    expect(config154.matrixRows).toHaveLength(9);
+    expect(config154.matrixColumns).toHaveLength(7);
+    expect(config154.matrixRows[0]).toEqual({ value: "05_00_07_00", labelKo: "05:00~07:00", labelEn: "05:00~07:00" });
+    expect(config154.matrixColumns[0]).toEqual({ value: "mon", labelKo: "월", labelEn: "Mon" });
+    expect(config154.options).toHaveLength(63);
+    expect(config154.options?.[0]).toEqual({
+      value: "mon_05_00_07_00",
+      labelKo: "월 - 05:00~07:00",
+      labelEn: "Mon - 05:00~07:00",
+    });
+    expect(config154.options?.at(-1)).toEqual({
+      value: "sun_21_00_23_00",
+      labelKo: "일 - 21:00~23:00",
+      labelEn: "Sun - 21:00~23:00",
+    });
     expect(questions.get(163)?.questionType).toBe("single_choice");
     expect(questions.get(163)?.config).toMatchObject({ options: expect.arrayContaining([{ value: "05_00_07_00", labelKo: "05:00~07:00" }]) });
     expect(questions.get(164)?.metricType).toBe("importance");
