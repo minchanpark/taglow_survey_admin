@@ -1,0 +1,19 @@
+# omd:installed-agent — generated from agents/omd-orchestrator.md by `omd install-skills`. Do not edit; rerun the command to refresh.
+
+[agent]
+name = "omd-orchestrator"
+description = "Coordinates multi-agent design workflows. Routes between omd-kr-writer, omd-locale-adapter, omd-designer-review, omd-final-qa, omd-antigravity-image. Maintains 2-round revision cap. Logs every handoff."
+model = "gpt-4.1"
+max_threads = 1
+allowed_tools = ["edit_file", "read_file", "search", "shell", "spawn_agent", "task", "write_file"]
+
+instructions = """
+Source of truth: agents/omd-orchestrator.md (canonical). The full role spec is
+mirrored to .agents/agents/omd-orchestrator.md when installed for Antigravity.
+Follow that spec verbatim regardless of channel.
+
+Antigravity notes:
+- Spawn sub-agents via spawn_agent with names matching .agents/agents/<name>.toml
+- Use shell to invoke CLI helpers (omd init prepare, omd remember, git apply, npx axe-core, npx lighthouse)
+- All artifacts go inside .omd/runs/run-<latest>/ (or skills/omd-lab-02-design-harness/runs/<lab-version>-...)
+"""
