@@ -36,6 +36,7 @@ import type {
 } from "../../../api/admin/model";
 import { ErrorState, LoadingState, StatusBadge } from "../../../components";
 import { useAdminFilterStore } from "../../../store";
+import { isReportDraftEnabled } from "../../../utils/featureFlags";
 import {
   ChoiceDistributionCard,
   GroupCompareCard,
@@ -202,10 +203,21 @@ export function SurveyAnalysisPage() {
           <p>분석 화면</p>
           <h1 id="survey-analysis-title">{detailQuery.data.survey.title.ko}</h1>
         </div>
-        <Link to={`/admin/surveys/${surveyId}/report`} className="tg-analysis-page__report-link">
-          <FileText size={15} aria-hidden="true" />
-          <span>보고서 작성</span>
-        </Link>
+        {isReportDraftEnabled ? (
+          <Link to={`/admin/surveys/${surveyId}/report`} className="tg-analysis-page__report-link">
+            <FileText size={15} aria-hidden="true" />
+            <span>보고서 작성</span>
+          </Link>
+        ) : (
+          <span
+            className="tg-analysis-page__report-link tg-analysis-page__report-link--disabled"
+            aria-disabled="true"
+            title="개발 버전에서만 확인 가능합니다."
+          >
+            <FileText size={15} aria-hidden="true" />
+            <span>보고서 작성</span>
+          </span>
+        )}
         <div className="tg-analysis-page__metrics" aria-label="응답 현황">
           <Metric label={responseMetricLabel} value={responseMetricValue} tone={responseSummary?.isLowSample ? "warning" : undefined} />
           <Metric label={comparisonMetricLabel} value={comparisonMetricValue} />

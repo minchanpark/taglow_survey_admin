@@ -57,6 +57,14 @@
   color: var(--tg-accent);
 }
 
+.tg-analysis-page__report-link--disabled,
+.tg-analysis-page__report-link--disabled:hover {
+  border-color: var(--tg-border-strong);
+  color: var(--tg-text-faint);
+  background: var(--tg-bg-inset);
+  cursor: not-allowed;
+}
+
 .tg-analysis-page__metric {
   display: grid;
   gap: var(--tg-space-2);

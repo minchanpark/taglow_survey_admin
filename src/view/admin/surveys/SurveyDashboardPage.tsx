@@ -12,6 +12,7 @@ import {
 } from "../../../api/admin/model";
 import { useIdentityResponsesInfiniteQuery, useResponseSummaryQuery, useSurveyDetailQuery } from "../../../api/admin/query";
 import { Button, ErrorState, LoadingState, StatusBadge, SurveyStatusBadge } from "../../../components";
+import { isReportDraftEnabled } from "../../../utils/featureFlags";
 import "./css/SurveyDashboardPage.css";
 
 const dashboardFilters = {};
@@ -91,10 +92,21 @@ export function SurveyDashboardPage() {
             <BarChart3 size={15} aria-hidden="true" />
             <span>분석 보기</span>
           </Link>
-          <Link to={`/admin/surveys/${surveyId}/report`} className="tg-survey-dashboard-page__action">
-            <NotebookText size={15} aria-hidden="true" />
-            <span>보고서</span>
-          </Link>
+          {isReportDraftEnabled ? (
+            <Link to={`/admin/surveys/${surveyId}/report`} className="tg-survey-dashboard-page__action">
+              <NotebookText size={15} aria-hidden="true" />
+              <span>보고서</span>
+            </Link>
+          ) : (
+            <span
+              className="tg-survey-dashboard-page__action tg-survey-dashboard-page__action--disabled"
+              aria-disabled="true"
+              title="개발 버전에서만 확인 가능합니다."
+            >
+              <NotebookText size={15} aria-hidden="true" />
+              <span>보고서</span>
+            </span>
+          )}
           {canOpenSettings ? (
             <Link to={`/admin/surveys/${surveyId}/settings`} className="tg-survey-dashboard-page__action">
               <Settings size={15} aria-hidden="true" />

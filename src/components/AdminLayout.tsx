@@ -9,6 +9,7 @@ import {
   type AdminRole,
   type SurveyAccessRole,
 } from "../api/admin/model";
+import { isReportDraftEnabled } from "../utils/featureFlags";
 import { Button } from "./Button";
 import "./css/AdminLayout.css";
 
@@ -74,8 +75,22 @@ export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, se
         <div className="tg-admin-layout__nav-section">
           <p className="tg-admin-layout__nav-title">선택 설문</p>
           <div className="tg-admin-layout__muted-nav">
-            {surveyLinks.map((link) =>
-              shouldShowSurveyLink(link.segment, selectedSurveyAccessRole) && selectedSurveyId ? (
+            {surveyLinks.map((link) => {
+              if (!shouldShowSurveyLink(link.segment, selectedSurveyAccessRole)) return null;
+              if (isSurveyLinkDisabled(link.segment, selectedSurveyId)) {
+                return (
+                  <span
+                    key={link.segment}
+                    className="tg-admin-layout__nav-link tg-admin-layout__nav-link--disabled"
+                    aria-disabled="true"
+                    title={getDisabledSurveyLinkTitle(link.segment)}
+                  >
+                    {link.icon}
+                    <span>{link.label}</span>
+                  </span>
+                );
+              }
+              return (
                 <NavLink
                   key={link.segment}
                   to={`/admin/surveys/${selectedSurveyId}/${link.segment}`}
@@ -84,13 +99,8 @@ export function AdminLayout({ adminEmail, adminRole, onSignOut, isSigningOut, se
                   {link.icon}
                   <span>{link.label}</span>
                 </NavLink>
-              ) : shouldShowSurveyLink(link.segment, selectedSurveyAccessRole) ? (
-                <span key={link.segment} className="tg-admin-layout__nav-link tg-admin-layout__nav-link--disabled">
-                  {link.icon}
-                  <span>{link.label}</span>
-                </span>
-              ) : null,
-            )}
+              );
+            })}
           </div>
         </div>
 
@@ -128,6 +138,15 @@ function shouldShowSurveyLink(segment: (typeof surveyLinks)[number]["segment"], 
   if (segment === "builder") return canEditSurvey(accessRole);
   if (segment === "settings") return canManageSurvey(accessRole) || canInviteSurvey(accessRole);
   return true;
+}
+
+function isSurveyLinkDisabled(segment: (typeof surveyLinks)[number]["segment"], selectedSurveyId: string | undefined): boolean {
+  return !selectedSurveyId || (segment === "report" && !isReportDraftEnabled);
+}
+
+function getDisabledSurveyLinkTitle(segment: (typeof surveyLinks)[number]["segment"]): string | undefined {
+  if (segment === "report" && !isReportDraftEnabled) return "개발 버전에서만 확인 가능합니다.";
+  return undefined;
 }
 
 function getAccountAccessLabel(adminRole: AdminRole | undefined): string {

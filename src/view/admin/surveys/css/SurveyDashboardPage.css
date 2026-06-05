@@ -83,6 +83,13 @@
   background: var(--tg-bg-inset);
 }
 
+.tg-survey-dashboard-page__action--disabled,
+.tg-survey-dashboard-page__action--disabled:hover {
+  color: var(--tg-text-faint);
+  background: var(--tg-bg-inset);
+  cursor: not-allowed;
+}
+
 .tg-survey-dashboard-page__action--primary {
   border-color: var(--tg-accent);
   color: var(--tg-color-white);

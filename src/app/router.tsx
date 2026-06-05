@@ -1,4 +1,5 @@
-import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider, useParams } from "react-router-dom";
+import { isReportDraftEnabled } from "../utils/featureFlags";
 import { AdminLoginPage } from "../view/admin/auth/AdminLoginPage";
 import { SurveyAnalysisPage } from "../view/admin/analysis/SurveyAnalysisPage";
 import { SurveyBuilderPage } from "../view/admin/builder/SurveyBuilderPage";
@@ -33,7 +34,7 @@ const router = createBrowserRouter([
       { path: "surveys/:surveyId/builder", element: <SurveyBuilderPage /> },
       { path: "surveys/:surveyId/preview", element: <SurveyPreviewPage /> },
       { path: "surveys/:surveyId/analysis", element: <SurveyAnalysisPage /> },
-      { path: "surveys/:surveyId/report", element: <ReportDraftPage /> },
+      { path: "surveys/:surveyId/report", element: <ReportDraftRoute /> },
       { path: "surveys/:surveyId/settings", element: <SurveySettingsPage /> },
     ],
   },
@@ -42,4 +43,12 @@ const router = createBrowserRouter([
 
 export function AppRouter() {
   return <RouterProvider router={router} />;
+}
+
+function ReportDraftRoute() {
+  const { surveyId = "" } = useParams();
+  if (!isReportDraftEnabled) {
+    return <Navigate to={`/admin/surveys/${encodeURIComponent(surveyId)}/analysis`} replace />;
+  }
+  return <ReportDraftPage />;
 }
