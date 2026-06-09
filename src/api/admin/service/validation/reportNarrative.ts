@@ -5,7 +5,7 @@ const maxBodyTextLength = 180;
 const maxNarrativeBodyItems = 5;
 const maxNarrativeBodyTextLength = 280;
 const maxEvidencePerBlock = 8;
-const lowSampleFallbackCaution = "N이 낮아 방향성 참고용으로 해석해야 합니다.";
+const lowSampleFallbackCaution = "응답이 적어 방향성 참고용으로 해석해야 합니다.";
 const sensitivePatterns = [
   /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
   /\b\d{7,10}\b/g,

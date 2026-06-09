@@ -1,7 +1,7 @@
 alter table public.questions
 drop constraint if exists questions_question_type_check;
 
-alter table public.questions
+alter table public.questions옂
 add constraint questions_question_type_check
 check (
   question_type = any (

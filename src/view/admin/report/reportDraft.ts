@@ -68,9 +68,9 @@ export function exportReportMarkdown(draft: ReportDraft): string {
   draft.blocks.forEach((block) => {
     lines.push(`## ${block.title}`);
     lines.push("");
-    lines.push(`- 응답 수: N=${block.n}`);
+    lines.push(`- 응답 규모: ${describeSampleSize(block.n)}`);
     lines.push(`- 적용 조건: ${formatFilterSummary(block.filters)}`);
-    if (block.isLowSample) lines.push("- 해석 주의: N이 낮아 방향성 참고용으로 해석해야 합니다.");
+    if (block.isLowSample) lines.push("- 해석 주의: 응답이 적어 방향성 참고용으로 해석해야 합니다.");
     if (block.caution) lines.push(`- AI 주의 문구: ${block.caution}`);
     lines.push("");
     lines.push(block.summary);
@@ -82,7 +82,7 @@ export function exportReportMarkdown(draft: ReportDraft): string {
     if (block.evidence.length) {
       lines.push("근거:");
       block.evidence.forEach((evidence) => {
-        lines.push(`- ${evidence.label}${typeof evidence.n === "number" ? ` (N=${evidence.n})` : ""}`);
+        lines.push(`- ${evidence.label}${typeof evidence.n === "number" ? ` (응답 ${describeSampleSize(evidence.n)})` : ""}`);
       });
       lines.push("");
     }
@@ -117,7 +117,7 @@ export function formatFilterSummary(filters: AnalysisFilters): string {
 
 function createOverviewBlock(args: BuildReportDraftArgs, n: number, lowSampleThreshold: number): ReportBlock {
   const summary = args.source.responseSummary
-    ? `제출 완료 ${formatCount(args.source.responseSummary.submittedResponses)}명 중 현재 조건에 해당하는 응답은 ${formatCount(n)}명입니다.`
+    ? `현재 조건에 해당하는 응답은 제출 완료 응답의 ${describeShare(n, args.source.responseSummary.submittedResponses)}이며, 분석 표본은 ${describeSampleSize(n, lowSampleThreshold)}입니다.`
     : "응답 현황 데이터를 불러오는 중입니다.";
   return {
     id: "overview",
@@ -138,7 +138,7 @@ function createOverviewBlock(args: BuildReportDraftArgs, n: number, lowSampleThr
 
 function createProfileBlock(args: BuildReportDraftArgs, n: number, lowSampleThreshold: number): ReportBlock {
   const topItems = Object.entries(args.source.profileDistribution ?? {})
-    .flatMap(([dimension, items]) => items.slice(0, 3).map((item) => `${profileFilterLabels[dimension as keyof typeof profileFilterLabels] ?? dimension} ${item.label} ${item.n}명`))
+    .flatMap(([dimension, items]) => items.slice(0, 3).map((item) => `${profileFilterLabels[dimension as keyof typeof profileFilterLabels] ?? dimension} ${item.label} ${describeShare(item.n, n)}`))
     .slice(0, 6);
   return {
     id: "response-profile",
@@ -166,7 +166,7 @@ function createPriorityBlock(args: BuildReportDraftArgs, n: number, lowSampleThr
     filters: args.filters,
     isLowSample: isLowSample(n, lowSampleThreshold),
     evidence: priorities.map((issue) => ({ id: issue.id, label: issue.label, source: "priority", n: issue.n })),
-    body: priorities.map((issue, index) => `${index + 1}. ${issue.label}: 만족도 ${formatScore(issue.averageSatisfaction)}, 서술형 ${issue.textCount}개, 사진 표시 ${issue.tagCount}개`),
+    body: priorities.map((issue, index) => `${index + 1}. ${issue.label}: 만족도 ${describeScore(issue.averageSatisfaction)}, 서술형 의견 ${describeVolume(issue.textCount)}, 사진 표시 ${describeVolume(issue.tagCount)}`),
   };
 }
 
@@ -182,7 +182,7 @@ function createSectionSummaryBlock(args: BuildReportDraftArgs, lowSampleThreshol
     filters: args.filters,
     isLowSample: isLowSample(n, lowSampleThreshold),
     evidence: rows.map((row) => ({ id: row.sectionId, label: row.sectionTitle, source: "section", n: row.n })),
-    body: rows.map((row) => `${row.sectionTitle}: 평균 ${formatScore(row.averageScore)}, 응답 수 ${row.n}명`),
+    body: rows.map((row) => `${row.sectionTitle}: 만족도 ${describeScore(row.averageScore)}, 응답 ${describeSampleSize(row.n, lowSampleThreshold)}`),
   };
 }
 
@@ -201,7 +201,7 @@ function createQuestionSummaryBlock(args: BuildReportDraftArgs, lowSampleThresho
     filters: args.filters,
     isLowSample: isLowSample(n, lowSampleThreshold),
     evidence: rows.map((row) => ({ id: row.questionId, label: row.questionTitle, source: "question", n: row.n })),
-    body: rows.map((row) => `${row.questionTitle}: 평균 ${formatScore(row.averageScore)}, 응답 수 ${row.n}명`),
+    body: rows.map((row) => `${row.questionTitle}: 만족도 ${describeScore(row.averageScore)}, 응답 ${describeSampleSize(row.n, lowSampleThreshold)}`),
   };
 }
 
@@ -217,7 +217,7 @@ function createChoiceDistributionBlock(args: BuildReportDraftArgs, lowSampleThre
     filters: args.filters,
     isLowSample: isLowSample(n, lowSampleThreshold),
     evidence: grouped.map((group) => ({ id: group.questionId, label: group.questionTitle, source: "choice", n: group.n })),
-    body: grouped.map((group) => `${group.questionTitle}: ${group.topOptionLabel} ${formatPercent(group.topPercentage)} (${group.topCount}명)`),
+    body: grouped.map((group) => `${group.questionTitle}: ${group.topOptionLabel} ${describeShare(group.topCount, group.n)}`),
   };
 }
 
@@ -234,7 +234,7 @@ function createTextEvidenceBlock(args: BuildReportDraftArgs, n: number, lowSampl
     isLowSample: isLowSample(n, lowSampleThreshold),
     evidence: groups.map((group) => ({ id: group.groupKey, label: group.label, source: "text", n: group.count })),
     body: [
-      ...groups.map((group) => `${group.label}: ${group.count}건, 대표 의견 ${quoteText(group.representativeTexts[0])}`),
+      ...groups.map((group) => `${group.label}: 의견 ${describeVolume(group.count)}, 대표 의견 ${quoteText(group.representativeTexts[0])}`),
       ...examples.map((answer) => `원문 예시: ${quoteText(answer.textValue)}`),
     ].slice(0, 10),
   };
@@ -246,7 +246,7 @@ function createRecommendationBlock(args: BuildReportDraftArgs, n: number, lowSam
   const body = [
     topPriority ? `${topPriority.label}에 대한 단기 개선안을 먼저 정리합니다.` : undefined,
     lowSection ? `${lowSection.sectionTitle} 영역은 후속 면담 또는 현장 확인을 권장합니다.` : undefined,
-    "N과 필터 조건을 함께 표시해 과도한 일반화를 피합니다.",
+    "표본 규모와 필터 조건을 함께 표시해 과도한 일반화를 피합니다.",
   ].filter((value): value is string => Boolean(value));
   return {
     id: "recommendation",
@@ -324,16 +324,41 @@ function isLowSample(n: number, threshold: number): boolean {
   return n > 0 && n < threshold;
 }
 
-function formatCount(value: number): string {
-  return value.toLocaleString("ko-KR");
+// 표본 규모를 수치 없이 정성적 문구로 표현
+export function describeSampleSize(n: number, threshold: number = lowSampleFallbackThreshold): string {
+  if (n <= 0) return "응답 없음";
+  if (n < threshold) return "소수";
+  if (n < threshold * 3) return "보통 수준";
+  return "충분한 수준";
 }
 
-function formatScore(value: number | null): string {
-  return typeof value === "number" ? value.toFixed(2) : "-";
+// 전체 대비 비중을 수치 없이 정성적 문구로 표현
+function describeShare(part: number, total: number): string {
+  if (total <= 0 || part <= 0) return "극소수";
+  const ratio = part / total;
+  if (ratio >= 0.75) return "대부분";
+  if (ratio >= 0.5) return "과반";
+  if (ratio >= 0.33) return "상당수";
+  if (ratio >= 0.15) return "일부";
+  return "소수";
 }
 
-function formatPercent(value: number): string {
-  return `${value.toFixed(1)}%`;
+// 만족도 점수(1-5 척도 기준)를 수치 없이 정성적 문구로 표현
+function describeScore(value: number | null): string {
+  if (typeof value !== "number") return "측정값 없음";
+  if (value >= 4) return "높은 편";
+  if (value >= 3.5) return "양호한 편";
+  if (value >= 3) return "보통";
+  if (value >= 2) return "낮은 편";
+  return "매우 낮은 편";
+}
+
+// 항목 건수(서술형·사진·의견 묶음 등)를 수치 없이 정성적 문구로 표현
+function describeVolume(count: number): string {
+  if (count <= 0) return "없음";
+  if (count < 3) return "소수";
+  if (count < 10) return "다수";
+  return "매우 많음";
 }
 
 function quoteText(value: string | undefined): string {

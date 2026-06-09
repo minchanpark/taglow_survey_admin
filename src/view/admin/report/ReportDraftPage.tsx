@@ -32,7 +32,8 @@ import {
   ResponseSummaryCard,
   SectionAverageCard,
 } from "../analysis/components/AnalysisWorkbenchCards";
-import { buildReportDraft, downloadMarkdown, exportReportMarkdown, formatFilterSummary } from "./reportDraft";
+import { buildReportDraft, describeSampleSize, downloadMarkdown, exportReportMarkdown, formatFilterSummary } from "./reportDraft";
+import { downloadDocx, exportReportDocx } from "./reportDocx";
 import "./css/ReportDraftPage.css";
 
 const sectionLabels: ReadonlyArray<Readonly<{ key: ReportSectionKey; label: string }>> = [
@@ -67,6 +68,7 @@ export function ReportDraftPage() {
   } = useAdminReportStore();
   const { useSampleData, setUseSampleData } = useAdminReportStore();
   const [notice, setNotice] = useState<string | null>(null);
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
 
   const detailQuery = useSurveyDetailQuery(surveyId);
   const filterOptionsQuery = useFilterOptionsQuery(surveyId);
@@ -216,6 +218,25 @@ export function ReportDraftPage() {
             }}
           >
             Markdown
+          </Button>
+          <Button
+            variant="secondary"
+            icon={<FileText size={15} aria-hidden="true" />}
+            disabled={isExportingDocx}
+            onClick={async () => {
+              setIsExportingDocx(true);
+              try {
+                const blob = await exportReportDocx(draft);
+                downloadDocx(`${safeFilename(metadata.title)}.docx`, blob);
+                setNotice("Word(.docx) 파일을 내보냈습니다.");
+              } catch {
+                setNotice("Word 파일을 내보내지 못했습니다. 잠시 후 다시 시도해주세요.");
+              } finally {
+                setIsExportingDocx(false);
+              }
+            }}
+          >
+            {isExportingDocx ? "Word 생성 중" : "Word"}
           </Button>
           <Button
             variant="primary"
@@ -423,8 +444,8 @@ function ReportDocument(props: {
         </dl>
         <div className="tg-report-document-cover__stats" aria-label="보고서 핵심 지표">
           <div>
-            <span>응답 수</span>
-            <strong>N={overviewBlock?.n ?? 0}</strong>
+            <span>응답 규모</span>
+            <strong>{describeSampleSize(overviewBlock?.n ?? 0)}</strong>
           </div>
           <div>
             <span>포함 섹션</span>
@@ -475,14 +496,14 @@ function ReportDocument(props: {
                 <h3>{block.title}</h3>
               </div>
               <div>
-                <StatusBadge tone={block.isLowSample ? "warning" : "info"}>N={block.n}</StatusBadge>
+                <StatusBadge tone={block.isLowSample ? "warning" : "info"}>{describeSampleSize(block.n)}</StatusBadge>
                 <span>{formatFilterSummary(block.filters)}</span>
               </div>
             </header>
             <p className="tg-report-block__summary">{block.summary}</p>
             {block.isLowSample || block.caution ? (
               <div className="tg-report-caution">
-                {block.isLowSample ? <p>N={block.n}라 해석에 주의가 필요합니다.</p> : null}
+                {block.isLowSample ? <p>응답이 적어 해석에 주의가 필요합니다.</p> : null}
                 {block.caution ? <p>{block.caution}</p> : null}
               </div>
             ) : null}
@@ -509,7 +530,7 @@ function ReportDocument(props: {
                 {block.evidence.slice(0, 8).map((evidence) => (
                   <small key={evidence.id}>
                     {evidence.label}
-                    {typeof evidence.n === "number" ? ` · N=${evidence.n}` : ""}
+                    {typeof evidence.n === "number" ? ` · 응답 ${describeSampleSize(evidence.n)}` : ""}
                   </small>
                 ))}
               </footer>
@@ -616,7 +637,7 @@ function MetadataFields(props: { metadata: ReportMetadata; onChange: (metadata: 
 }
 
 function createRuleBasedNarrative(block: ReportBlock): string {
-  const caution = block.isLowSample ? " 단, 현재 N이 낮아 방향성 참고용으로 해석합니다." : "";
+  const caution = block.isLowSample ? " 단, 현재 응답이 적어 방향성 참고용으로 해석합니다." : "";
   const evidence = block.evidence[0]?.label ? ` 주요 근거는 ${block.evidence[0].label}입니다.` : "";
   return `${block.summary}${evidence}${caution}`;
 }

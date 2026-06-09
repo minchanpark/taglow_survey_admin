@@ -121,7 +121,7 @@ describe("reportDraft", () => {
           summary: "AI가 정리한 우선순위 요약입니다.",
           body: ["AI가 확장한 보고서 본문입니다.", "세탁실 혼잡은 응답 수와 대표 의견을 함께 보아야 합니다."],
           evidenceIds: ["priority-1"],
-          caution: "N이 낮아 방향성 참고용으로만 해석합니다.",
+          caution: "응답이 적어 방향성 참고용으로만 해석합니다.",
           suggestedActions: ["세탁실 혼잡 시간대 현장 확인"],
         },
       },
@@ -135,7 +135,7 @@ describe("reportDraft", () => {
     expect(markdown).toContain("편집된 요약입니다.");
     expect(markdown).toContain("AI가 확장한 보고서 본문입니다.");
     expect(markdown).toContain("근거:");
-    expect(markdown).toContain("AI 주의 문구: N이 낮아 방향성 참고용으로만 해석합니다.");
+    expect(markdown).toContain("AI 주의 문구: 응답이 적어 방향성 참고용으로만 해석합니다.");
     expect(markdown).toContain("제안 조치:");
     expect(markdown).toContain("세탁실 혼잡 시간대 현장 확인");
   });

@@ -72,7 +72,7 @@ describe("reportNarrative validation", () => {
     expect(result.blocks[0]).toMatchObject({
       blockId: "priority",
       evidenceIds: ["priority-1"],
-      caution: "N이 낮아 방향성 참고용으로 해석해야 합니다.",
+      caution: "응답이 적어 방향성 참고용으로 해석해야 합니다.",
       body: [
         "세탁실 혼잡은 현재 필터 조건에서 반복적으로 드러나는 개선 항목입니다.",
         "대표 원문은 대기 시간과 이용 가능 시간대의 불편을 함께 보여줍니다.",
