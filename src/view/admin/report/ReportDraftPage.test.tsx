@@ -111,7 +111,7 @@ describe("ReportDraftPage", () => {
     expect(await screen.findByText("개발 모드 샘플 데이터")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "샘플 데이터 사용" })).not.toBeChecked();
     expect(screen.getAllByText(/세탁실 혼잡/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/N=8/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/소수/).length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "핵심 요약" })).toBeInTheDocument();
     expect(screen.getAllByText("시각화 근거").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "응답 현황" })).toBeInTheDocument();
@@ -128,7 +128,7 @@ describe("ReportDraftPage", () => {
     expect(screen.getByRole("checkbox", { name: "샘플 데이터 사용" })).toBeChecked();
     expect(screen.getByText("2026-1 생활관 만족도 분석 보고서")).toBeInTheDocument();
     expect(screen.getAllByText(/세탁실 대기와 건조 공간 부족/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/N=76/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/충분한 수준/).length).toBeGreaterThan(0);
   });
 
   it("uses sample data for AI only when the sample checkbox is enabled", async () => {
@@ -246,7 +246,7 @@ describe("ReportDraftPage", () => {
         summary: `AI ${block.title} 요약입니다.`,
         body: [`AI가 ${block.title} 본문을 확장했습니다.`],
         evidenceIds: block.evidence.slice(0, 1).map((evidence) => evidence.id),
-        caution: block.isLowSample ? "N이 낮아 방향성 참고용으로 해석합니다." : undefined,
+        caution: block.isLowSample ? "응답이 적어 방향성 참고용으로 해석합니다." : undefined,
         suggestedActions: [`${block.title} 후속 조치`],
       })),
     }));
