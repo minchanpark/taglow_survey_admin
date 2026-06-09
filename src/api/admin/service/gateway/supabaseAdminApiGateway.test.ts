@@ -497,43 +497,35 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
   });
 
   it("falls back to identity answers while excluding failed attention checks", async () => {
-    const query = createTableQuery([
+    const responseQuery = createTableQuery([
+      {
+        id: "response-1",
+        submitted_at: "2026-05-29T00:00:00.000Z",
+        dormitory: "비전관",
+        room_type: "2인실",
+      },
+    ]);
+    const answerQuery = createTableQuery([
       {
         response_id: "response-1",
         text_value: "22000123",
         created_at: "2026-05-29T00:00:00.000Z",
-        responses: {
-          id: "response-1",
-          status: "submitted",
-          submitted_at: "2026-05-29T00:00:00.000Z",
-          passed_attention_check: true,
-          dormitory: "비전관",
-          room_type: "2인실",
-        },
         questions: {
-          question_key: "student_number",
-          title_ko: "학번",
-          title_en: "Student ID",
-          config: { profileField: "student_number" },
+          question_key: "dorm_25_2_q185",
+          title_ko: "학번 (예. 22400001)",
+          title_en: "Student ID (e.g., 22400001)",
+          config: {},
         },
       },
       {
         response_id: "response-1",
         text_value: "김태글",
         created_at: "2026-05-29T00:00:01.000Z",
-        responses: {
-          id: "response-1",
-          status: "submitted",
-          submitted_at: "2026-05-29T00:00:00.000Z",
-          passed_attention_check: true,
-          dormitory: "비전관",
-          room_type: "2인실",
-        },
         questions: {
-          question_key: "name",
-          title_ko: "이름",
-          title_en: "Name",
-          config: { profileField: "name" },
+          question_key: "dorm_25_2_q186",
+          title_ko: "이름 (예. 김한동)",
+          title_en: "Name (e.g., Kim Handong)",
+          config: {},
         },
       },
     ]);
@@ -544,17 +536,19 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
         signInWithOAuth: vi.fn(),
         signOut: vi.fn(),
       },
-      from: vi.fn(() => query),
+      from: vi.fn((table: string) => table === "responses" ? responseQuery : answerQuery),
       rpc: vi.fn(missingIdentityResponsesRpc),
     };
 
     const gateway = new SupabaseAdminApiGateway(supabase as never);
     const rows = await gateway.listIdentityResponses({ surveyId: "survey-1", filters: { dormitory: "비전관", room_type: "2인실", limit: 100 } });
 
-    expect(query.eq).toHaveBeenCalledWith("responses.status", "submitted");
-    expect(query.eq).toHaveBeenCalledWith("responses.passed_attention_check", true);
-    expect(query.eq).toHaveBeenCalledWith("responses.dormitory", "비전관");
-    expect(query.eq).toHaveBeenCalledWith("responses.room_type", "2인실");
+    expect(responseQuery.eq).toHaveBeenCalledWith("status", "submitted");
+    expect(responseQuery.eq).toHaveBeenCalledWith("passed_attention_check", true);
+    expect(responseQuery.eq).toHaveBeenCalledWith("dormitory", "비전관");
+    expect(responseQuery.eq).toHaveBeenCalledWith("room_type", "2인실");
+    expect(answerQuery.in).toHaveBeenCalledWith("response_id", ["response-1"]);
+    expect(answerQuery.in).toHaveBeenCalledWith("answer_type", ["profile", "text"]);
     expect(rows.items).toEqual([
       expect.objectContaining({
         response_id: "response-1",
@@ -562,6 +556,52 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
         name: "김태글",
       }),
     ]);
+  });
+
+  it("pages fallback identity responses by response before loading dense answer rows", async () => {
+    const responseRows = [
+      { id: "response-1", submitted_at: "2026-05-29T00:03:00.000Z", dormitory: "비전관" },
+      { id: "response-2", submitted_at: "2026-05-29T00:02:00.000Z", dormitory: "비전관" },
+      { id: "response-3", submitted_at: "2026-05-29T00:01:00.000Z", dormitory: "비전관" },
+      { id: "response-4", submitted_at: "2026-05-29T00:00:00.000Z", dormitory: "비전관" },
+    ];
+    const answerRows = responseRows.flatMap((response, index) => [
+      ...Array.from({ length: 200 }, (_, noiseIndex) => ({
+        response_id: response.id,
+        text_value: `noise-${index}-${noiseIndex}`,
+        questions: { question_key: `noise_${noiseIndex}`, title_ko: "일반 문항", config: {} },
+      })),
+      {
+        response_id: response.id,
+        text_value: `2200012${index + 1}`,
+        questions: {
+          question_key: "student_number",
+          title_ko: "학번",
+          title_en: "Student ID",
+          config: { profileField: "student_number" },
+        },
+      },
+    ]);
+    const responseQuery = createTableQuery(responseRows);
+    const answerQuery = createTableQuery(answerRows);
+    const supabase = {
+      auth: {
+        getSession: vi.fn(),
+        getUser: vi.fn(),
+        signInWithOAuth: vi.fn(),
+        signOut: vi.fn(),
+      },
+      from: vi.fn((table: string) => table === "responses" ? responseQuery : answerQuery),
+      rpc: vi.fn(missingIdentityResponsesRpc),
+    };
+
+    const gateway = new SupabaseAdminApiGateway(supabase as never);
+    const rows = await gateway.listIdentityResponses({ surveyId: "survey-1", filters: { dormitory: "비전관", limit: 3 } });
+
+    expect(responseQuery.limit).toHaveBeenCalledWith(4);
+    expect(answerQuery.in).toHaveBeenCalledWith("response_id", ["response-1", "response-2", "response-3"]);
+    expect(rows.items.map((row) => row.student_number)).toEqual(["22000121", "22000122", "22000123"]);
+    expect(rows.next_cursor).toBe("2026-05-29T00:00:00.000Z|response-4");
   });
 
   it("unwraps single-row RPC arrays for one-row gateway calls", async () => {
@@ -926,7 +966,9 @@ function createTableQuery(data: unknown[]) {
   const query = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
+    in: vi.fn(() => query),
     is: vi.fn(() => query),
+    or: vi.fn(() => query),
     order: vi.fn(() => query),
     limit: vi.fn(() => query),
     then: (resolve: (value: { data: unknown[]; error: null }) => void, reject?: (reason: unknown) => void) =>

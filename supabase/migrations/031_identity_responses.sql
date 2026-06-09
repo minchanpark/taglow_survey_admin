@@ -42,12 +42,13 @@ as $$
         when lower(coalesce(q.config->>'profileField', q.config->>'profile_field', '')) in ('name', 'full_name', 'fullname') then 'name'
         when regexp_replace(lower(q.question_key), '[[:space:]_-]', '', 'g') like '%studentnumber%'
           or regexp_replace(lower(q.question_key), '[[:space:]_-]', '', 'g') like '%studentid%'
-          or q.title_ko = '학번'
+          or regexp_replace(lower(q.title_ko), '[[:space:]_-]', '', 'g') like '학번%'
           or regexp_replace(lower(coalesce(q.title_en, '')), '[[:space:]_-]', '', 'g') like '%studentid%' then 'student_number'
         when regexp_replace(lower(q.question_key), '[[:space:]_-]', '', 'g') = 'name'
           or regexp_replace(lower(q.question_key), '[[:space:]_-]', '', 'g') like '%name'
-          or q.title_ko = '이름'
-          or regexp_replace(lower(coalesce(q.title_en, '')), '[[:space:]_-]', '', 'g') in ('name', 'fullname') then 'name'
+          or regexp_replace(lower(q.title_ko), '[[:space:]_-]', '', 'g') like '이름%'
+          or regexp_replace(lower(coalesce(q.title_en, '')), '[[:space:]_-]', '', 'g') in ('name', 'fullname')
+          or regexp_replace(lower(coalesce(q.title_en, '')), '[[:space:]_-]', '', 'g') like 'name%' then 'name'
         else null
       end as identity_key,
       nullif(coalesce(a.text_value, a.value_json->>'value', a.value_json->>'text', a.value_json->>'label', a.value_json->>'answer'), '') as identity_value
@@ -125,7 +126,7 @@ as $$
     p.submitted_at,
     case
       when c.response_id is null then null
-      else encode(convert_to(c.submitted_at::text || '|' || c.response_id::text, 'utf8'), 'base64')
+      else c.submitted_at::text || '|' || c.response_id::text
     end as next_cursor
   from page_rows p
   left join cursor_row c on true

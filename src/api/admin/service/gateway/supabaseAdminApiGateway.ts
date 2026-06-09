@@ -71,6 +71,18 @@ type ProfileDistributionRow = Readonly<{
   isUnclassified: boolean;
 }>;
 
+type RawIdentityFallbackResponseRow = Readonly<{
+  id?: string | null;
+  submitted_at?: string | null;
+  gender?: string | null;
+  semester_group?: string | null;
+  department?: string | null;
+  rc?: string | null;
+  dormitory?: string | null;
+  room_type?: string | null;
+  dorm_experience?: string | null;
+}>;
+
 type SupabaseClientLike = {
   auth: {
     getSession(): Promise<{
@@ -567,14 +579,7 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
       }
     }
 
-    try {
-      return toRawPage(await this.listIdentityResponsesWithResponseRelation(args, "responses!answers_response_same_survey_fk!inner"));
-    } catch (error) {
-      if (!isMissingRelationshipError(error)) {
-        throw error;
-      }
-      return toRawPage(await this.listIdentityResponsesWithResponseRelation(args, "responses!inner"));
-    }
+    return this.listIdentityResponsesFromResponsePage(args);
   }
 
   private async listImageTagAnswersWithResponseRelation(
@@ -647,58 +652,78 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     return Promise.all(rows.map((row) => this.toRawImageTagAnswer(row)));
   }
 
-  private async listIdentityResponsesWithResponseRelation(
-    args: IdentityResponseQueryArgs,
-    responseRelation: string,
-  ): Promise<RawIdentityResponse[]> {
+  private async listIdentityResponsesFromResponsePage(args: IdentityResponseQueryArgs): Promise<RawPaginatedResult<RawIdentityResponse>> {
     const filters = args.filters;
     const limit = getPageSize(filters.limit, 100, 200);
-    let query = this.supabase
-      .from("answers")
+    let responseQuery = this.supabase
+      .from("responses")
       .select(
         `
-          response_id,
-          text_value,
-          value_json,
-          created_at,
-          ${responseRelation}(
-            id,
-            status,
-            submitted_at,
-            passed_attention_check,
-            gender,
-            semester_group,
-            department,
-            rc,
-            dormitory,
-            room_type,
-            dorm_experience
-          ),
-          questions(
-            question_key,
-            question_type,
-            title_ko,
-            title_en,
-            config
-          )
+          id,
+          submitted_at,
+          gender,
+          semester_group,
+          department,
+          rc,
+          dormitory,
+          room_type,
+          dorm_experience
         `,
       )
       .eq("survey_id", args.surveyId)
-      .eq("responses.status", "submitted")
-      .eq("responses.passed_attention_check", true)
-      .order("created_at", { ascending: false })
-      .limit(Math.min(limit * 4, 500));
+      .eq("status", "submitted")
+      .eq("passed_attention_check", true)
+      .order("submitted_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(limit + 1);
 
-    query = applyMaybeEq(query, "responses.gender", filters.gender);
-    query = applyMaybeEq(query, "responses.semester_group", filters.semester_group);
-    query = applyMaybeEq(query, "responses.department", filters.department);
-    query = applyMaybeEq(query, "responses.rc", filters.rc);
-    query = applyMaybeEq(query, "responses.dormitory", filters.dormitory);
-    query = applyMaybeEq(query, "responses.room_type", filters.room_type);
-    query = applyMaybeEq(query, "responses.dorm_experience", filters.dorm_experience);
+    responseQuery = applyMaybeEq(responseQuery, "gender", filters.gender);
+    responseQuery = applyMaybeEq(responseQuery, "semester_group", filters.semester_group);
+    responseQuery = applyMaybeEq(responseQuery, "department", filters.department);
+    responseQuery = applyMaybeEq(responseQuery, "rc", filters.rc);
+    responseQuery = applyMaybeEq(responseQuery, "dormitory", filters.dormitory);
+    responseQuery = applyMaybeEq(responseQuery, "room_type", filters.room_type);
+    responseQuery = applyMaybeEq(responseQuery, "dorm_experience", filters.dorm_experience);
+    responseQuery = applyIdentityResponseCursor(responseQuery, getString(filters.cursor));
 
-    const rows = await this.many<Record<string, unknown>>(query, "RPC_FAILED");
-    return toRawIdentityResponsePage(rows, limit);
+    const responseRows = await this.many<RawIdentityFallbackResponseRow>(responseQuery, "RPC_FAILED");
+    const pageResponseRows = responseRows.slice(0, limit);
+    const responseIds = pageResponseRows.map((row) => getString(row.id)).filter((id): id is string => Boolean(id));
+    const cursorRow = responseRows.length > limit ? responseRows[limit] : undefined;
+    const nextCursor = cursorRow ? buildIdentityResponseCursor(cursorRow) : null;
+
+    if (!responseIds.length) {
+      return { items: [], next_cursor: nextCursor };
+    }
+
+    const answerRows = await this.many<Record<string, unknown>>(
+      this.supabase
+        .from("answers")
+        .select(
+          `
+            response_id,
+            text_value,
+            value_json,
+            created_at,
+            questions(
+              question_key,
+              question_type,
+              title_ko,
+              title_en,
+              config
+            )
+          `,
+        )
+        .eq("survey_id", args.surveyId)
+        .in("response_id", responseIds)
+        .in("answer_type", ["profile", "text"]),
+      "RPC_FAILED",
+    );
+
+    return {
+      items: toRawIdentityResponsesFromPage(pageResponseRows, answerRows),
+      next_cursor: nextCursor,
+    };
   }
 
   async getTextGroups(args: TextAnswerQueryArgs): Promise<RawTextGroup[]> {
@@ -887,6 +912,12 @@ function applyMaybeEq(query: any, column: string, value: unknown): any {
   return typeof value === "string" && value.trim() ? query.eq(column, value) : query;
 }
 
+function applyIdentityResponseCursor(query: any, cursor: string | undefined): any {
+  const parsed = parseIdentityResponseCursor(cursor);
+  if (!parsed || typeof query.or !== "function") return query;
+  return query.or(`submitted_at.lt.${parsed.submittedAt},and(submitted_at.eq.${parsed.submittedAt},id.lt.${parsed.responseId})`);
+}
+
 function getPageSize(value: unknown, defaultValue: number, maxValue: number): number {
   const numberValue = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numberValue)) return defaultValue;
@@ -901,12 +932,23 @@ function toRawPage<T extends { next_cursor?: string | null }>(rows: T[]): RawPag
   };
 }
 
-function toRawIdentityResponsePage(rows: readonly Record<string, unknown>[], limit: number): RawIdentityResponse[] {
+function toRawIdentityResponsesFromPage(
+  responseRows: readonly RawIdentityFallbackResponseRow[],
+  answerRows: readonly Record<string, unknown>[],
+): RawIdentityResponse[] {
+  const responseById = new Map<string, RawIdentityFallbackResponseRow>();
+  for (const response of responseRows) {
+    const responseId = getString(response.id);
+    if (responseId) responseById.set(responseId, response);
+  }
+
   const byResponse = new Map<string, RawIdentityResponse>();
-  for (const row of rows) {
-    const response = getRelationRecord(row.responses);
-    const responseId = getString(response?.id) ?? getString(row.response_id);
+  for (const row of answerRows) {
+    const responseId = getString(row.response_id);
     if (!responseId) continue;
+    const response = responseById.get(responseId);
+    if (!response) continue;
+
     const identityKey = getIdentityQuestionKey(getRelationRecord(row.questions));
     if (!identityKey) continue;
 
@@ -914,28 +956,40 @@ function toRawIdentityResponsePage(rows: readonly Record<string, unknown>[], lim
     if (!answerValue) continue;
 
     const existing = byResponse.get(responseId);
-    const next: RawIdentityResponse = {
+    byResponse.set(responseId, {
       response_id: responseId,
       student_number: identityKey === "student_number" ? answerValue : existing?.student_number ?? null,
       name: identityKey === "name" ? answerValue : existing?.name ?? null,
-      gender: getString(response?.gender) ?? null,
-      semester_group: getString(response?.semester_group) ?? null,
-      department: getString(response?.department) ?? null,
-      rc: getString(response?.rc) ?? null,
-      dormitory: getString(response?.dormitory) ?? null,
-      room_type: getString(response?.room_type) ?? null,
-      dorm_experience: getString(response?.dorm_experience) ?? null,
-      submitted_at: getString(response?.submitted_at) ?? getString(row.created_at) ?? "",
+      gender: getString(response.gender) ?? null,
+      semester_group: getString(response.semester_group) ?? null,
+      department: getString(response.department) ?? null,
+      rc: getString(response.rc) ?? null,
+      dormitory: getString(response.dormitory) ?? null,
+      room_type: getString(response.room_type) ?? null,
+      dorm_experience: getString(response.dorm_experience) ?? null,
+      submitted_at: getString(response.submitted_at) ?? getString(row.created_at) ?? "",
       next_cursor: null,
-    };
-    byResponse.set(responseId, next);
+    });
   }
 
-  const items = [...byResponse.values()]
-    .filter((item) => Boolean(item.student_number || item.name))
-    .sort((a, b) => b.submitted_at.localeCompare(a.submitted_at))
-    .slice(0, limit);
-  return items;
+  return responseRows
+    .map((response) => getString(response.id))
+    .filter((responseId): responseId is string => Boolean(responseId))
+    .map((responseId) => byResponse.get(responseId))
+    .filter((item): item is RawIdentityResponse => Boolean(item?.student_number || item?.name));
+}
+
+function buildIdentityResponseCursor(row: RawIdentityFallbackResponseRow): string | null {
+  const submittedAt = getString(row.submitted_at);
+  const responseId = getString(row.id);
+  return submittedAt && responseId ? `${submittedAt}|${responseId}` : null;
+}
+
+function parseIdentityResponseCursor(cursor: string | undefined): { submittedAt: string; responseId: string } | undefined {
+  if (!cursor) return undefined;
+  const [submittedAt, responseId] = cursor.split("|");
+  if (!submittedAt || !responseId) return undefined;
+  return { submittedAt, responseId };
 }
 
 function buildRawResponseSummary(
@@ -1135,10 +1189,10 @@ function getIdentityQuestionKey(question: Record<string, unknown> | undefined): 
   const questionKey = normalizeIdentityText(getString(question.question_key));
   const titleKo = normalizeIdentityText(getString(question.title_ko));
   const titleEn = normalizeIdentityText(getString(question.title_en));
-  if (questionKey.includes("studentnumber") || questionKey.includes("studentid") || titleKo === "학번" || titleEn.includes("studentid")) {
+  if (questionKey.includes("studentnumber") || questionKey.includes("studentid") || titleKo.startsWith("학번") || titleEn.includes("studentid")) {
     return "student_number";
   }
-  if (questionKey === "name" || questionKey.endsWith("name") || titleKo === "이름" || titleEn === "name" || titleEn.includes("fullname")) {
+  if (questionKey === "name" || questionKey.endsWith("name") || titleKo.startsWith("이름") || titleEn.startsWith("name") || titleEn.includes("fullname")) {
     return "name";
   }
   return undefined;
