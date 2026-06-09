@@ -1,9 +1,9 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import type { AdminApiController } from "../../../api/admin/controller";
 import type { IdentityResponse, Survey } from "../../../api/admin/model";
-import { createFakeAdminApiController, fakeSurvey } from "../../../test/fakeAdminApiController";
+import { createFakeAdminApiController, emptyResponseSummary, fakeSurvey } from "../../../test/fakeAdminApiController";
 import { renderWithProviders } from "../../../test/renderWithProviders";
 import { SurveyDashboardPage } from "./SurveyDashboardPage";
 
@@ -52,14 +52,24 @@ describe("SurveyDashboardPage", () => {
 
   it("shows the detailed response roster on the dashboard", async () => {
     renderDashboard(fakeSurvey, {
+      getResponseSummary: async () => ({
+        ...emptyResponseSummary,
+        totalResponses: 228,
+        submittedResponses: 228,
+        filteredResponses: 228,
+      }),
       listIdentityResponses: async () => ({ items: identityResponses }),
     });
 
     const rosterHeading = await screen.findByRole("heading", { name: "상세 명단" });
     expect(rosterHeading).toBeInTheDocument();
+    const rosterPanel = rosterHeading.closest("section");
+    expect(rosterPanel).not.toBeNull();
     expect(await screen.findByText("22000123")).toBeInTheDocument();
     expect(screen.getByText("김태글")).toBeInTheDocument();
     expect(screen.getByText("비전관 · 2인실 · 장기려")).toBeInTheDocument();
+    expect(within(rosterPanel as HTMLElement).getByText("전체 228명")).toBeInTheDocument();
+    expect(within(rosterPanel as HTMLElement).queryByText("표시 중 1명")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "먼저 볼 항목" })).not.toBeInTheDocument();
   });
 

@@ -601,7 +601,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     expect(responseQuery.limit).toHaveBeenCalledWith(4);
     expect(answerQuery.in).toHaveBeenCalledWith("response_id", ["response-1", "response-2", "response-3"]);
     expect(rows.items.map((row) => row.student_number)).toEqual(["22000121", "22000122", "22000123"]);
-    expect(rows.next_cursor).toBe("2026-05-29T00:00:00.000Z|response-4");
+    expect(rows.next_cursor).toBe("2026-05-29T00:01:00.000Z|response-3");
   });
 
   it("unwraps single-row RPC arrays for one-row gateway calls", async () => {

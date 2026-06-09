@@ -164,6 +164,7 @@ export function SurveyDashboardPage() {
 
         <RosterPanel
           responses={identityResponses}
+          totalResponses={responseSummary?.submittedResponses}
           hasMore={Boolean(identityResponsesQuery.hasNextPage)}
           isLoading={identityResponsesQuery.isFetching && !identityResponses.length}
           isLoadingMore={identityResponsesQuery.isFetchingNextPage}
@@ -198,8 +199,16 @@ function ScheduleCard(props: { survey: Survey }) {
   );
 }
 
-function RosterPanel(props: { responses: IdentityResponse[]; hasMore: boolean; isLoading: boolean; isLoadingMore: boolean; onLoadMore: () => void }) {
+function RosterPanel(props: {
+  responses: IdentityResponse[];
+  totalResponses?: number;
+  hasMore: boolean;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
+}) {
   const visibleResponses = props.responses.filter((response) => response.studentNumber || response.name);
+  const totalResponseLabel = typeof props.totalResponses === "number" ? `전체 ${formatCount(props.totalResponses)}명` : "전체 집계 중";
   return (
     <section className="tg-dashboard-panel" aria-labelledby="dashboard-roster-title">
       <header className="tg-dashboard-panel__header">
@@ -209,7 +218,7 @@ function RosterPanel(props: { responses: IdentityResponse[]; hasMore: boolean; i
         </div>
         <UsersRound size={16} aria-hidden="true" />
       </header>
-      <p className="tg-dashboard-panel__copy">표시 중 {visibleResponses.length.toLocaleString("ko-KR")}명</p>
+      <p className="tg-dashboard-panel__copy">{totalResponseLabel}</p>
       {props.isLoading ? <p className="tg-dashboard-panel__copy">상세 명단을 불러오는 중입니다.</p> : null}
       {visibleResponses.length ? (
         <div className="tg-dashboard-roster-table-wrap">

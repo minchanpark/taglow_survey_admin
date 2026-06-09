@@ -689,7 +689,7 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     const responseRows = await this.many<RawIdentityFallbackResponseRow>(responseQuery, "RPC_FAILED");
     const pageResponseRows = responseRows.slice(0, limit);
     const responseIds = pageResponseRows.map((row) => getString(row.id)).filter((id): id is string => Boolean(id));
-    const cursorRow = responseRows.length > limit ? responseRows[limit] : undefined;
+    const cursorRow = responseRows.length > limit ? pageResponseRows[pageResponseRows.length - 1] : undefined;
     const nextCursor = cursorRow ? buildIdentityResponseCursor(cursorRow) : null;
 
     if (!responseIds.length) {
