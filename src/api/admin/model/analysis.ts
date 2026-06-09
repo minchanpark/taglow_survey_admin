@@ -183,13 +183,18 @@ export type TextAnswer = Readonly<{
   id: string;
   responseId?: string;
   sectionId?: string;
+  sectionTitle?: string;
   questionId?: string;
+  questionTitle?: string;
+  questionType?: QuestionType;
   topicKey?: string;
   spaceKey?: string;
   textValue: string;
   valueJson: JsonRecord;
   profile?: JsonRecord;
   createdAt: string;
+  totalCount?: number;
+  questionTotalCount?: number;
 }>;
 
 export type TextGroup = Readonly<{

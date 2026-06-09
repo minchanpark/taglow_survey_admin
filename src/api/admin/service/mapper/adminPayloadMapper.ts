@@ -336,7 +336,10 @@ export class AdminPayloadMapper {
       id: row.id ?? row.answer_id ?? "",
       responseId: row.response_id,
       sectionId: row.section_id ?? undefined,
+      sectionTitle: row.section_title ?? undefined,
       questionId: row.question_id ?? undefined,
+      questionTitle: row.question_title ?? undefined,
+      questionType: row.question_type ? normalizeQuestionType(row.question_type) : undefined,
       topicKey: row.topic_key ?? undefined,
       spaceKey: row.space_key ?? undefined,
       textValue: row.text_value ?? "",
@@ -348,6 +351,8 @@ export class AdminPayloadMapper {
         department: row.department,
       }),
       createdAt: row.created_at,
+      totalCount: row.total_count === undefined || row.total_count === null ? undefined : Number(row.total_count),
+      questionTotalCount: row.question_total_count === undefined || row.question_total_count === null ? undefined : Number(row.question_total_count),
     };
   }
 

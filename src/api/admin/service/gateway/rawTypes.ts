@@ -342,7 +342,10 @@ export type RawTextAnswer = Readonly<{
   answer_id?: string;
   response_id?: string;
   section_id: string | null;
+  section_title?: string | null;
   question_id: string | null;
+  question_title?: string | null;
+  question_type?: string | null;
   topic_key: string | null;
   space_key: string | null;
   text_value: string | null;
@@ -353,6 +356,8 @@ export type RawTextAnswer = Readonly<{
   department?: string | null;
   profile?: JsonRecord | null;
   created_at: string;
+  total_count?: number | null;
+  question_total_count?: number | null;
   next_cursor?: string | null;
 }>;
 

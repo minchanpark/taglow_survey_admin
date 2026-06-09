@@ -38,7 +38,8 @@
 .tg-analysis-card__header p,
 .tg-analysis-distribution-block h3,
 .tg-analysis-choice-group h3,
-.tg-analysis-text-node h3,
+.tg-analysis-text-detail h3,
+.tg-analysis-text-answer-list p,
 .tg-analysis-priority-list p {
   margin: 0;
 }
@@ -108,7 +109,9 @@
 .tg-analysis-low-list span,
 .tg-analysis-score-list small,
 .tg-analysis-priority-list small,
-.tg-analysis-text-node li,
+.tg-analysis-text-question-list small,
+.tg-analysis-text-detail__header p,
+.tg-analysis-text-answer-list__meta,
 .tg-analysis-muted {
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-caption);
@@ -142,7 +145,7 @@
 .tg-analysis-low-list,
 .tg-analysis-priority-list,
 .tg-analysis-score-list,
-.tg-analysis-text-node ul {
+.tg-analysis-text-answer-list {
   display: grid;
   gap: var(--tg-space-4);
   margin: 0;
@@ -181,7 +184,8 @@
 
 .tg-analysis-priority-list p,
 .tg-analysis-score-list strong,
-.tg-analysis-text-node h3,
+.tg-analysis-text-detail h3,
+.tg-analysis-text-answer-list > li > strong,
 .tg-analysis-choice-group h3,
 .tg-analysis-distribution-block h3 {
   color: var(--tg-text-strong);
@@ -209,8 +213,7 @@
 }
 
 .tg-analysis-distribution-block,
-.tg-analysis-choice-group,
-.tg-analysis-text-node {
+.tg-analysis-choice-group {
   display: grid;
   gap: var(--tg-space-5);
   min-width: 0;
@@ -500,45 +503,136 @@
   padding-top: var(--tg-space-6);
 }
 
-.tg-analysis-choice-groups,
-.tg-analysis-text-grid {
+.tg-analysis-choice-groups {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--tg-space-10);
 }
 
-.tg-analysis-text-node {
-  border: 1px solid var(--tg-border-subtle);
-  border-radius: var(--tg-radius-sm);
-  padding: var(--tg-space-6);
-  background: var(--tg-bg-raised);
-}
-
-.tg-analysis-text-node li {
+.tg-analysis-text-workbench {
   display: grid;
-  gap: var(--tg-space-2);
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--tg-space-8);
+  min-width: 0;
 }
 
-.tg-analysis-text-node header {
+.tg-analysis-text-question-list {
+  display: grid;
+  max-height: 560px;
+  gap: var(--tg-space-3);
+  min-width: 0;
+  overflow: auto;
+  padding-right: var(--tg-space-2);
+}
+
+.tg-analysis-text-question-list button {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--tg-space-4);
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  padding: var(--tg-space-5);
+  color: var(--tg-text-body);
+  background: var(--tg-bg-panel);
+  text-align: left;
+  cursor: pointer;
 }
 
-.tg-analysis-text-node__actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--tg-space-3);
+.tg-analysis-text-question-list button:hover,
+.tg-analysis-text-question-list button:focus-visible,
+.tg-analysis-text-question-list__item--active {
+  border-color: var(--tg-accent);
+  background: var(--tg-accent-soft);
 }
 
-.tg-analysis-text-node__actions .tg-button {
-  min-height: 32px;
-  padding: 0 var(--tg-space-5);
+.tg-analysis-text-question-list button > span {
+  display: grid;
+  min-width: 0;
+  gap: var(--tg-space-1);
+}
+
+.tg-analysis-text-question-list strong {
+  color: var(--tg-text-strong);
   font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-semibold);
   line-height: var(--tg-line-caption);
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.tg-analysis-text-question-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tg-analysis-text-detail {
+  display: grid;
+  gap: var(--tg-space-6);
+  min-width: 0;
+  border-left: 1px solid var(--tg-border-subtle);
+  padding-left: var(--tg-space-8);
+}
+
+.tg-analysis-text-detail__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--tg-space-4);
+  min-width: 0;
+  border-bottom: 1px solid var(--tg-border-subtle);
+  padding-bottom: var(--tg-space-5);
+}
+
+.tg-analysis-text-detail__header > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--tg-space-1);
+}
+
+.tg-analysis-text-detail h3 {
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.tg-analysis-text-answer-list {
+  max-height: 560px;
+  overflow: auto;
+}
+
+.tg-analysis-text-answer-list li {
+  display: grid;
+  gap: var(--tg-space-3);
+  min-width: 0;
+  border-bottom: 1px solid var(--tg-border-subtle);
+  padding-bottom: var(--tg-space-4);
+}
+
+.tg-analysis-text-answer-list li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.tg-analysis-text-answer-list p,
+.tg-analysis-text-answer-list > li > strong {
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.tg-analysis-text-answer-list p {
+  color: var(--tg-text-body);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-analysis-text-answer-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tg-space-3);
 }
 
 .tg-analysis-choice-group__header {
@@ -611,8 +705,15 @@
   .tg-analysis-stat-grid,
   .tg-analysis-distribution-grid,
   .tg-analysis-choice-groups,
-  .tg-analysis-text-grid {
+  .tg-analysis-text-workbench {
     grid-template-columns: 1fr;
+  }
+
+  .tg-analysis-text-detail {
+    border-top: 1px solid var(--tg-border-subtle);
+    border-left: 0;
+    padding-top: var(--tg-space-6);
+    padding-left: 0;
   }
 
   .tg-analysis-score-list li,

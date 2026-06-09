@@ -11,11 +11,12 @@ import type {
   PriorityIssue,
   ProfileDistribution,
   ProfileFilterDefinition,
+  Question,
   QuestionSummary,
   ResponseSummary,
   SectionSummary,
+  SurveySection,
   TextAnswer,
-  TextGroup,
 } from "../../../../api/admin/model";
 import { profileFilterLabels } from "../../../../api/admin/model";
 import { Button, EmptyState, StatusBadge } from "../../../../components";
@@ -492,59 +493,125 @@ export function GroupCompareCard(props: {
 
 export function TextEvidenceCard(props: {
   surveyId: string;
-  groups: TextGroup[];
+  captureKey?: string;
+  title?: string;
   answers: TextAnswer[];
+  questions?: readonly Question[];
+  sections?: readonly SurveySection[];
   filters: AnalysisFilters;
-  keyword: string;
-  onKeywordChange: (keyword: string) => void;
+  keyword?: string;
+  onKeywordChange?: (keyword: string) => void;
+  emptyTitle?: string;
+  emptyDescription?: string;
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
 }) {
+  const [selectedQuestionKey, setSelectedQuestionKey] = useState("all");
+  const questionGroups = useMemo(
+    () => buildTextAnswerQuestionGroups(props.answers, props.questions ?? [], props.sections ?? []),
+    [props.answers, props.questions, props.sections],
+  );
+  const activeQuestionKey =
+    selectedQuestionKey === "all" || questionGroups.some((group) => group.key === selectedQuestionKey) ? selectedQuestionKey : "all";
+  const selectedGroup = activeQuestionKey === "all" ? undefined : questionGroups.find((group) => group.key === activeQuestionKey);
+  const visibleAnswers = selectedGroup?.answers ?? props.answers;
+  const totalAnswerCount = getKnownMaxCount(props.answers.map((answer) => answer.totalCount));
+  const selectedTotalCount = selectedGroup?.totalCount ?? totalAnswerCount;
+  const answerGroupById = useMemo(() => {
+    const groupsByAnswerId = new Map<string, TextAnswerQuestionGroup>();
+    for (const group of questionGroups) {
+      group.answers.forEach((answer) => groupsByAnswerId.set(answer.id, group));
+    }
+    return groupsByAnswerId;
+  }, [questionGroups]);
+  const detailHeadingId = `${props.captureKey ?? "text-evidence"}-selected-question`;
+
   return (
     <AnalysisCard
       surveyId={props.surveyId}
-      captureKey="text-evidence"
-      title="서술형 의견 모음"
+      captureKey={props.captureKey ?? "text-evidence"}
+      title={props.title ?? "서술형 의견"}
       icon={<FileText size={16} aria-hidden="true" />}
       meta={formatFilterSummary(props.filters)}
+      className="tg-analysis-card--wide"
       action={
-        <label className="tg-analysis-search">
-          <span>검색</span>
-          <input value={props.keyword} placeholder="찾을 단어" onChange={(event) => props.onKeywordChange(event.target.value)} />
-        </label>
+        props.onKeywordChange ? (
+          <label className="tg-analysis-search">
+            <span>검색</span>
+            <input value={props.keyword ?? ""} placeholder="찾을 단어" onChange={(event) => props.onKeywordChange?.(event.target.value)} />
+          </label>
+        ) : undefined
       }
     >
-      {props.groups.length ? (
-        <div className="tg-analysis-text-grid">
-          {props.groups.slice(0, 8).map((group) => (
-            <TextGroupNode key={group.groupKey} surveyId={props.surveyId} group={group} />
-          ))}
+      {props.answers.length ? (
+        <div className="tg-analysis-text-workbench">
+          <nav className="tg-analysis-text-question-list" aria-label={`${props.title ?? "서술형 의견"} 질문 목록`}>
+            <button
+              type="button"
+              className={activeQuestionKey === "all" ? "tg-analysis-text-question-list__item--active" : ""}
+              onClick={() => setSelectedQuestionKey("all")}
+            >
+              <span>
+                <strong>전체 질문</strong>
+                <small>질문 {questionGroups.length.toLocaleString("ko-KR")}개</small>
+              </span>
+              <StatusBadge tone="info">{formatEvidenceCount(totalAnswerCount, props.answers.length)}</StatusBadge>
+            </button>
+            {questionGroups.map((group) => (
+              <button
+                key={group.key}
+                type="button"
+                className={activeQuestionKey === group.key ? "tg-analysis-text-question-list__item--active" : ""}
+                onClick={() => setSelectedQuestionKey(group.key)}
+              >
+                <span>
+                  <strong>{group.questionTitle}</strong>
+                  <small>{group.sectionTitle ?? group.topicLabel ?? "미분류"}</small>
+                </span>
+                <StatusBadge tone={getCountTone(group.totalCount ?? group.answers.length)}>
+                  {formatEvidenceCount(group.totalCount, group.answers.length)}
+                </StatusBadge>
+              </button>
+            ))}
+          </nav>
+          <section className="tg-analysis-text-detail" aria-labelledby={detailHeadingId}>
+            <header className="tg-analysis-text-detail__header">
+              <div>
+                <h3 id={detailHeadingId}>{selectedGroup?.questionTitle ?? "전체 질문"}</h3>
+                <p>
+                  {selectedGroup?.sectionTitle ? `${selectedGroup.sectionTitle} · ` : ""}
+                  {formatEvidenceSummary(selectedTotalCount, visibleAnswers.length)}
+                </p>
+              </div>
+              <StatusBadge tone={getCountTone(selectedTotalCount ?? visibleAnswers.length)}>
+                응답 {formatEvidenceCount(selectedTotalCount, visibleAnswers.length)}
+              </StatusBadge>
+            </header>
+            <ul className="tg-analysis-text-answer-list">
+              {visibleAnswers.map((answer) => {
+                const group = answerGroupById.get(answer.id);
+                return (
+                  <li key={answer.id}>
+                    {selectedGroup ? null : <strong>{group?.questionTitle ?? "질문 미분류"}</strong>}
+                    <p>{answer.textValue}</p>
+                    <div className="tg-analysis-text-answer-list__meta">
+                      <span>{formatProfile(answer.profile)}</span>
+                      <span>{formatDateTime(answer.createdAt)}</span>
+                      {answer.topicKey || answer.spaceKey ? <span>{answer.topicKey ?? answer.spaceKey}</span> : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         </div>
       ) : (
-        <EmptyState title="서술형 의견이 없습니다." description="검색어를 지우거나 조건을 줄여보세요." />
+        <EmptyState
+          title={props.emptyTitle ?? "서술형 의견이 없습니다."}
+          description={props.emptyDescription ?? "검색어를 지우거나 조건을 줄여보세요."}
+        />
       )}
-
-      <div className="tg-analysis-table-wrap">
-        <table className="tg-analysis-table">
-          <thead>
-            <tr>
-              <th>의견</th>
-              <th>묶음</th>
-              <th>기본 정보</th>
-            </tr>
-          </thead>
-          <tbody>
-            {props.answers.map((answer) => (
-              <tr key={answer.id}>
-                <td>{answer.textValue}</td>
-                <td>{answer.topicKey ?? answer.spaceKey ?? "미분류"}</td>
-                <td>{formatProfile(answer.profile)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
       {props.hasMore ? (
         <div className="tg-analysis-load-more">
           <Button variant="secondary" onClick={props.onLoadMore} disabled={props.isLoadingMore}>
@@ -556,43 +623,82 @@ export function TextEvidenceCard(props: {
   );
 }
 
-function TextGroupNode(props: { surveyId: string; group: TextGroup }) {
-  const captureRef = useRef<HTMLElement>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
-  const filename = `taglow-${props.surveyId}-text-node-${toFilenamePart(props.group.groupKey)}-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
-  return (
-    <section ref={captureRef} className="tg-analysis-text-node">
-      <header>
-        <h3>{props.group.label}</h3>
-        <div className="tg-analysis-text-node__actions">
-          <StatusBadge tone={props.group.n > 0 && props.group.n < lowSampleThreshold ? "warning" : "info"}>응답 수 {props.group.n}명</StatusBadge>
-          <Button
-            variant="ghost"
-            icon={<Download size={15} aria-hidden="true" />}
-            aria-label={`${props.group.label} 이미지 저장`}
-            data-capture-hidden="true"
-            disabled={isCapturing}
-            onClick={async () => {
-              if (!captureRef.current) return;
-              setIsCapturing(true);
-              try {
-                await downloadElementAsPng(captureRef.current, filename);
-              } finally {
-                setIsCapturing(false);
-              }
-            }}
-          >
-            이미지 저장
-          </Button>
-        </div>
-      </header>
-      <ul>
-        {props.group.representativeTexts.map((text, index) => (
-          <li key={`${props.group.groupKey}-${index}`}>{text}</li>
-        ))}
-      </ul>
-    </section>
+type TextAnswerQuestionGroup = Readonly<{
+  key: string;
+  questionTitle: string;
+  sectionTitle?: string;
+  topicLabel?: string;
+  sectionOrder: number;
+  questionOrder: number;
+  totalCount?: number;
+  answers: TextAnswer[];
+}>;
+
+function buildTextAnswerQuestionGroups(
+  answers: readonly TextAnswer[],
+  questions: readonly Question[],
+  sections: readonly SurveySection[],
+): TextAnswerQuestionGroup[] {
+  const questionById = new Map(questions.map((question) => [question.id, question] as const));
+  const sectionById = new Map(sections.map((section) => [section.id, section] as const));
+  const groups = new Map<string, TextAnswerQuestionGroup>();
+
+  for (const answer of answers) {
+    const question = answer.questionId ? questionById.get(answer.questionId) : undefined;
+    const section = answer.sectionId ? sectionById.get(answer.sectionId) : undefined;
+    const topicLabel = answer.topicKey ?? answer.spaceKey;
+    const key = answer.questionId ?? `${answer.sectionId ?? "section"}:${topicLabel ?? "unclassified"}`;
+    const existing = groups.get(key);
+    if (existing) {
+      groups.set(key, {
+        ...existing,
+        totalCount: getKnownMaxCount([existing.totalCount, answer.questionTotalCount]),
+        answers: [...existing.answers, answer],
+      });
+      continue;
+    }
+
+    groups.set(key, {
+      key,
+      questionTitle: answer.questionTitle ?? (question ? formatLocalizedText(question.title, question.questionKey) : undefined) ?? topicLabel ?? "질문 미분류",
+      sectionTitle: answer.sectionTitle ?? (section ? formatLocalizedText(section.title, section.sectionKey) : undefined),
+      topicLabel,
+      sectionOrder: section?.orderIndex ?? Number.MAX_SAFE_INTEGER,
+      questionOrder: question?.orderIndex ?? Number.MAX_SAFE_INTEGER,
+      totalCount: answer.questionTotalCount,
+      answers: [answer],
+    });
+  }
+
+  return [...groups.values()].sort(
+    (a, b) =>
+      a.sectionOrder - b.sectionOrder ||
+      a.questionOrder - b.questionOrder ||
+      a.questionTitle.localeCompare(b.questionTitle, "ko"),
   );
+}
+
+function formatLocalizedText(title: { ko?: string; en?: string }, fallback: string): string {
+  return title.ko?.trim() || title.en?.trim() || fallback;
+}
+
+function getKnownMaxCount(values: Array<number | undefined>): number | undefined {
+  const counts = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return counts.length ? Math.max(...counts) : undefined;
+}
+
+function formatEvidenceCount(totalCount: number | undefined, loadedCount: number): string {
+  return totalCount === undefined ? `표시 ${loadedCount.toLocaleString("ko-KR")}개` : `${totalCount.toLocaleString("ko-KR")}개`;
+}
+
+function formatEvidenceSummary(totalCount: number | undefined, loadedCount: number): string {
+  return totalCount === undefined
+    ? `표시 중 ${loadedCount.toLocaleString("ko-KR")}개`
+    : `표시 중 ${loadedCount.toLocaleString("ko-KR")}개 / 전체 ${totalCount.toLocaleString("ko-KR")}개`;
+}
+
+function getCountTone(count: number): "warning" | "info" {
+  return count > 0 && count < lowSampleThreshold ? "warning" : "info";
 }
 
 export function HeatmapPointCard(props: { surveyId: string; points: HeatmapPoint[]; filters: AnalysisFilters }) {
@@ -868,10 +974,6 @@ function formatPrioritySource(value: PriorityIssue["source"]): string {
 function formatFilterSummary(filters: AnalysisFilters): string {
   const count = countActiveFilters(filters);
   return count ? `조건 ${count}개 적용` : "모든 응답 기준";
-}
-
-function toFilenamePart(value: string): string {
-  return value.replace(/[^a-zA-Z0-9가-힣_-]+/g, "-").replace(/^-+|-+$/g, "") || "node";
 }
 
 function hasActiveFilters(filters: AnalysisFilters): boolean {

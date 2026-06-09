@@ -424,7 +424,10 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
       mapper.toTextAnswer({
         answer_id: "answer-1",
         section_id: "section-1",
+        section_title: "생활관 시설",
         question_id: "question-1",
+        question_title: "개선 의견",
+        question_type: "text",
         topic_key: "facility",
         space_key: "lounge",
         text_value: "조명이 어둡습니다.",
@@ -434,12 +437,17 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
         rc: "장기려",
         department: "전산전자공학부",
         created_at: "2026-05-28T00:00:00.000Z",
+        total_count: 12,
+        question_total_count: 4,
       }),
     ).toEqual({
       id: "answer-1",
       responseId: undefined,
       sectionId: "section-1",
+      sectionTitle: "생활관 시설",
       questionId: "question-1",
+      questionTitle: "개선 의견",
+      questionType: "text",
       topicKey: "facility",
       spaceKey: "lounge",
       textValue: "조명이 어둡습니다.",
@@ -451,6 +459,8 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
         department: "전산전자공학부",
       },
       createdAt: "2026-05-28T00:00:00.000Z",
+      totalCount: 12,
+      questionTotalCount: 4,
     });
   });
 

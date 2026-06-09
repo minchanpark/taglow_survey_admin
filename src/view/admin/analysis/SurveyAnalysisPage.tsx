@@ -13,7 +13,6 @@ import {
   useSectionSatisfactionSummaryQuery,
   useSurveyDetailQuery,
   useTextAnswersInfiniteQuery,
-  useTextGroupsQuery,
 } from "../../../api/admin/query";
 import {
   areAnalysisFiltersEqual,
@@ -30,6 +29,7 @@ import type {
   ImageTagAnswerImage,
   JsonRecord,
   Question,
+  TextAnswer,
   SurveySection,
   SurveyAsset,
   TextAnswerFilters,
@@ -85,14 +85,15 @@ export function SurveyAnalysisPage() {
     () => ({ ...activeFilters, groupBy, metricType: "satisfaction", ...groupTargetFilter }),
     [activeFilters, groupBy, groupTargetFilter],
   );
+  const scaleTextFilters = activeFilters as TextAnswerFilters;
   const responseSummaryQuery = useResponseSummaryQuery(surveyId, activeFilters);
   const sectionSummaryQuery = useSectionSatisfactionSummaryQuery(surveyId, activeFilters, { enabled: isOverviewTab || isScaleTab });
   const questionSummaryQuery = useQuestionSatisfactionSummaryQuery(surveyId, activeFilters, { enabled: isScaleTab });
   const choiceDistributionQuery = useChoiceDistributionQuery(surveyId, activeFilters, { enabled: isScaleTab });
   const priorityTop5Query = usePriorityTop5Query(surveyId, activeFilters, { enabled: isOverviewTab });
   const groupCompareQuery = useGroupCompareSummaryQuery(surveyId, groupCompareFilters, { enabled: isGroupsTab });
-  const textGroupsQuery = useTextGroupsQuery(surveyId, textFilters, { enabled: isTextTab });
   const textAnswersQuery = useTextAnswersInfiniteQuery(surveyId, textFilters, { enabled: isTextTab });
+  const scaleTextAnswersQuery = useTextAnswersInfiniteQuery(surveyId, scaleTextFilters, { enabled: isScaleTab });
   const imageTagFilters = activeFilters as HeatmapFilters;
   const heatmapPointsQuery = useHeatmapPointsQuery(surveyId, imageTagFilters, { enabled: isHeatmapTab });
   const imageTagAnswersQuery = useImageTagAnswersInfiniteQuery(surveyId, imageTagFilters, { enabled: isHeatmapTab });
@@ -138,6 +139,14 @@ export function SurveyAnalysisPage() {
     () => textAnswersQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [textAnswersQuery.data],
   );
+  const scaleTextAnswers = useMemo(
+    () => scaleTextAnswersQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [scaleTextAnswersQuery.data],
+  );
+  const scaleFollowUpTextAnswers = useMemo(() => {
+    const likelyFollowUps = scaleTextAnswers.filter((answer) => isLikelyScaleFollowUpTextAnswer(answer, questionById));
+    return likelyFollowUps.length ? likelyFollowUps : scaleTextAnswers;
+  }, [questionById, scaleTextAnswers]);
   const adminImageGroups = groups.filter((group) => group.kind === "admin_image");
   const participantUploadGroups = groups.filter((group) => group.kind === "participant_upload");
   const satisfactionQuestions = useMemo(
@@ -152,8 +161,8 @@ export function SurveyAnalysisPage() {
     choiceDistributionQuery,
     priorityTop5Query,
     groupCompareQuery,
-    textGroupsQuery,
     textAnswersQuery,
+    scaleTextAnswersQuery,
     heatmapPointsQuery,
     imageTagAnswersQuery,
   ].filter((query) => query.fetchStatus !== "idle" || query.isError);
@@ -258,8 +267,8 @@ export function SurveyAnalysisPage() {
         choiceDistributionQuery,
         priorityTop5Query,
         groupCompareQuery,
-        textGroupsQuery,
         textAnswersQuery,
+        scaleTextAnswersQuery,
         heatmapPointsQuery,
         imageTagAnswersQuery,
       ]) ? (
@@ -292,6 +301,22 @@ export function SurveyAnalysisPage() {
           <SectionAverageCard surveyId={surveyId} sections={sectionSummaryQuery.data ?? []} filters={activeFilters} />
           <QuestionAverageCard surveyId={surveyId} questions={satisfactionQuestions} filters={activeFilters} />
           <ChoiceDistributionCard surveyId={surveyId} distributions={choiceDistributionQuery.data ?? []} filters={activeFilters} />
+          <TextEvidenceCard
+            surveyId={surveyId}
+            captureKey="scale-text-evidence"
+            title="낮은 점수 후속 답변"
+            answers={scaleFollowUpTextAnswers}
+            questions={detailQuery.data.questions}
+            sections={detailQuery.data.sections}
+            filters={activeFilters}
+            emptyTitle="후속 답변이 없습니다."
+            emptyDescription="낮은 점수 뒤에 제출된 서술형 답변이 있으면 질문별로 표시됩니다."
+            hasMore={Boolean(scaleTextAnswersQuery.hasNextPage)}
+            isLoadingMore={scaleTextAnswersQuery.isFetchingNextPage}
+            onLoadMore={() => {
+              void scaleTextAnswersQuery.fetchNextPage();
+            }}
+          />
         </div>
       ) : null}
 
@@ -315,8 +340,10 @@ export function SurveyAnalysisPage() {
         <div className="tg-analysis-page__grid">
           <TextEvidenceCard
             surveyId={surveyId}
-            groups={textGroupsQuery.data ?? []}
+            title="서술형 의견"
             answers={textAnswers}
+            questions={detailQuery.data.questions}
+            sections={detailQuery.data.sections}
             filters={activeFilters}
             keyword={textKeyword}
             onKeywordChange={setTextKeyword}
@@ -496,6 +523,15 @@ function resolveAnswerImage(
     signedUrl: getString(asset.metadata.signedUrl) ?? getString(asset.metadata.publicUrl),
     source: "survey_asset",
   };
+}
+
+function isLikelyScaleFollowUpTextAnswer(answer: TextAnswer, questionById: Map<string, Question>): boolean {
+  const question = answer.questionId ? questionById.get(answer.questionId) : undefined;
+  const questionTitle = answer.questionTitle ?? (question ? formatLocalizedTitle(question.title, question.questionKey) : "");
+  const normalizedTitle = questionTitle.toLocaleLowerCase("ko-KR");
+  if (/불만족|부족|이유|dissatisfied|dissatisfaction|reason|why|shortcoming|improvement/.test(normalizedTitle)) return true;
+  const configText = JSON.stringify(question?.config ?? {}).toLocaleLowerCase("ko-KR");
+  return /"operator":"(?:lt|lte)"|low_score|lowscore|low satisfaction|낮은|불만족|이유/.test(configText);
 }
 
 function getString(value: unknown): string | undefined {
