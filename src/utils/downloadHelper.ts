@@ -42,6 +42,12 @@ export async function downloadElementAsPng(element: HTMLElement, filename: strin
   }
 }
 
+export function downloadCsvFile(filename: string, rows: ReadonlyArray<ReadonlyArray<unknown>>): void {
+  const csv = rows.map((row) => row.map(formatCsvCell).join(",")).join("\r\n");
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+  downloadBlob(blob, ensureCsvFilename(filename));
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -214,6 +220,16 @@ function parseCssPixels(value: string): number {
 
 function ensurePngFilename(filename: string): string {
   return filename.replace(/\.(svg|jpe?g|png)$/i, "") + ".png";
+}
+
+function ensureCsvFilename(filename: string): string {
+  return filename.replace(/\.(xlsx?|csv|tsv)$/i, "") + ".csv";
+}
+
+function formatCsvCell(value: unknown): string {
+  const text = value == null ? "" : String(value);
+  const safeText = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safeText.replace(/"/g, '""')}"`;
 }
 
 function downloadBlob(blob: Blob, filename: string): void {

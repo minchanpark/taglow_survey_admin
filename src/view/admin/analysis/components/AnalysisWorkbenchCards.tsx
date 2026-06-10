@@ -113,8 +113,10 @@ export function IdentityResponseCard(props: {
   responses: IdentityResponse[];
   filters: AnalysisFilters;
   hasMore?: boolean;
+  isExporting?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  onExport?: () => void;
 }) {
   const visibleResponses = props.responses.filter((response) => response.studentNumber || response.name);
   return (
@@ -124,6 +126,18 @@ export function IdentityResponseCard(props: {
       title="상세 명단"
       icon={<UserRound size={16} aria-hidden="true" />}
       meta={`${formatFilterSummary(props.filters)} · 주의력 확인 통과 응답만`}
+      action={
+        props.onExport ? (
+          <Button
+            variant="secondary"
+            icon={<Download size={15} aria-hidden="true" />}
+            onClick={props.onExport}
+            disabled={props.isExporting}
+          >
+            {props.isExporting ? "내보내는 중" : "명단 내보내기"}
+          </Button>
+        ) : undefined
+      }
       className="tg-analysis-card--wide"
     >
       <p className="tg-analysis-card-summary">표시 중 {visibleResponses.length.toLocaleString("ko-KR")}명</p>

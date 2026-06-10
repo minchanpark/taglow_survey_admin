@@ -7,6 +7,8 @@ import {
   useGroupCompareSummaryQuery,
   useHeatmapPointsQuery,
   useImageTagAnswersInfiniteQuery,
+  useIdentityResponsesExportMutation,
+  useIdentityResponsesInfiniteQuery,
   usePriorityTop5Query,
   useQuestionSatisfactionSummaryQuery,
   useResponseSummaryQuery,
@@ -27,6 +29,7 @@ import type {
   HeatmapFilters,
   ImageTagAnswer,
   ImageTagAnswerImage,
+  IdentityResponseFilters,
   JsonRecord,
   Question,
   TextAnswer,
@@ -37,10 +40,12 @@ import type {
 import { ErrorState, LoadingState, StatusBadge } from "../../../components";
 import { useAdminFilterStore } from "../../../store";
 import { isReportDraftEnabled } from "../../../utils/featureFlags";
+import { downloadIdentityRosterCsv } from "../../../utils/identityRosterCsv";
 import {
   ChoiceDistributionCard,
   GroupCompareCard,
   HeatmapPointCard,
+  IdentityResponseCard,
   PriorityTop5Card,
   ProfileDistributionCard,
   QuestionAverageCard,
@@ -86,11 +91,14 @@ export function SurveyAnalysisPage() {
     [activeFilters, groupBy, groupTargetFilter],
   );
   const scaleTextFilters = activeFilters as TextAnswerFilters;
+  const identityFilters = activeFilters as IdentityResponseFilters;
   const responseSummaryQuery = useResponseSummaryQuery(surveyId, activeFilters);
   const sectionSummaryQuery = useSectionSatisfactionSummaryQuery(surveyId, activeFilters, { enabled: isOverviewTab || isScaleTab });
   const questionSummaryQuery = useQuestionSatisfactionSummaryQuery(surveyId, activeFilters, { enabled: isScaleTab });
   const choiceDistributionQuery = useChoiceDistributionQuery(surveyId, activeFilters, { enabled: isScaleTab });
   const priorityTop5Query = usePriorityTop5Query(surveyId, activeFilters, { enabled: isOverviewTab });
+  const identityResponsesQuery = useIdentityResponsesInfiniteQuery(surveyId, identityFilters, { enabled: isOverviewTab });
+  const identityResponsesExportMutation = useIdentityResponsesExportMutation();
   const groupCompareQuery = useGroupCompareSummaryQuery(surveyId, groupCompareFilters, { enabled: isGroupsTab });
   const textAnswersQuery = useTextAnswersInfiniteQuery(surveyId, textFilters, { enabled: isTextTab });
   const scaleTextAnswersQuery = useTextAnswersInfiniteQuery(surveyId, scaleTextFilters, { enabled: isScaleTab });
@@ -143,6 +151,10 @@ export function SurveyAnalysisPage() {
     () => scaleTextAnswersQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [scaleTextAnswersQuery.data],
   );
+  const identityResponses = useMemo(
+    () => identityResponsesQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [identityResponsesQuery.data],
+  );
   const scaleFollowUpTextAnswers = useMemo(() => {
     const likelyFollowUps = scaleTextAnswers.filter((answer) => isLikelyScaleFollowUpTextAnswer(answer, questionById));
     return likelyFollowUps.length ? likelyFollowUps : scaleTextAnswers;
@@ -160,6 +172,7 @@ export function SurveyAnalysisPage() {
     questionSummaryQuery,
     choiceDistributionQuery,
     priorityTop5Query,
+    identityResponsesQuery,
     groupCompareQuery,
     textAnswersQuery,
     scaleTextAnswersQuery,
@@ -266,6 +279,7 @@ export function SurveyAnalysisPage() {
         questionSummaryQuery,
         choiceDistributionQuery,
         priorityTop5Query,
+        identityResponsesQuery,
         groupCompareQuery,
         textAnswersQuery,
         scaleTextAnswersQuery,
@@ -293,6 +307,27 @@ export function SurveyAnalysisPage() {
             filters={activeFilters}
           />
           <SectionAverageCard surveyId={surveyId} sections={sectionSummaryQuery.data ?? []} filters={activeFilters} />
+          <IdentityResponseCard
+            surveyId={surveyId}
+            responses={identityResponses}
+            filters={activeFilters}
+            hasMore={Boolean(identityResponsesQuery.hasNextPage)}
+            isLoadingMore={identityResponsesQuery.isFetchingNextPage}
+            isExporting={identityResponsesExportMutation.isPending}
+            onLoadMore={() => {
+              void identityResponsesQuery.fetchNextPage();
+            }}
+            onExport={() => {
+              void (async () => {
+                try {
+                  const responses = await identityResponsesExportMutation.mutateAsync({ surveyId, filters: identityFilters });
+                  downloadIdentityRosterCsv(surveyId, responses);
+                } catch (error) {
+                  console.error("Failed to export identity roster.", error);
+                }
+              })();
+            }}
+          />
         </div>
       ) : null}
 

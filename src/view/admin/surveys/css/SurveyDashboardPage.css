@@ -200,6 +200,12 @@
   gap: var(--tg-space-8);
 }
 
+.tg-dashboard-panel__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tg-space-6);
+}
+
 .tg-dashboard-panel__header h2 {
   color: var(--tg-text-strong);
   font-size: var(--tg-font-size-card-title);

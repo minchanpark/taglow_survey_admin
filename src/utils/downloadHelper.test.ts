@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { downloadElementAsPng } from "./downloadHelper";
+import { downloadCsvFile, downloadElementAsPng } from "./downloadHelper";
 
 describe("downloadElementAsPng", () => {
   afterEach(() => {
@@ -69,5 +69,37 @@ describe("downloadElementAsPng", () => {
     await downloadElementAsPng(element, "analysis-node.svg");
 
     expect(downloads).toEqual(["analysis-node.png"]);
+  });
+});
+
+describe("downloadCsvFile", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("downloads Excel-friendly CSV with safe quoted cells", async () => {
+    let downloadedFilename = "";
+    let downloadedBlob: Blob | undefined;
+
+    vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
+      downloadedBlob = blob as Blob;
+      return "blob:csv";
+    });
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function click(this: HTMLAnchorElement) {
+      downloadedFilename = this.download;
+    });
+
+    downloadCsvFile("roster.xlsx", [
+      ["학번", "이름", "학부"],
+      ["22000123", '=HYPERLINK("https://example.com")', "전산전자공학부"],
+    ]);
+
+    expect(downloadedFilename).toBe("roster.csv");
+    expect([...new Uint8Array((await downloadedBlob?.arrayBuffer()) ?? new ArrayBuffer(0)).slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(await downloadedBlob?.text()).toBe(
+      '"학번","이름","학부"\r\n"22000123","\'=HYPERLINK(""https://example.com"")","전산전자공학부"',
+    );
   });
 });

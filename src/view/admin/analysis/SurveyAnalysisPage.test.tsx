@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminApiController } from "../../../api/admin/controller";
-import type { ImageTagAnswer, Question, ResponseSummary, SurveyAsset, SurveySection } from "../../../api/admin/model";
+import type { IdentityResponse, ImageTagAnswer, Question, ResponseSummary, SurveyAsset, SurveySection } from "../../../api/admin/model";
 import { useAdminFilterStore } from "../../../store";
 import { createFakeAdminApiController, fakeSurvey } from "../../../test/fakeAdminApiController";
 import { renderWithProviders } from "../../../test/renderWithProviders";
@@ -211,6 +211,24 @@ const imageTagAnswers: ImageTagAnswer[] = [
   },
 ];
 
+const identityResponses: IdentityResponse[] = [
+  {
+    responseId: "response-identity-1",
+    studentNumber: "22000123",
+    name: "김태글",
+    profile: {
+      gender: "여성",
+      semesterGroup: "4학기",
+      department: "전산전자공학부",
+      rc: "장기려",
+      dormitory: "비전관",
+      roomType: "2인실",
+      dormExperience: "거주 중",
+    },
+    submittedAt: "2026-05-28T00:00:00.000Z",
+  },
+];
+
 const baseResponseSummary: ResponseSummary = {
   totalResponses: 5,
   submittedResponses: 4,
@@ -260,6 +278,10 @@ function renderAnalysis(overrides: Partial<AdminApiController> = {}) {
 describe("SurveyAnalysisPage", () => {
   beforeEach(() => {
     useAdminFilterStore.setState({ surveyId: undefined, filters: {}, activeTab: "overview" });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("shows admin image tag answers and participant uploaded image tag answers", async () => {
@@ -393,11 +415,53 @@ describe("SurveyAnalysisPage", () => {
     expect(within(distributionCard!).queryByText("커스텀관")).not.toBeInTheDocument();
   });
 
-  it("keeps detailed roster out of the analysis tabs", async () => {
-    renderAnalysis();
+  it("shows the detailed roster and exports all roster pages as CSV", async () => {
+    const user = userEvent.setup();
+    let downloadedFilename = "";
+    let downloadedBlob: Blob | undefined;
+    const listIdentityResponses = vi.fn<AdminApiController["listIdentityResponses"]>(async (command) =>
+      command.filters.cursor
+        ? {
+            items: [
+              {
+                responseId: "response-identity-2",
+                studentNumber: "22000456",
+                name: "이태글",
+                profile: { dormitory: "하용조관", roomType: "3인실", rc: "손양원", department: "ICT창업학부" },
+                submittedAt: "2026-05-28T00:05:00.000Z",
+              },
+            ],
+          }
+        : { items: identityResponses, nextCursor: "cursor-page-2" },
+    );
 
+    vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
+      downloadedBlob = blob as Blob;
+      return "blob:identity-roster";
+    });
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function click(this: HTMLAnchorElement) {
+      downloadedFilename = this.download;
+    });
+
+    renderAnalysis({ listIdentityResponses });
     expect(await screen.findByRole("heading", { name: "생활관 만족도 조사" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "상세 명단" })).not.toBeInTheDocument();
+
+    const rosterCard = screen.getByRole("heading", { name: "상세 명단" }).closest("article");
+    expect(rosterCard).toBeTruthy();
+    expect(within(rosterCard!).getByText("22000123")).toBeInTheDocument();
+    expect(within(rosterCard!).getByText("김태글")).toBeInTheDocument();
+    expect(within(rosterCard!).getByText("비전관 · 2인실 · 장기려 · 전산전자공학부")).toBeInTheDocument();
+
+    await user.click(within(rosterCard!).getByRole("button", { name: "명단 내보내기" }));
+
+    await waitFor(() => {
+      expect(listIdentityResponses).toHaveBeenCalledWith({ surveyId: "survey-1", filters: { cursor: "cursor-page-2", limit: 200 } });
+    });
+    expect(downloadedFilename).toMatch(/^taglow-survey-1-detailed-roster-.*\.csv$/);
+    expect(await downloadedBlob?.text()).toContain('"학번","이름","성별","학기","학부","RC","생활관","인실","생활관 경험","제출 시각"');
+    expect(await downloadedBlob?.text()).toContain('"22000123","김태글","여성","4학기","전산전자공학부","장기려","비전관","2인실","거주 중"');
+    expect(await downloadedBlob?.text()).toContain('"22000456","이태글"');
   });
 
   it("shows improvement priority TOP 5 with evidence counts and low sample caution", async () => {

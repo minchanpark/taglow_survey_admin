@@ -1,6 +1,6 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { useAdminApiController } from "../controller/adminApiControllerProvider";
-import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, IdentityResponseFilters, TextAnswerFilters } from "../model";
+import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, IdentityResponse, IdentityResponseFilterCommand, IdentityResponseFilters, TextAnswerFilters } from "../model";
 import { adminQueryKeys } from "./queryKeys";
 
 type AnalysisQueryOptions = Readonly<{
@@ -8,6 +8,8 @@ type AnalysisQueryOptions = Readonly<{
 }>;
 
 const analysisStaleTimeMs = 60_000;
+const identityResponseExportPageSize = 200;
+const identityResponseExportMaxPages = 500;
 
 export function useFilterOptionsQuery(surveyId: string) {
   const controller = useAdminApiController();
@@ -140,6 +142,30 @@ export function useIdentityResponsesInfiniteQuery(surveyId: string, filters: Ide
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: Boolean(surveyId) && (options.enabled ?? true),
     staleTime: analysisStaleTimeMs,
+  });
+}
+
+export function useIdentityResponsesExportMutation() {
+  const controller = useAdminApiController();
+  return useMutation({
+    mutationFn: async (command: IdentityResponseFilterCommand): Promise<IdentityResponse[]> => {
+      const items: IdentityResponse[] = [];
+      const seenCursors = new Set<string>();
+      let cursor: string | undefined;
+
+      for (let pageIndex = 0; pageIndex < identityResponseExportMaxPages; pageIndex += 1) {
+        const page = await controller.listIdentityResponses({
+          surveyId: command.surveyId,
+          filters: { ...command.filters, cursor, limit: identityResponseExportPageSize },
+        });
+        items.push(...page.items);
+        if (!page.nextCursor || seenCursors.has(page.nextCursor)) break;
+        seenCursors.add(page.nextCursor);
+        cursor = page.nextCursor;
+      }
+
+      return items;
+    },
   });
 }
 

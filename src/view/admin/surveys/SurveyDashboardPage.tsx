@@ -1,4 +1,4 @@
-import { BarChart3, CalendarClock, Copy, Eye, LinkIcon, NotebookText, PencilLine, Settings, UsersRound } from "lucide-react";
+import { BarChart3, CalendarClock, Copy, Download, Eye, LinkIcon, NotebookText, PencilLine, Settings, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -10,9 +10,10 @@ import {
   type IdentityResponse,
   type Survey,
 } from "../../../api/admin/model";
-import { useIdentityResponsesInfiniteQuery, useResponseSummaryQuery, useSurveyDetailQuery } from "../../../api/admin/query";
+import { useIdentityResponsesExportMutation, useIdentityResponsesInfiniteQuery, useResponseSummaryQuery, useSurveyDetailQuery } from "../../../api/admin/query";
 import { Button, ErrorState, LoadingState, StatusBadge, SurveyStatusBadge } from "../../../components";
 import { isReportDraftEnabled } from "../../../utils/featureFlags";
+import { downloadIdentityRosterCsv } from "../../../utils/identityRosterCsv";
 import "./css/SurveyDashboardPage.css";
 
 const dashboardFilters = {};
@@ -28,6 +29,7 @@ export function SurveyDashboardPage() {
   const surveyQuery = useSurveyDetailQuery(surveyId);
   const responseSummaryQuery = useResponseSummaryQuery(surveyId, dashboardFilters, { enabled: surveyQuery.isSuccess });
   const identityResponsesQuery = useIdentityResponsesInfiniteQuery(surveyId, dashboardFilters, { enabled: surveyQuery.isSuccess });
+  const identityResponsesExportMutation = useIdentityResponsesExportMutation();
   const [notice, setNotice] = useState<Notice | null>(null);
   const survey = surveyQuery.data?.survey;
   const publicPath = survey ? getSurveyPublicPath(survey) : undefined;
@@ -168,8 +170,19 @@ export function SurveyDashboardPage() {
           hasMore={Boolean(identityResponsesQuery.hasNextPage)}
           isLoading={identityResponsesQuery.isFetching && !identityResponses.length}
           isLoadingMore={identityResponsesQuery.isFetchingNextPage}
+          isExporting={identityResponsesExportMutation.isPending}
           onLoadMore={() => {
             void identityResponsesQuery.fetchNextPage();
+          }}
+          onExport={() => {
+            void (async () => {
+              try {
+                const responses = await identityResponsesExportMutation.mutateAsync({ surveyId, filters: dashboardFilters });
+                downloadIdentityRosterCsv(surveyId, responses);
+              } catch (error) {
+                console.error("Failed to export identity roster.", error);
+              }
+            })();
           }}
         />
       </div>
@@ -205,7 +218,9 @@ function RosterPanel(props: {
   hasMore: boolean;
   isLoading: boolean;
   isLoadingMore: boolean;
+  isExporting: boolean;
   onLoadMore: () => void;
+  onExport: () => void;
 }) {
   const visibleResponses = props.responses.filter((response) => response.studentNumber || response.name);
   const totalResponseLabel = typeof props.totalResponses === "number" ? `전체 ${formatCount(props.totalResponses)}명` : "전체 집계 중";
@@ -216,7 +231,12 @@ function RosterPanel(props: {
           <p>주의력 확인 통과 응답만</p>
           <h2 id="dashboard-roster-title">상세 명단</h2>
         </div>
-        <UsersRound size={16} aria-hidden="true" />
+        <div className="tg-dashboard-panel__actions">
+          <Button variant="secondary" icon={<Download size={15} aria-hidden="true" />} onClick={props.onExport} disabled={props.isExporting}>
+            {props.isExporting ? "내보내는 중" : "명단 내보내기"}
+          </Button>
+          <UsersRound size={16} aria-hidden="true" />
+        </div>
       </header>
       <p className="tg-dashboard-panel__copy">{totalResponseLabel}</p>
       {props.isLoading ? <p className="tg-dashboard-panel__copy">상세 명단을 불러오는 중입니다.</p> : null}
