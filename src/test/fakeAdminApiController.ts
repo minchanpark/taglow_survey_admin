@@ -14,6 +14,7 @@ import type {
   HeatmapPoint,
   ImageTagAnswer,
   IdentityResponse,
+  IndividualResponse,
   LocusPoint,
   PreviewSurvey,
   PreviewSurveyCommand,
@@ -152,7 +153,6 @@ export const emptyResponseSummary: ResponseSummary = {
     roomType: [],
     dormExperience: [],
   },
-  lowSampleGroups: [],
 };
 
 export function createFakeAdminApiController(overrides: Partial<AdminApiController> = {}): AdminApiController {
@@ -325,6 +325,7 @@ export function createFakeAdminApiController(overrides: Partial<AdminApiControll
     getHeatmapPoints: async (): Promise<HeatmapPoint[]> => [],
     listImageTagAnswers: async () => ({ items: [] as ImageTagAnswer[] }),
     listIdentityResponses: async () => ({ items: [] as IdentityResponse[] }),
+    listIndividualResponses: async () => ({ items: [] as IndividualResponse[] }),
     getTextGroups: async (): Promise<TextGroup[]> => [],
     listTextAnswers: async () => ({ items: [] as TextAnswer[] }),
     generateReportNarrative: async (command): Promise<ReportNarrativeResult> => ({

@@ -1,6 +1,15 @@
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { useAdminApiController } from "../controller/adminApiControllerProvider";
-import type { AnalysisFilters, GroupCompareFilters, HeatmapFilters, IdentityResponse, IdentityResponseFilterCommand, IdentityResponseFilters, TextAnswerFilters } from "../model";
+import type {
+  AnalysisFilters,
+  GroupCompareFilters,
+  HeatmapFilters,
+  IdentityResponse,
+  IdentityResponseFilterCommand,
+  IdentityResponseFilters,
+  IndividualResponseFilters,
+  TextAnswerFilters,
+} from "../model";
 import { adminQueryKeys } from "./queryKeys";
 
 type AnalysisQueryOptions = Readonly<{
@@ -138,6 +147,18 @@ export function useIdentityResponsesInfiniteQuery(surveyId: string, filters: Ide
   return useInfiniteQuery({
     queryKey: adminQueryKeys.identityResponsesInfinite(surveyId, filters),
     queryFn: ({ pageParam }) => controller.listIdentityResponses({ surveyId, filters: { ...filters, cursor: pageParam, limit: filters.limit ?? 100 } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: Boolean(surveyId) && (options.enabled ?? true),
+    staleTime: analysisStaleTimeMs,
+  });
+}
+
+export function useIndividualResponsesInfiniteQuery(surveyId: string, filters: IndividualResponseFilters, options: AnalysisQueryOptions = {}) {
+  const controller = useAdminApiController();
+  return useInfiniteQuery({
+    queryKey: adminQueryKeys.individualResponsesInfinite(surveyId, filters),
+    queryFn: ({ pageParam }) => controller.listIndividualResponses({ surveyId, filters: { ...filters, cursor: pageParam, limit: filters.limit ?? 1 } }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: Boolean(surveyId) && (options.enabled ?? true),

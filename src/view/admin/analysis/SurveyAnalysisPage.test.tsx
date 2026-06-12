@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminApiController } from "../../../api/admin/controller";
-import type { IdentityResponse, ImageTagAnswer, Question, ResponseSummary, SurveyAsset, SurveySection } from "../../../api/admin/model";
+import type { IdentityResponse, ImageTagAnswer, IndividualResponse, Question, ResponseSummary, SurveyAsset, SurveySection } from "../../../api/admin/model";
 import { useAdminFilterStore } from "../../../store";
 import { createFakeAdminApiController, fakeSurvey } from "../../../test/fakeAdminApiController";
 import { renderWithProviders } from "../../../test/renderWithProviders";
@@ -229,6 +229,44 @@ const identityResponses: IdentityResponse[] = [
   },
 ];
 
+const individualResponses: IndividualResponse[] = [
+  {
+    responseId: "response-detail-1",
+    profile: { dormitory: "비전관", roomType: "2인실", rc: "장기려", department: "전산전자공학부" },
+    submittedAt: "2026-05-28T00:00:00.000Z",
+    answers: [
+      {
+        id: "answer-detail-1",
+        responseId: "response-detail-1",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-satisfaction",
+        questionTitle: "세탁실 만족도",
+        questionType: "scale",
+        answerType: "scale",
+        displayValue: "2점",
+        scoreValue: 2,
+        valueJson: {},
+        createdAt: "2026-05-28T00:00:00.000Z",
+      },
+      {
+        id: "answer-detail-2",
+        responseId: "response-detail-1",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-low-score",
+        questionTitle: "세탁실 불만족 이유",
+        questionType: "text",
+        answerType: "text",
+        displayValue: "건조기가 부족합니다.",
+        textValue: "건조기가 부족합니다.",
+        valueJson: {},
+        createdAt: "2026-05-28T00:01:00.000Z",
+      },
+    ],
+  },
+];
+
 const baseResponseSummary: ResponseSummary = {
   totalResponses: 5,
   submittedResponses: 4,
@@ -250,7 +288,6 @@ const baseResponseSummary: ResponseSummary = {
     ],
     dormExperience: [],
   },
-  lowSampleGroups: [],
 };
 
 function renderAnalysis(overrides: Partial<AdminApiController> = {}) {
@@ -322,6 +359,12 @@ describe("SurveyAnalysisPage", () => {
     expect(within(metrics).getByText("v1")).toBeInTheDocument();
     expect(within(metrics).getByText("현재 설문")).toBeInTheDocument();
     expect(within(metrics).getByText("해석 주의")).toBeInTheDocument();
+
+    const summaryCard = screen.getByRole("heading", { name: "응답 현황" }).closest("article");
+    expect(summaryCard).toBeTruthy();
+    expect(within(summaryCard!).getByText("제출 완료")).toBeInTheDocument();
+    expect(within(summaryCard!).getByText("전체 응답")).toBeInTheDocument();
+    expect(within(summaryCard!).getByText("조건 적용 응답")).toBeInTheDocument();
   });
 
   it("requests image tag answers again when a global filter changes", async () => {
@@ -462,6 +505,58 @@ describe("SurveyAnalysisPage", () => {
     expect(await downloadedBlob?.text()).toContain('"학번","이름","성별","학기","학부","RC","생활관","인실","생활관 경험","제출 시각"');
     expect(await downloadedBlob?.text()).toContain('"22000123","김태글","여성","4학기","전산전자공학부","장기려","비전관","2인실","거주 중"');
     expect(await downloadedBlob?.text()).toContain('"22000456","이태글"');
+  });
+
+  it("shows individual answers in a separate analysis tab", async () => {
+    const user = userEvent.setup();
+    const listIndividualResponses = vi.fn<AdminApiController["listIndividualResponses"]>(async (command) =>
+      command.filters.cursor
+        ? {
+            items: [
+              {
+                responseId: "response-detail-2",
+                profile: { dormitory: "하용조관", roomType: "3인실" },
+                submittedAt: "2026-05-28T00:05:00.000Z",
+                answers: [
+                  {
+                    id: "answer-detail-3",
+                    responseId: "response-detail-2",
+                    sectionTitle: "시설",
+                    questionTitle: "세탁실 만족도",
+                    questionType: "scale",
+                    answerType: "scale",
+                    displayValue: "4점",
+                    scoreValue: 4,
+                    valueJson: {},
+                    createdAt: "2026-05-28T00:05:00.000Z",
+                  },
+                ],
+              },
+            ],
+          }
+        : { items: individualResponses, nextCursor: "cursor-page-2" },
+    );
+    renderAnalysis({ listIndividualResponses });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "개별 응답" }));
+
+    const individualCard = await screen.findByRole("heading", { name: "개별 응답" });
+    const card = individualCard.closest("article");
+    expect(card).toBeTruthy();
+    expect(within(card!).getByText("비전관 · 2인실 · 장기려 · 전산전자공학부")).toBeInTheDocument();
+    expect(within(card!).getByText("세탁실 만족도")).toBeInTheDocument();
+    expect(within(card!).getByText("2점")).toBeInTheDocument();
+    expect(within(card!).getByText("세탁실 불만족 이유")).toBeInTheDocument();
+    expect(within(card!).getByText("건조기가 부족합니다.")).toBeInTheDocument();
+
+    await user.click(within(card!).getByRole("button", { name: "다음 응답" }));
+
+    await waitFor(() => {
+      expect(listIndividualResponses).toHaveBeenLastCalledWith({ surveyId: "survey-1", filters: { cursor: "cursor-page-2", limit: 1 } });
+    });
+    expect(await within(card!).findByText("하용조관 · 3인실")).toBeInTheDocument();
+    expect(within(card!).getByText("4점")).toBeInTheDocument();
   });
 
   it("shows improvement priority TOP 5 with evidence counts and low sample caution", async () => {

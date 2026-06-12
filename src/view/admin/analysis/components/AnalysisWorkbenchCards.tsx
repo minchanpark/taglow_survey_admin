@@ -1,6 +1,6 @@
-import { AlertTriangle, Download, FileText, GitBranch, Layers3, ListFilter, MapPinned, Target, TrendingUp, UserRound } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, FileText, GitBranch, Layers3, ListChecks, ListFilter, MapPinned, Target, TrendingUp, UserRound } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   AnalysisFilters,
   ChoiceDistribution,
@@ -8,6 +8,7 @@ import type {
   GroupCompareResult,
   HeatmapPoint,
   IdentityResponse,
+  IndividualResponse,
   PriorityIssue,
   ProfileDistribution,
   ProfileFilterDefinition,
@@ -18,7 +19,6 @@ import type {
   SurveySection,
   TextAnswer,
 } from "../../../../api/admin/model";
-import { profileFilterLabels } from "../../../../api/admin/model";
 import { Button, EmptyState, StatusBadge } from "../../../../components";
 import { downloadElementAsPng } from "../../../../utils/downloadHelper";
 import "./css/AnalysisWorkbenchCards.css";
@@ -46,9 +46,8 @@ export type GroupCompareTargetOption = Readonly<{
   label: string;
 }>;
 
-export function ResponseSummaryCard(props: { surveyId: string; summary?: ResponseSummary; filters: AnalysisFilters; fields?: ProfileFilterDefinition[] }) {
+export function ResponseSummaryCard(props: { surveyId: string; summary?: ResponseSummary; filters: AnalysisFilters }) {
   const summary = props.summary;
-  const labelByKey = new Map((props.fields ?? []).map((field) => [field.key, field.label] as const));
   const isFiltered = hasActiveFilters(props.filters);
   return (
     <AnalysisCard
@@ -67,18 +66,6 @@ export function ResponseSummaryCard(props: { surveyId: string; summary?: Respons
         <Metric label={isFiltered ? "제출 완료 전체" : "전체 응답"} value={formatCount(isFiltered ? summary?.submittedResponses : summary?.totalResponses)} />
         <Metric label={isFiltered ? "전체 응답" : "조건 적용 응답"} value={formatCount(isFiltered ? summary?.totalResponses : summary?.filteredResponses)} />
       </div>
-      {summary?.isLowSample ? <LowSampleWarning n={summary.filteredResponses} /> : null}
-      {summary?.lowSampleGroups.length ? (
-        <ul className="tg-analysis-low-list">
-          {summary.lowSampleGroups.slice(0, 6).map((group) => (
-            <li key={`${group.dimension}:${group.label}`}>
-              <span>{labelByKey.get(group.dimension) ?? profileFilterLabels[group.dimension]}</span>
-              <strong>{group.label}</strong>
-              <StatusBadge tone="warning">응답 수 {group.n}명</StatusBadge>
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </AnalysisCard>
   );
 }
@@ -173,6 +160,127 @@ export function IdentityResponseCard(props: {
             {props.isLoadingMore ? "불러오는 중" : "더 보기"}
           </Button>
         </div>
+      ) : null}
+    </AnalysisCard>
+  );
+}
+
+export function IndividualResponseCard(props: {
+  surveyId: string;
+  responses: IndividualResponse[];
+  filters: AnalysisFilters;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [pendingIndex, setPendingIndex] = useState<number | undefined>();
+  const activeResponse = props.responses[activeIndex];
+  const canGoPrevious = activeIndex > 0;
+  const canGoNext = pendingIndex === undefined && (activeIndex < props.responses.length - 1 || Boolean(props.hasMore));
+
+  useEffect(() => {
+    setActiveIndex((currentIndex) => {
+      if (!props.responses.length) return 0;
+      return Math.min(currentIndex, props.responses.length - 1);
+    });
+  }, [props.responses.length]);
+
+  useEffect(() => {
+    if (pendingIndex === undefined) return;
+    if (props.responses.length > pendingIndex) {
+      setActiveIndex(pendingIndex);
+      setPendingIndex(undefined);
+    }
+  }, [pendingIndex, props.responses.length]);
+
+  const goPrevious = () => {
+    setPendingIndex(undefined);
+    setActiveIndex((currentIndex) => Math.max(0, currentIndex - 1));
+  };
+
+  const goNext = () => {
+    if (activeIndex < props.responses.length - 1) {
+      setActiveIndex((currentIndex) => currentIndex + 1);
+      return;
+    }
+    if (props.hasMore && props.onLoadMore) {
+      setPendingIndex(activeIndex + 1);
+      props.onLoadMore();
+    }
+  };
+
+  return (
+    <AnalysisCard
+      surveyId={props.surveyId}
+      captureKey="individual-responses"
+      title="개별 응답"
+      icon={<ListChecks size={16} aria-hidden="true" />}
+      meta={`${formatFilterSummary(props.filters)} · 주의력 확인 통과 응답만`}
+      action={
+        props.responses.length ? (
+          <div className="tg-analysis-response-navigator" aria-label="개별 응답 이동">
+            <Button
+              variant="secondary"
+              icon={<ChevronLeft size={15} aria-hidden="true" />}
+              onClick={goPrevious}
+              disabled={!canGoPrevious || props.isLoadingMore || pendingIndex !== undefined}
+              aria-label="이전 응답"
+            />
+            <span>
+              {activeIndex + 1} / {props.responses.length.toLocaleString("ko-KR")}
+              {props.hasMore ? "+" : ""}
+            </span>
+            <Button
+              variant="secondary"
+              icon={<ChevronRight size={15} aria-hidden="true" />}
+              onClick={goNext}
+              disabled={!canGoNext || props.isLoadingMore}
+              aria-label="다음 응답"
+            />
+          </div>
+        ) : undefined
+      }
+      className="tg-analysis-card--wide"
+    >
+      {activeResponse ? (
+        <section className="tg-analysis-individual-response" aria-labelledby={`individual-response-${activeResponse.responseId}`}>
+          <header className="tg-analysis-individual-response__header">
+            <div>
+              <strong id={`individual-response-${activeResponse.responseId}`}>응답 {activeIndex + 1}</strong>
+              <span>{formatProfile(activeResponse.profile)}</span>
+            </div>
+            <div>
+              <span>{formatDateTime(activeResponse.submittedAt)}</span>
+              <StatusBadge tone="info">답변 {activeResponse.answers.length.toLocaleString("ko-KR")}개</StatusBadge>
+            </div>
+          </header>
+          {activeResponse.answers.length ? (
+            <dl className="tg-analysis-individual-answer-list">
+              {activeResponse.answers.map((answer) => (
+                <div key={answer.id || `${activeResponse.responseId}:${answer.questionId}:${answer.createdAt}`}>
+                  <dt>
+                    <span>{answer.questionTitle}</span>
+                    {answer.sectionTitle ? <small>{answer.sectionTitle}</small> : null}
+                  </dt>
+                  <dd>
+                    <p>{answer.displayValue}</p>
+                    <small>{formatAnswerType(answer.answerType ?? answer.questionType)}</small>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="tg-analysis-muted tg-analysis-individual-response__empty">선택한 조건에 해당하는 답변이 없습니다.</p>
+          )}
+        </section>
+      ) : (
+        <EmptyState title="개별 응답이 없습니다." description="조건을 줄이거나 응답 수집 후 다시 확인해주세요." />
+      )}
+      {props.isLoadingMore ? (
+        <p className="tg-analysis-muted" role="status">
+          다음 응답을 불러오는 중입니다.
+        </p>
       ) : null}
     </AnalysisCard>
   );
@@ -797,15 +905,6 @@ function Metric(props: { label: string; value: string; tone?: "warning" }) {
   );
 }
 
-function LowSampleWarning(props: { n: number }) {
-  return (
-    <div className="tg-analysis-warning">
-      <AlertTriangle size={15} aria-hidden="true" />
-      <span>응답 수 {props.n}명이라 해석에 주의가 필요합니다.</span>
-    </div>
-  );
-}
-
 function DistributionBlock(props: { title: string; items: ReadonlyArray<DistributionItem>; isFiltered: boolean }) {
   const items = (props.isFiltered ? props.items.filter((item) => item.n > 0) : props.items).filter((item) => item.n > 0);
   const total = items.reduce((sum, item) => sum + item.n, 0);
@@ -983,6 +1082,21 @@ function formatPrioritySource(value: PriorityIssue["source"]): string {
   if (value === "text") return "서술형 의견";
   if (value === "heatmap") return "사진 표시";
   return "여러 근거";
+}
+
+function formatAnswerType(value: string | undefined): string {
+  if (value === "profile") return "기본 정보";
+  if (value === "scale") return "점수";
+  if (value === "single_choice") return "단일 선택";
+  if (value === "multi_select") return "복수 선택";
+  if (value === "matrix_multi_select") return "행렬 선택";
+  if (value === "ranking") return "순위";
+  if (value === "text") return "서술형";
+  if (value === "image_tag") return "사진 표시";
+  if (value === "participant_image_tag") return "사진 업로드 표시";
+  if (value === "attention_check") return "주의력 확인";
+  if (value === "experience") return "경험 여부";
+  return "답변";
 }
 
 function formatFilterSummary(filters: AnalysisFilters): string {

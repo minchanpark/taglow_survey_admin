@@ -38,6 +38,11 @@
 .tg-analysis-card__header p,
 .tg-analysis-distribution-block h3,
 .tg-analysis-choice-group h3,
+.tg-analysis-individual-answer-list,
+.tg-analysis-individual-answer-list dd,
+.tg-analysis-individual-answer-list p,
+.tg-analysis-individual-response__header strong,
+.tg-analysis-individual-response__header span,
 .tg-analysis-text-detail h3,
 .tg-analysis-text-answer-list p,
 .tg-analysis-priority-list p {
@@ -82,6 +87,23 @@
   min-width: 0;
 }
 
+.tg-analysis-response-navigator {
+  display: flex;
+  align-items: center;
+  gap: var(--tg-space-3);
+  min-width: 0;
+}
+
+.tg-analysis-response-navigator span {
+  min-width: 64px;
+  color: var(--tg-text-muted);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-medium);
+  line-height: var(--tg-line-caption);
+  text-align: center;
+  white-space: nowrap;
+}
+
 .tg-analysis-card__body {
   display: grid;
   gap: var(--tg-space-8);
@@ -106,9 +128,10 @@
 }
 
 .tg-analysis-metric span,
-.tg-analysis-low-list span,
 .tg-analysis-score-list small,
 .tg-analysis-priority-list small,
+.tg-analysis-individual-answer-list small,
+.tg-analysis-individual-response__header span,
 .tg-analysis-text-question-list small,
 .tg-analysis-text-detail__header p,
 .tg-analysis-text-answer-list__meta,
@@ -142,9 +165,9 @@
   background: var(--tg-warning-soft);
 }
 
-.tg-analysis-low-list,
 .tg-analysis-priority-list,
 .tg-analysis-score-list,
+.tg-analysis-individual-list,
 .tg-analysis-text-answer-list {
   display: grid;
   gap: var(--tg-space-4);
@@ -153,17 +176,12 @@
   list-style: none;
 }
 
-.tg-analysis-low-list li,
 .tg-analysis-priority-list li,
 .tg-analysis-score-list li {
   display: grid;
   align-items: center;
   gap: var(--tg-space-6);
   min-width: 0;
-}
-
-.tg-analysis-low-list li {
-  grid-template-columns: 80px minmax(0, 1fr) auto;
 }
 
 .tg-analysis-priority-list li {
@@ -503,6 +521,87 @@
   padding-top: var(--tg-space-6);
 }
 
+.tg-analysis-individual-response {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--tg-border-subtle);
+  border-radius: var(--tg-radius-sm);
+  background: var(--tg-bg-raised);
+}
+
+.tg-analysis-individual-response__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--tg-space-6);
+  min-width: 0;
+  border-bottom: 1px solid var(--tg-border-subtle);
+  padding: var(--tg-space-5);
+}
+
+.tg-analysis-individual-response__header > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--tg-space-2);
+}
+
+.tg-analysis-individual-response__header > div:last-child {
+  justify-items: end;
+}
+
+.tg-analysis-individual-response__header strong {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-dense);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-dense);
+}
+
+.tg-analysis-individual-response__empty {
+  padding: var(--tg-space-5);
+}
+
+.tg-analysis-individual-answer-list {
+  display: grid;
+}
+
+.tg-analysis-individual-answer-list > div {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr);
+  gap: var(--tg-space-6);
+  min-width: 0;
+  border-bottom: 1px solid var(--tg-border-subtle);
+  padding: var(--tg-space-5);
+}
+
+.tg-analysis-individual-answer-list > div:last-child {
+  border-bottom: 0;
+}
+
+.tg-analysis-individual-answer-list dt,
+.tg-analysis-individual-answer-list dd {
+  display: grid;
+  min-width: 0;
+  gap: var(--tg-space-1);
+}
+
+.tg-analysis-individual-answer-list dt span {
+  color: var(--tg-text-strong);
+  font-size: var(--tg-font-size-caption);
+  font-weight: var(--tg-weight-semibold);
+  line-height: var(--tg-line-caption);
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.tg-analysis-individual-answer-list p {
+  color: var(--tg-text-body);
+  font-size: var(--tg-font-size-dense);
+  line-height: var(--tg-line-dense);
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
 .tg-analysis-choice-groups {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -718,13 +817,22 @@
 
   .tg-analysis-score-list li,
   .tg-analysis-bar-row,
-  .tg-analysis-low-list li,
-  .tg-analysis-priority-list li {
+  .tg-analysis-priority-list li,
+  .tg-analysis-individual-answer-list > div {
     grid-template-columns: 1fr;
   }
 
+  .tg-analysis-individual-response__header {
+    flex-direction: column;
+  }
+
+  .tg-analysis-individual-response__header > div:last-child {
+    justify-items: start;
+  }
+
   .tg-analysis-card-controls,
-  .tg-analysis-group-controls {
+  .tg-analysis-group-controls,
+  .tg-analysis-response-navigator {
     width: 100%;
     justify-content: flex-start;
   }

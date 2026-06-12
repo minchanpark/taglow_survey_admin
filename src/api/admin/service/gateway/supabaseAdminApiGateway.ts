@@ -5,6 +5,8 @@ import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
   IdentityResponseQueryArgs,
+  IndividualResponseQueryArgs,
+  RawIndividualAnswer,
   RawChoiceDistribution,
   RawGroupCompareResult,
   RawAdminAuthUser,
@@ -19,6 +21,7 @@ import type {
   RawHeatmapPoint,
   RawImageTagAnswer,
   RawIdentityResponse,
+  RawIndividualResponse,
   RawLocusPoint,
   RawPaginatedResult,
   RawPriorityIssue,
@@ -582,6 +585,10 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
     return this.listIdentityResponsesFromResponsePage(args);
   }
 
+  async listIndividualResponses(args: IndividualResponseQueryArgs): Promise<RawPaginatedResult<RawIndividualResponse>> {
+    return this.listIndividualResponsesFromResponsePage(args);
+  }
+
   private async listImageTagAnswersWithResponseRelation(
     args: HeatmapQueryArgs,
     responseRelation: string,
@@ -722,6 +729,110 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
 
     return {
       items: toRawIdentityResponsesFromPage(pageResponseRows, answerRows),
+      next_cursor: nextCursor,
+    };
+  }
+
+  private async listIndividualResponsesFromResponsePage(args: IndividualResponseQueryArgs): Promise<RawPaginatedResult<RawIndividualResponse>> {
+    const filters = args.filters;
+    const limit = getPageSize(filters.limit, 25, 100);
+    const scanLimit = getIndividualResponseScanLimit(limit);
+    let responseQuery = this.supabase
+      .from("responses")
+      .select(
+        `
+          id,
+          submitted_at,
+          gender,
+          semester_group,
+          department,
+          rc,
+          dormitory,
+          room_type,
+          dorm_experience
+        `,
+      )
+      .eq("survey_id", args.surveyId)
+      .eq("status", "submitted")
+      .eq("passed_attention_check", true)
+      .order("submitted_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(scanLimit + 1);
+
+    responseQuery = applyMaybeEq(responseQuery, "gender", filters.gender);
+    responseQuery = applyMaybeEq(responseQuery, "semester_group", filters.semester_group);
+    responseQuery = applyMaybeEq(responseQuery, "department", filters.department);
+    responseQuery = applyMaybeEq(responseQuery, "rc", filters.rc);
+    responseQuery = applyMaybeEq(responseQuery, "dormitory", filters.dormitory);
+    responseQuery = applyMaybeEq(responseQuery, "room_type", filters.room_type);
+    responseQuery = applyMaybeEq(responseQuery, "dorm_experience", filters.dorm_experience);
+    responseQuery = applyIdentityResponseCursor(responseQuery, getString(filters.cursor));
+
+    const responseRows = await this.many<RawIdentityFallbackResponseRow>(responseQuery, "RPC_FAILED");
+    const candidateResponseRows = responseRows.slice(0, scanLimit);
+    const responseIds = candidateResponseRows.map((row) => getString(row.id)).filter((id): id is string => Boolean(id));
+
+    if (!responseIds.length) {
+      return { items: [], next_cursor: null };
+    }
+
+    let answerQuery = this.supabase
+      .from("answers")
+      .select(
+        `
+          id,
+          response_id,
+          section_id,
+          question_id,
+          answer_type,
+          text_value,
+          choice_value,
+          score_value,
+          x_ratio,
+          y_ratio,
+          tag_type,
+          value_json,
+          created_at,
+          questions(
+            question_type,
+            title_ko,
+            order_index
+          ),
+          survey_sections(
+            title_ko,
+            order_index
+          )
+        `,
+      )
+      .eq("survey_id", args.surveyId)
+      .in("response_id", responseIds);
+
+    answerQuery = applyMaybeEq(answerQuery, "section_id", filters.section_id);
+    answerQuery = applyMaybeEq(answerQuery, "topic_key", filters.topic_key);
+    answerQuery = applyMaybeEq(answerQuery, "space_key", filters.space_key);
+
+    const answerRows = await this.many<Record<string, unknown>>(answerQuery, "RPC_FAILED");
+    const visibleItems = toRawIndividualResponsesFromPage(candidateResponseRows, answerRows).slice(0, limit);
+    const lastVisibleResponseId = visibleItems.at(-1)?.response_id;
+    const lastVisibleResponseIndex = lastVisibleResponseId
+      ? candidateResponseRows.findIndex((row) => getString(row.id) === lastVisibleResponseId)
+      : -1;
+    const lastVisibleResponseRow = lastVisibleResponseId
+      ? candidateResponseRows[lastVisibleResponseIndex]
+      : undefined;
+    const lastCandidateRow = candidateResponseRows.at(-1);
+    const hasMoreAfterLastVisible =
+      lastVisibleResponseIndex >= 0 && (lastVisibleResponseIndex < candidateResponseRows.length - 1 || responseRows.length > scanLimit);
+    const nextCursor = lastVisibleResponseRow
+      ? hasMoreAfterLastVisible
+        ? buildIdentityResponseCursor(lastVisibleResponseRow)
+        : null
+      : responseRows.length > scanLimit
+        ? lastCandidateRow ? buildIdentityResponseCursor(lastCandidateRow) : null
+        : null;
+
+    return {
+      items: visibleItems,
       next_cursor: nextCursor,
     };
   }
@@ -924,6 +1035,10 @@ function getPageSize(value: unknown, defaultValue: number, maxValue: number): nu
   return Math.min(Math.max(Math.trunc(numberValue), 1), maxValue);
 }
 
+function getIndividualResponseScanLimit(pageSize: number): number {
+  return Math.min(Math.max(pageSize * 8, pageSize + 1), 25);
+}
+
 function toRawPage<T extends { next_cursor?: string | null }>(rows: T[]): RawPaginatedResult<T> {
   const nextCursor = rows.find((row) => typeof row.next_cursor === "string" && row.next_cursor.trim())?.next_cursor ?? null;
   return {
@@ -979,6 +1094,79 @@ function toRawIdentityResponsesFromPage(
     .filter((item): item is RawIdentityResponse => Boolean(item?.student_number || item?.name));
 }
 
+function toRawIndividualResponsesFromPage(
+  responseRows: readonly RawIdentityFallbackResponseRow[],
+  answerRows: readonly Record<string, unknown>[],
+): RawIndividualResponse[] {
+  const byResponse = new Map<string, RawIndividualResponse>();
+  for (const response of responseRows) {
+    const responseId = getString(response.id);
+    if (!responseId) continue;
+    byResponse.set(responseId, {
+      response_id: responseId,
+      gender: getString(response.gender) ?? null,
+      semester_group: getString(response.semester_group) ?? null,
+      department: getString(response.department) ?? null,
+      rc: getString(response.rc) ?? null,
+      dormitory: getString(response.dormitory) ?? null,
+      room_type: getString(response.room_type) ?? null,
+      dorm_experience: getString(response.dorm_experience) ?? null,
+      submitted_at: getString(response.submitted_at) ?? "",
+      answers: [],
+      next_cursor: null,
+    });
+  }
+
+  for (const row of answerRows) {
+    const responseId = getString(row.response_id);
+    if (!responseId) continue;
+    const response = byResponse.get(responseId);
+    if (!response) continue;
+
+    const question = getRelationRecord(row.questions);
+    const section = getRelationRecord(row.survey_sections);
+    const answers = [
+      ...response.answers,
+      {
+        id: getString(row.id),
+        response_id: responseId,
+        section_id: getString(row.section_id) ?? null,
+        section_title: getString(section?.title_ko) ?? null,
+        section_order: getNumber(section?.order_index),
+        question_id: getString(row.question_id) ?? null,
+        question_title: getString(question?.title_ko) ?? null,
+        question_type: getString(question?.question_type) ?? null,
+        question_order: getNumber(question?.order_index),
+        answer_type: getString(row.answer_type) ?? null,
+        text_value: getString(row.text_value) ?? null,
+        choice_value: getString(row.choice_value) ?? null,
+        score_value: getNumber(row.score_value),
+        x_ratio: getNumber(row.x_ratio),
+        y_ratio: getNumber(row.y_ratio),
+        tag_type: getString(row.tag_type) ?? null,
+        value_json: isJsonRecord(row.value_json) ? row.value_json : null,
+        created_at: getString(row.created_at) ?? "",
+      },
+    ].sort(compareRawIndividualAnswers);
+
+    byResponse.set(responseId, { ...response, answers });
+  }
+
+  return responseRows
+    .map((response) => getString(response.id))
+    .filter((responseId): responseId is string => Boolean(responseId))
+    .map((responseId) => byResponse.get(responseId))
+    .filter((item): item is RawIndividualResponse => Boolean(item?.answers.length));
+}
+
+function compareRawIndividualAnswers(left: RawIndividualAnswer, right: RawIndividualAnswer): number {
+  return (
+    (left.section_order ?? Number.MAX_SAFE_INTEGER) - (right.section_order ?? Number.MAX_SAFE_INTEGER) ||
+    (left.question_order ?? Number.MAX_SAFE_INTEGER) - (right.question_order ?? Number.MAX_SAFE_INTEGER) ||
+    left.created_at.localeCompare(right.created_at)
+  );
+}
+
 function buildIdentityResponseCursor(row: RawIdentityFallbackResponseRow): string | null {
   const submittedAt = getString(row.submitted_at);
   const responseId = getString(row.id);
@@ -1019,7 +1207,6 @@ function buildRawResponseSummary(
     low_sample_threshold: lowSampleThreshold,
     is_low_sample: filtered.length > 0 && filtered.length < lowSampleThreshold,
     profile_distribution: profileDistribution,
-    low_sample_groups: buildLowSampleGroups(profileDistribution, lowSampleThreshold),
   };
 }
 
@@ -1113,30 +1300,6 @@ function buildProfileDistribution(
   }
 
   return rows;
-}
-
-function buildLowSampleGroups(
-  distribution: NonNullable<RawResponseSummary["profile_distribution"]>,
-  threshold: number,
-): NonNullable<RawResponseSummary["low_sample_groups"]> {
-  const dimensions = [
-    ["gender", "gender"],
-    ["semesterGroup", "semesterGroups"],
-    ["department", "department"],
-    ["rc", "rc"],
-    ["dormitory", "dormitory"],
-    ["roomType", "roomType"],
-    ["dormExperience", "dormExperience"],
-  ] as const;
-
-  return dimensions.flatMap(([dimension, key]) => {
-    const rows = distribution[key];
-    return Array.isArray(rows)
-      ? rows
-          .filter((row): row is ProfileDistributionRow => isProfileDistributionRow(row) && row.n > 0 && row.n < threshold)
-          .map((row) => ({ dimension, label: row.label, n: row.n }))
-      : [];
-  });
 }
 
 function matchesResponseFilters(response: RawAnalysisResponseRow, filters: JsonRecord): boolean {
@@ -1268,10 +1431,6 @@ function firstString(...values: readonly unknown[]): string | undefined {
 
 function percentage(count: number, total: number): number {
   return total > 0 ? Math.round((count / total) * 1000) / 10 : 0;
-}
-
-function isProfileDistributionRow(value: unknown): value is ProfileDistributionRow {
-  return isRecord(value) && typeof value.label === "string" && typeof value.n === "number";
 }
 
 function isMissingColumnError(error: unknown, columns: readonly string[]): boolean {

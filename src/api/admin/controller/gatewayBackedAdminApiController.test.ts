@@ -696,6 +696,72 @@ describe("GatewayBackedAdminApiController analysis identity responses", () => {
   });
 });
 
+describe("GatewayBackedAdminApiController analysis individual responses", () => {
+  it("lists individual responses through the analysis boundary with normalized filters", async () => {
+    const listIndividualResponses = vi.fn(async () => ({
+      items: [
+        {
+          response_id: "response-1",
+          dormitory: "비전관",
+          room_type: "2인실",
+          submitted_at: "2026-05-28T00:00:00.000Z",
+          answers: [
+            {
+              id: "answer-1",
+              question_title: "세탁실 만족도",
+              question_type: "scale",
+              answer_type: "scale",
+              score_value: 2,
+              value_json: {},
+              created_at: "2026-05-28T00:00:00.000Z",
+            },
+          ],
+        },
+      ],
+      next_cursor: "cursor-1",
+    }));
+    const controller = new GatewayBackedAdminApiController(
+      { listIndividualResponses } as unknown as AdminApiGateway,
+      {} as AdminStorageGateway,
+    );
+
+    await expect(
+      controller.listIndividualResponses({
+        surveyId: "survey-1",
+        filters: { dormitory: "비전관", roomType: "2인실", limit: 25 },
+      }),
+    ).resolves.toEqual({
+      items: [
+        {
+          responseId: "response-1",
+          profile: {
+            dormitory: "비전관",
+            roomType: "2인실",
+          },
+          submittedAt: "2026-05-28T00:00:00.000Z",
+          answers: [
+            expect.objectContaining({
+              id: "answer-1",
+              questionTitle: "세탁실 만족도",
+              displayValue: "2점",
+            }),
+          ],
+        },
+      ],
+      nextCursor: "cursor-1",
+    });
+
+    expect(listIndividualResponses).toHaveBeenCalledWith({
+      surveyId: "survey-1",
+      filters: expect.objectContaining({
+        dormitory: "비전관",
+        room_type: "2인실",
+        limit: 25,
+      }),
+    });
+  });
+});
+
 describe("GatewayBackedAdminApiController report narrative", () => {
   it("sanitizes narrative payloads and normalizes provider results", async () => {
     const generateReportNarrative = vi.fn(async (command) => ({
