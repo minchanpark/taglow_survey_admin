@@ -33,6 +33,11 @@ export type IdentityResponseFilters = AnalysisFilters & Readonly<{
   limit?: number;
 }>;
 
+export type IndividualResponseFilters = AnalysisFilters & Readonly<{
+  cursor?: string;
+  limit?: number;
+}>;
+
 export type PaginatedResult<T> = Readonly<{
   items: T[];
   nextCursor?: string;
@@ -67,12 +72,6 @@ export type ProfileDistributionItem = Readonly<{
 
 export type ProfileDistribution = Readonly<Record<ProfileDistributionKey, ProfileDistributionItem[]>>;
 
-export type LowSampleGroup = Readonly<{
-  dimension: ProfileDistributionKey;
-  label: string;
-  n: number;
-}>;
-
 export type ResponseSummary = Readonly<{
   totalResponses: number;
   submittedResponses: number;
@@ -80,7 +79,6 @@ export type ResponseSummary = Readonly<{
   lowSampleThreshold: number;
   isLowSample: boolean;
   profileDistribution: ProfileDistribution;
-  lowSampleGroups: LowSampleGroup[];
 }>;
 
 export type SectionSummary = Readonly<{
@@ -214,6 +212,33 @@ export type IdentityResponse = Readonly<{
   name?: string;
   profile?: JsonRecord;
   submittedAt: string;
+}>;
+
+export type IndividualAnswer = Readonly<{
+  id: string;
+  responseId?: string;
+  sectionId?: string;
+  sectionTitle?: string;
+  questionId?: string;
+  questionTitle: string;
+  questionType?: QuestionType;
+  answerType?: string;
+  displayValue: string;
+  textValue?: string;
+  choiceValue?: string;
+  scoreValue?: number;
+  xRatio?: number;
+  yRatio?: number;
+  tagType?: string;
+  valueJson: JsonRecord;
+  createdAt: string;
+}>;
+
+export type IndividualResponse = Readonly<{
+  responseId: string;
+  profile?: JsonRecord;
+  submittedAt: string;
+  answers: IndividualAnswer[];
 }>;
 
 export type ImageTagAnswerImage = Readonly<{

@@ -440,7 +440,6 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
           low_sample_threshold: 10,
           is_low_sample: false,
           profile_distribution: {},
-          low_sample_groups: [],
         },
         error: null,
       })),
@@ -602,6 +601,54 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     expect(answerQuery.in).toHaveBeenCalledWith("response_id", ["response-1", "response-2", "response-3"]);
     expect(rows.items.map((row) => row.student_number)).toEqual(["22000121", "22000122", "22000123"]);
     expect(rows.next_cursor).toBe("2026-05-29T00:01:00.000Z|response-3");
+  });
+
+  it("skips individual response candidates that have no displayable answers", async () => {
+    const responseRows = [
+      { id: "response-empty", submitted_at: "2026-05-29T00:03:00.000Z", dormitory: "갈대상자관", room_type: "2인실" },
+      { id: "response-filled", submitted_at: "2026-05-29T00:02:00.000Z", dormitory: "갈대상자관", room_type: "2인실" },
+      { id: "response-next", submitted_at: "2026-05-29T00:01:00.000Z", dormitory: "갈대상자관", room_type: "2인실" },
+    ];
+    const responseQuery = createTableQuery(responseRows);
+    const answerQuery = createTableQuery([
+      {
+        id: "answer-1",
+        response_id: "response-filled",
+        section_id: "section-1",
+        question_id: "question-1",
+        answer_type: "text",
+        text_value: "문이 잘 닫히지 않습니다.",
+        created_at: "2026-05-29T00:02:10.000Z",
+        questions: { question_type: "text", title_ko: "불편한 점", order_index: 1 },
+        survey_sections: { title_ko: "생활관 시설", order_index: 1 },
+      },
+    ]);
+    const supabase = {
+      auth: {
+        getSession: vi.fn(),
+        getUser: vi.fn(),
+        signInWithOAuth: vi.fn(),
+        signOut: vi.fn(),
+      },
+      from: vi.fn((table: string) => table === "responses" ? responseQuery : answerQuery),
+      rpc: vi.fn(missingIdentityResponsesRpc),
+    };
+
+    const gateway = new SupabaseAdminApiGateway(supabase as never);
+    const rows = await gateway.listIndividualResponses({ surveyId: "survey-1", filters: { dormitory: "갈대상자관", limit: 1 } });
+
+    expect(responseQuery.limit).toHaveBeenCalledWith(9);
+    expect(answerQuery.in).toHaveBeenCalledWith("response_id", ["response-empty", "response-filled", "response-next"]);
+    expect(rows.items).toHaveLength(1);
+    expect(rows.items[0]).toMatchObject({
+      response_id: "response-filled",
+      answers: [
+        expect.objectContaining({
+          text_value: "문이 잘 닫히지 않습니다.",
+        }),
+      ],
+    });
+    expect(rows.next_cursor).toBe("2026-05-29T00:02:00.000Z|response-filled");
   });
 
   it("unwraps single-row RPC arrays for one-row gateway calls", async () => {

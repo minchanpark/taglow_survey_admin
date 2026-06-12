@@ -9,6 +9,7 @@ import {
   useImageTagAnswersInfiniteQuery,
   useIdentityResponsesExportMutation,
   useIdentityResponsesInfiniteQuery,
+  useIndividualResponsesInfiniteQuery,
   usePriorityTop5Query,
   useQuestionSatisfactionSummaryQuery,
   useResponseSummaryQuery,
@@ -30,6 +31,7 @@ import type {
   ImageTagAnswer,
   ImageTagAnswerImage,
   IdentityResponseFilters,
+  IndividualResponseFilters,
   JsonRecord,
   Question,
   TextAnswer,
@@ -46,6 +48,7 @@ import {
   GroupCompareCard,
   HeatmapPointCard,
   IdentityResponseCard,
+  IndividualResponseCard,
   PriorityTop5Card,
   ProfileDistributionCard,
   QuestionAverageCard,
@@ -68,6 +71,7 @@ export function SurveyAnalysisPage() {
   const isOverviewTab = activeTab === "overview";
   const isScaleTab = activeTab === "scale";
   const isGroupsTab = activeTab === "groups";
+  const isAnswersTab = activeTab === "answers";
   const isTextTab = activeTab === "text";
   const isHeatmapTab = activeTab === "heatmap";
   const textFilters: TextAnswerFilters = useMemo(
@@ -92,6 +96,7 @@ export function SurveyAnalysisPage() {
   );
   const scaleTextFilters = activeFilters as TextAnswerFilters;
   const identityFilters = activeFilters as IdentityResponseFilters;
+  const individualResponseFilters = activeFilters as IndividualResponseFilters;
   const responseSummaryQuery = useResponseSummaryQuery(surveyId, activeFilters);
   const sectionSummaryQuery = useSectionSatisfactionSummaryQuery(surveyId, activeFilters, { enabled: isOverviewTab || isScaleTab });
   const questionSummaryQuery = useQuestionSatisfactionSummaryQuery(surveyId, activeFilters, { enabled: isScaleTab });
@@ -99,6 +104,7 @@ export function SurveyAnalysisPage() {
   const priorityTop5Query = usePriorityTop5Query(surveyId, activeFilters, { enabled: isOverviewTab });
   const identityResponsesQuery = useIdentityResponsesInfiniteQuery(surveyId, identityFilters, { enabled: isOverviewTab });
   const identityResponsesExportMutation = useIdentityResponsesExportMutation();
+  const individualResponsesQuery = useIndividualResponsesInfiniteQuery(surveyId, individualResponseFilters, { enabled: isAnswersTab });
   const groupCompareQuery = useGroupCompareSummaryQuery(surveyId, groupCompareFilters, { enabled: isGroupsTab });
   const textAnswersQuery = useTextAnswersInfiniteQuery(surveyId, textFilters, { enabled: isTextTab });
   const scaleTextAnswersQuery = useTextAnswersInfiniteQuery(surveyId, scaleTextFilters, { enabled: isScaleTab });
@@ -155,6 +161,10 @@ export function SurveyAnalysisPage() {
     () => identityResponsesQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [identityResponsesQuery.data],
   );
+  const individualResponses = useMemo(
+    () => individualResponsesQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [individualResponsesQuery.data],
+  );
   const scaleFollowUpTextAnswers = useMemo(() => {
     const likelyFollowUps = scaleTextAnswers.filter((answer) => isLikelyScaleFollowUpTextAnswer(answer, questionById));
     return likelyFollowUps.length ? likelyFollowUps : scaleTextAnswers;
@@ -173,6 +183,7 @@ export function SurveyAnalysisPage() {
     choiceDistributionQuery,
     priorityTop5Query,
     identityResponsesQuery,
+    individualResponsesQuery,
     groupCompareQuery,
     textAnswersQuery,
     scaleTextAnswersQuery,
@@ -263,6 +274,7 @@ export function SurveyAnalysisPage() {
           ["overview", "개요"],
           ["scale", "점수 문항"],
           ["groups", "그룹별 비교"],
+          ["answers", "개별 응답"],
           ["text", "서술형"],
           ["heatmap", "사진 표시"],
         ].map(([tab, label]) => (
@@ -280,6 +292,7 @@ export function SurveyAnalysisPage() {
         choiceDistributionQuery,
         priorityTop5Query,
         identityResponsesQuery,
+        individualResponsesQuery,
         groupCompareQuery,
         textAnswersQuery,
         scaleTextAnswersQuery,
@@ -298,7 +311,7 @@ export function SurveyAnalysisPage() {
 
       {activeTab === "overview" ? (
         <div className="tg-analysis-page__grid tg-analysis-page__grid--overview">
-          <ResponseSummaryCard surveyId={surveyId} summary={responseSummary} filters={activeFilters} fields={profileFilterDefinitions} />
+          <ResponseSummaryCard surveyId={surveyId} summary={responseSummary} filters={activeFilters} />
           <PriorityTop5Card surveyId={surveyId} issues={priorityTop5Query.data ?? []} filters={activeFilters} />
           <ProfileDistributionCard
             surveyId={surveyId}
@@ -368,6 +381,25 @@ export function SurveyAnalysisPage() {
             onGroupByChange={setGroupBy}
             onTargetValueChange={setGroupTargetValue}
           />
+        </div>
+      ) : null}
+
+      {activeTab === "answers" ? (
+        <div className="tg-analysis-page__grid">
+          {individualResponsesQuery.isPending ? (
+            <LoadingState label="개별 응답을 불러오는 중" />
+          ) : (
+            <IndividualResponseCard
+              surveyId={surveyId}
+              responses={individualResponses}
+              filters={activeFilters}
+              hasMore={Boolean(individualResponsesQuery.hasNextPage)}
+              isLoadingMore={individualResponsesQuery.isFetchingNextPage}
+              onLoadMore={() => {
+                void individualResponsesQuery.fetchNextPage();
+              }}
+            />
+          )}
         </div>
       ) : null}
 

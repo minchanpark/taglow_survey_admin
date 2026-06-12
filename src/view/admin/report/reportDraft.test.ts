@@ -41,7 +41,6 @@ const source: ReportSourceData = {
       roomType: [],
       dormExperience: [],
     },
-    lowSampleGroups: [],
   },
   profileDistribution: {
     gender: [],

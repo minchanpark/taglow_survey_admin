@@ -5,6 +5,7 @@ import type {
 import type {
   AnalysisQueryArgs,
   IdentityResponseQueryArgs,
+  IndividualResponseQueryArgs,
   RawChoiceDistribution,
   RawGroupCompareResult,
   HeatmapQueryArgs,
@@ -20,6 +21,7 @@ import type {
   RawHeatmapPoint,
   RawImageTagAnswer,
   RawIdentityResponse,
+  RawIndividualResponse,
   RawLocusPoint,
   RawPaginatedResult,
   RawQuestion,
@@ -100,6 +102,7 @@ export interface AdminApiGateway {
   getHeatmapPoints(args: HeatmapQueryArgs): Promise<RawHeatmapPoint[]>;
   listImageTagAnswers(args: HeatmapQueryArgs): Promise<RawPaginatedResult<RawImageTagAnswer>>;
   listIdentityResponses(args: IdentityResponseQueryArgs): Promise<RawPaginatedResult<RawIdentityResponse>>;
+  listIndividualResponses(args: IndividualResponseQueryArgs): Promise<RawPaginatedResult<RawIndividualResponse>>;
   getTextGroups(args: TextAnswerQueryArgs): Promise<RawTextGroup[]>;
   listTextAnswers(args: TextAnswerQueryArgs): Promise<RawPaginatedResult<RawTextAnswer>>;
   generateReportNarrative(command: ReportNarrativeCommand): Promise<ReportNarrativeResult>;

@@ -9,6 +9,7 @@ import {
   type HeatmapPoint,
   type ImageTagAnswer,
   type IdentityResponse,
+  type IndividualResponse,
   type JsonRecord,
   type LocusPoint,
   type LocusQuadrant,
@@ -40,6 +41,7 @@ import type {
   RawHeatmapPoint,
   RawImageTagAnswer,
   RawIdentityResponse,
+  RawIndividualResponse,
   RawLocusPoint,
   RawPriorityIssue,
   RawQuestion,
@@ -177,7 +179,6 @@ export class AdminPayloadMapper {
       lowSampleThreshold: threshold,
       isLowSample: Boolean(row.is_low_sample ?? (filteredResponses > 0 && filteredResponses < threshold)),
       profileDistribution: normalizeProfileDistribution(row.profile_distribution),
-      lowSampleGroups: normalizeLowSampleGroups(row.low_sample_groups),
     };
   }
 
@@ -386,6 +387,41 @@ export class AdminPayloadMapper {
       submittedAt: row.submitted_at,
     };
   }
+
+  toIndividualResponse(row: RawIndividualResponse): IndividualResponse {
+    return {
+      responseId: row.response_id,
+      profile: row.profile ?? compactRecord({
+        gender: row.gender,
+        semesterGroup: row.semester_group,
+        department: row.department,
+        rc: row.rc,
+        dormitory: row.dormitory,
+        roomType: row.room_type,
+        dormExperience: row.dorm_experience,
+      }),
+      submittedAt: row.submitted_at,
+      answers: row.answers.map((answer) => ({
+        id: answer.id ?? answer.answer_id ?? "",
+        responseId: answer.response_id,
+        sectionId: answer.section_id ?? undefined,
+        sectionTitle: answer.section_title ?? undefined,
+        questionId: answer.question_id ?? undefined,
+        questionTitle: answer.question_title ?? "제목 없는 질문",
+        questionType: answer.question_type ? normalizeQuestionType(answer.question_type) : undefined,
+        answerType: answer.answer_type ?? undefined,
+        displayValue: formatIndividualAnswerValue(answer),
+        textValue: answer.text_value ?? undefined,
+        choiceValue: answer.choice_value ?? undefined,
+        scoreValue: getFiniteNumber(answer.score_value),
+        xRatio: getFiniteNumber(answer.x_ratio),
+        yRatio: getFiniteNumber(answer.y_ratio),
+        tagType: answer.tag_type ?? undefined,
+        valueJson: normalizeRecord(answer.value_json),
+        createdAt: answer.created_at,
+      })),
+    };
+  }
 }
 
 function normalizeProfileDistribution(value: JsonRecord | null | undefined): ResponseSummary["profileDistribution"] {
@@ -411,35 +447,6 @@ function normalizeDistributionItems(value: unknown): ResponseSummary["profileDis
       percentage: getFiniteNumber(item.percentage) ?? 0,
       isUnclassified: Boolean(item.isUnclassified ?? item.is_unclassified),
     }));
-}
-
-function normalizeLowSampleGroups(value: unknown): ResponseSummary["lowSampleGroups"] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter(isRecord)
-    .map((item) => ({
-      dimension: normalizeProfileDimension(getString(item.dimension)),
-      label: getString(item.label) ?? "기타/미분류",
-      n: getFiniteNumber(item.n) ?? 0,
-    }));
-}
-
-function normalizeProfileDimension(value: string | undefined): ResponseSummary["lowSampleGroups"][number]["dimension"] {
-  if (
-    value === "gender" ||
-    value === "semesterGroup" ||
-    value === "department" ||
-    value === "rc" ||
-    value === "dormitory" ||
-    value === "roomType" ||
-    value === "dormExperience"
-  ) {
-    return value;
-  }
-  if (value === "semester_group") return "semesterGroup";
-  if (value === "room_type") return "roomType";
-  if (value === "dorm_experience") return "dormExperience";
-  return "dormitory";
 }
 
 function normalizePrioritySource(value: string | null | undefined): PriorityIssue["source"] {
@@ -499,6 +506,49 @@ function compactRecord(value: Record<string, string | number | boolean | null | 
 
 function normalizeStringArray(value: string[] | null | undefined): string[] {
   return (value ?? []).filter(Boolean);
+}
+
+function formatIndividualAnswerValue(answer: RawIndividualResponse["answers"][number]): string {
+  const textValue = getString(answer.text_value);
+  if (textValue) return textValue;
+
+  const scoreValue = getFiniteNumber(answer.score_value);
+  if (scoreValue !== undefined) return `${scoreValue}점`;
+
+  const choiceValue = getString(answer.choice_value);
+  if (choiceValue) return choiceValue;
+
+  const tagLabel = getString(answer.tag_type);
+  const xRatio = getFiniteNumber(answer.x_ratio);
+  const yRatio = getFiniteNumber(answer.y_ratio);
+  if (tagLabel || xRatio !== undefined || yRatio !== undefined) {
+    const coordinate =
+      xRatio !== undefined && yRatio !== undefined ? `가로 ${Math.round(xRatio * 100)}%, 세로 ${Math.round(yRatio * 100)}%` : undefined;
+    return [tagLabel ?? "표시", coordinate].filter(Boolean).join(" · ");
+  }
+
+  const jsonValue = normalizeRecord(answer.value_json);
+  const scalarValue = getString(jsonValue.value) ?? getString(jsonValue.label) ?? getString(jsonValue.answer) ?? getString(jsonValue.choiceValue);
+  if (scalarValue) return scalarValue;
+
+  const arrayValue = getDisplayArray(jsonValue.values) ?? getDisplayArray(jsonValue.choiceValues) ?? getDisplayArray(jsonValue.selectedOptions);
+  if (arrayValue) return arrayValue.join(", ");
+
+  const entries = Object.entries(jsonValue);
+  if (entries.length) return JSON.stringify(jsonValue);
+  return "-";
+}
+
+function getDisplayArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const items = value
+    .map((item) => {
+      if (typeof item === "string" || typeof item === "number") return String(item);
+      if (isRecord(item)) return getString(item.label) ?? getString(item.value) ?? getString(item.name);
+      return undefined;
+    })
+    .filter((item): item is string => Boolean(item));
+  return items.length ? items : undefined;
 }
 
 function normalizeAdminRole(value: string): AdminRole {

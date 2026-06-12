@@ -5,6 +5,7 @@ import type {
   AnalysisQueryArgs,
   HeatmapQueryArgs,
   IdentityResponseQueryArgs,
+  IndividualResponseQueryArgs,
   RawChoiceDistribution,
   RawGroupCompareResult,
   RawAdminAuthUser,
@@ -19,6 +20,7 @@ import type {
   RawHeatmapPoint,
   RawImageTagAnswer,
   RawIdentityResponse,
+  RawIndividualResponse,
   RawLocusPoint,
   RawPriorityIssue,
   RawQuestion,
@@ -268,6 +270,14 @@ export class HttpAdminApiGateway implements AdminApiGateway {
 
   async listIdentityResponses(args: IdentityResponseQueryArgs) {
     const rows = await this.request<RawIdentityResponse[]>(`/api/admin/surveys/${args.surveyId}/analysis/identity-responses`, {
+      method: "POST",
+      body: args.filters,
+    });
+    return { items: rows, next_cursor: rows.find((row) => row.next_cursor)?.next_cursor ?? null };
+  }
+
+  async listIndividualResponses(args: IndividualResponseQueryArgs) {
+    const rows = await this.request<RawIndividualResponse[]>(`/api/admin/surveys/${args.surveyId}/analysis/individual-responses`, {
       method: "POST",
       body: args.filters,
     });

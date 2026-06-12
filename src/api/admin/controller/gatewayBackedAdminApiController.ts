@@ -38,6 +38,8 @@ import type {
   ImageTagAnswerFilterCommand,
   IdentityResponse,
   IdentityResponseFilterCommand,
+  IndividualResponse,
+  IndividualResponseFilterCommand,
   InviteSurveyCollaboratorCommand,
   JsonRecord,
   LocusPoint,
@@ -531,6 +533,17 @@ export class GatewayBackedAdminApiController implements AdminApiController {
     });
     return {
       items: page.items.map((row) => this.mapper.toIdentityResponse(row)),
+      nextCursor: page.next_cursor ?? undefined,
+    };
+  }
+
+  async listIndividualResponses(command: IndividualResponseFilterCommand): Promise<PaginatedResult<IndividualResponse>> {
+    const page = await this.gateway.listIndividualResponses({
+      surveyId: command.surveyId,
+      filters: toAnalysisFilterPayload(command.filters),
+    });
+    return {
+      items: page.items.map((row) => this.mapper.toIndividualResponse(row)),
       nextCursor: page.next_cursor ?? undefined,
     };
   }

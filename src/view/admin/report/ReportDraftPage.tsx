@@ -566,7 +566,6 @@ function ReportBlockVisual(props: {
             surveyId={props.surveyId}
             summary={props.source.responseSummary}
             filters={props.filters}
-            fields={props.profileFilterDefinitions}
           />
         );
       case "priority":
@@ -812,10 +811,6 @@ const sampleReportSource: ReportSourceData = {
     lowSampleThreshold: 10,
     isLowSample: false,
     profileDistribution: sampleProfileDistribution,
-    lowSampleGroups: [
-      { dimension: "roomType", label: "3인실", n: 7 },
-      { dimension: "department", label: "콘텐츠융합디자인학부", n: 6 },
-    ],
   },
   profileDistribution: sampleProfileDistribution,
   priorities: [

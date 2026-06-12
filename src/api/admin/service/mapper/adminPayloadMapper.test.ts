@@ -212,7 +212,7 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
     });
   });
 
-  it("maps response summary distribution and low sample groups", () => {
+  it("maps response summary distribution", () => {
     expect(
       mapper.toResponseSummary({
         total_responses: 20,
@@ -223,7 +223,6 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
           semesterGroups: [{ key: "1학기", label: "1학기", n: 3, percentage: 75 }],
           dormitory: [{ key: "기타/미분류", label: "기타/미분류", n: 1, percentage: 25, isUnclassified: true }],
         },
-        low_sample_groups: [{ dimension: "dormitory", label: "비전관", n: 4 }],
       }),
     ).toMatchObject({
       totalResponses: 20,
@@ -234,7 +233,6 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
         semesterGroup: [{ key: "1학기", label: "1학기", n: 3, percentage: 75, isUnclassified: false }],
         dormitory: [{ key: "기타/미분류", label: "기타/미분류", n: 1, percentage: 25, isUnclassified: true }],
       },
-      lowSampleGroups: [{ dimension: "dormitory", label: "비전관", n: 4 }],
     });
   });
 
@@ -487,6 +485,68 @@ describe("AdminPayloadMapper analysis RPC rows", () => {
         department: "전산전자공학부",
       },
       submittedAt: "2026-05-28T00:00:00.000Z",
+    });
+  });
+
+  it("maps individual response rows with readable answer values", () => {
+    expect(
+      mapper.toIndividualResponse({
+        response_id: "response-1",
+        dormitory: "A동",
+        room_type: "2인실",
+        rc: "장기려",
+        department: "전산전자공학부",
+        submitted_at: "2026-05-28T00:00:00.000Z",
+        answers: [
+          {
+            id: "answer-score",
+            response_id: "response-1",
+            section_id: "section-1",
+            section_title: "생활관 시설",
+            question_id: "question-score",
+            question_title: "세탁실 만족도",
+            question_type: "scale",
+            answer_type: "scale",
+            score_value: 2,
+            value_json: {},
+            created_at: "2026-05-28T00:00:00.000Z",
+          },
+          {
+            id: "answer-choice",
+            response_id: "response-1",
+            question_title: "자주 쓰는 시간",
+            question_type: "multi_select",
+            answer_type: "multi_select",
+            value_json: { values: ["평일 저녁", "주말 오전"] },
+            created_at: "2026-05-28T00:01:00.000Z",
+          },
+        ],
+      }),
+    ).toEqual({
+      responseId: "response-1",
+      profile: {
+        dormitory: "A동",
+        roomType: "2인실",
+        rc: "장기려",
+        department: "전산전자공학부",
+      },
+      submittedAt: "2026-05-28T00:00:00.000Z",
+      answers: [
+        expect.objectContaining({
+          id: "answer-score",
+          questionTitle: "세탁실 만족도",
+          questionType: "scale",
+          displayValue: "2점",
+          scoreValue: 2,
+        }),
+        expect.objectContaining({
+          id: "answer-choice",
+          questionTitle: "자주 쓰는 시간",
+          questionType: "multi_select",
+          displayValue: "평일 저녁, 주말 오전",
+          valueJson: { values: ["평일 저녁", "주말 오전"] },
+        }),
+      ],
     });
   });
 });

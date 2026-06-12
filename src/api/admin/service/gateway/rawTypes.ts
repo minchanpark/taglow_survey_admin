@@ -182,6 +182,7 @@ export type AnalysisQueryArgs = Readonly<{
 export type HeatmapQueryArgs = AnalysisQueryArgs;
 export type TextAnswerQueryArgs = AnalysisQueryArgs;
 export type IdentityResponseQueryArgs = AnalysisQueryArgs;
+export type IndividualResponseQueryArgs = AnalysisQueryArgs;
 
 export type RawPaginatedResult<T> = Readonly<{
   items: T[];
@@ -203,7 +204,6 @@ export type RawResponseSummary = Readonly<{
   low_sample_threshold?: number | null;
   is_low_sample?: boolean | null;
   profile_distribution?: JsonRecord | null;
-  low_sample_groups?: unknown[] | null;
 }>;
 
 export type RawQuestionSummary = Readonly<{
@@ -385,5 +385,42 @@ export type RawIdentityResponse = Readonly<{
   dorm_experience?: string | null;
   profile?: JsonRecord | null;
   submitted_at: string;
+  next_cursor?: string | null;
+}>;
+
+export type RawIndividualAnswer = Readonly<{
+  id?: string;
+  answer_id?: string;
+  response_id?: string;
+  section_id?: string | null;
+  section_title?: string | null;
+  section_order?: number | null;
+  question_id?: string | null;
+  question_title?: string | null;
+  question_type?: string | null;
+  question_order?: number | null;
+  answer_type?: string | null;
+  text_value?: string | null;
+  choice_value?: string | null;
+  score_value?: number | string | null;
+  x_ratio?: number | string | null;
+  y_ratio?: number | string | null;
+  tag_type?: string | null;
+  value_json?: JsonRecord | null;
+  created_at: string;
+}>;
+
+export type RawIndividualResponse = Readonly<{
+  response_id: string;
+  gender?: string | null;
+  semester_group?: string | null;
+  department?: string | null;
+  rc?: string | null;
+  dormitory?: string | null;
+  room_type?: string | null;
+  dorm_experience?: string | null;
+  profile?: JsonRecord | null;
+  submitted_at: string;
+  answers: RawIndividualAnswer[];
   next_cursor?: string | null;
 }>;

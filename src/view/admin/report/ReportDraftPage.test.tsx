@@ -24,7 +24,6 @@ const responseSummary: ResponseSummary = {
     roomType: [],
     dormExperience: [],
   },
-  lowSampleGroups: [],
 };
 
 const sections: SurveySection[] = [

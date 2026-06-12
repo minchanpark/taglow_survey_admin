@@ -1,7 +1,9 @@
-import type { AnalysisFilters, HeatmapFilters, IdentityResponseFilters, JsonRecord, TextAnswerFilters } from "../../model";
+import type { AnalysisFilters, HeatmapFilters, IdentityResponseFilters, IndividualResponseFilters, JsonRecord, TextAnswerFilters } from "../../model";
 import type { GroupCompareFilters } from "../../model/analysis";
 
-export function toAnalysisFilterPayload(filters: AnalysisFilters | HeatmapFilters | TextAnswerFilters | IdentityResponseFilters | GroupCompareFilters): JsonRecord {
+export function toAnalysisFilterPayload(
+  filters: AnalysisFilters | HeatmapFilters | TextAnswerFilters | IdentityResponseFilters | IndividualResponseFilters | GroupCompareFilters,
+): JsonRecord {
   return {
     gender: filters.gender ?? null,
     semester_group: filters.semesterGroup ?? null,
