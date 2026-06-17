@@ -492,6 +492,7 @@ describe("SurveyAnalysisPage", () => {
 
     const rosterCard = screen.getByRole("heading", { name: "상세 명단" }).closest("article");
     expect(rosterCard).toBeTruthy();
+    expect(within(rosterCard!).getByText("모든 응답 기준 · 제출 응답 전체")).toBeInTheDocument();
     expect(within(rosterCard!).getByText("22000123")).toBeInTheDocument();
     expect(within(rosterCard!).getByText("김태글")).toBeInTheDocument();
     expect(within(rosterCard!).getByText("비전관 · 2인실 · 장기려 · 전산전자공학부")).toBeInTheDocument();

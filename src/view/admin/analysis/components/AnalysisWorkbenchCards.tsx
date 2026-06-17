@@ -112,7 +112,7 @@ export function IdentityResponseCard(props: {
       captureKey="identity-responses"
       title="상세 명단"
       icon={<UserRound size={16} aria-hidden="true" />}
-      meta={`${formatFilterSummary(props.filters)} · 주의력 확인 통과 응답만`}
+      meta={`${formatFilterSummary(props.filters)} · 제출 응답 전체`}
       action={
         props.onExport ? (
           <Button
@@ -152,7 +152,7 @@ export function IdentityResponseCard(props: {
           </table>
         </div>
       ) : (
-        <EmptyState title="이름과 학번 응답이 없습니다." description="기본 정보에 이름/학번 문항이 있고 주의력 확인을 통과한 제출 응답만 표시됩니다." />
+        <EmptyState title="이름과 학번 응답이 없습니다." description="기본 정보에 이름/학번 문항이 있는 제출 응답이 모두 표시됩니다." />
       )}
       {props.hasMore ? (
         <div className="tg-analysis-load-more">

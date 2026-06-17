@@ -236,7 +236,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     const summary = await gateway.getResponseSummary({ surveyId: "survey-1", filters: { dormitory: "비전관" } });
 
     expect(summary).toMatchObject({
-      total_responses: 5,
+      total_responses: 4,
       submitted_responses: 3,
       filtered_responses: 2,
     });
@@ -495,7 +495,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     });
   });
 
-  it("falls back to identity answers while excluding failed attention checks", async () => {
+  it("falls back to identity answers while including failed attention checks", async () => {
     const responseQuery = createTableQuery([
       {
         id: "response-1",
@@ -543,7 +543,7 @@ describe("SupabaseAdminApiGateway analysis queries", () => {
     const rows = await gateway.listIdentityResponses({ surveyId: "survey-1", filters: { dormitory: "비전관", room_type: "2인실", limit: 100 } });
 
     expect(responseQuery.eq).toHaveBeenCalledWith("status", "submitted");
-    expect(responseQuery.eq).toHaveBeenCalledWith("passed_attention_check", true);
+    expect(responseQuery.eq).not.toHaveBeenCalledWith("passed_attention_check", true);
     expect(responseQuery.eq).toHaveBeenCalledWith("dormitory", "비전관");
     expect(responseQuery.eq).toHaveBeenCalledWith("room_type", "2인실");
     expect(answerQuery.in).toHaveBeenCalledWith("response_id", ["response-1"]);

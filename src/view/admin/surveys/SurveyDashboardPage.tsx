@@ -166,7 +166,7 @@ export function SurveyDashboardPage() {
 
         <RosterPanel
           responses={identityResponses}
-          totalResponses={responseSummary?.submittedResponses}
+          totalResponses={responseSummary?.totalResponses}
           hasMore={Boolean(identityResponsesQuery.hasNextPage)}
           isLoading={identityResponsesQuery.isFetching && !identityResponses.length}
           isLoadingMore={identityResponsesQuery.isFetchingNextPage}
@@ -228,7 +228,7 @@ function RosterPanel(props: {
     <section className="tg-dashboard-panel" aria-labelledby="dashboard-roster-title">
       <header className="tg-dashboard-panel__header">
         <div>
-          <p>주의력 확인 통과 응답만</p>
+          <p>제출 응답 전체</p>
           <h2 id="dashboard-roster-title">상세 명단</h2>
         </div>
         <div className="tg-dashboard-panel__actions">

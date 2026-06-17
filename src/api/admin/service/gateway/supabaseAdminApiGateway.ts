@@ -662,6 +662,7 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
   private async listIdentityResponsesFromResponsePage(args: IdentityResponseQueryArgs): Promise<RawPaginatedResult<RawIdentityResponse>> {
     const filters = args.filters;
     const limit = getPageSize(filters.limit, 100, 200);
+    // 상세 명단은 주의력 확인 미통과 응답도 포함한다. 분석 집계 쿼리에서는 그대로 제외된다.
     let responseQuery = this.supabase
       .from("responses")
       .select(
@@ -679,7 +680,6 @@ export class SupabaseAdminApiGateway implements AdminApiGateway {
       )
       .eq("survey_id", args.surveyId)
       .eq("status", "submitted")
-      .eq("passed_attention_check", true)
       .order("submitted_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(limit + 1);
@@ -1185,7 +1185,8 @@ function buildRawResponseSummary(
   questions: readonly RawQuestion[],
   filters: JsonRecord,
 ): RawResponseSummary {
-  const submitted = responses.filter((response) => response.status === "submitted" && response.passed_attention_check !== false);
+  const submittedAll = responses.filter((response) => response.status === "submitted");
+  const submitted = submittedAll.filter((response) => response.passed_attention_check !== false);
   const filtered = submitted.filter((response) => matchesResponseFilters(response, filters));
   const profileOptions = buildProfileOptionsByDimension(questions);
   const lowSampleThreshold = 10;
@@ -1201,7 +1202,7 @@ function buildRawResponseSummary(
   };
 
   return {
-    total_responses: responses.length,
+    total_responses: submittedAll.length,
     submitted_responses: submitted.length,
     filtered_responses: filtered.length,
     low_sample_threshold: lowSampleThreshold,
