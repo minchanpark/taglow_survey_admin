@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminApiController } from "../../../api/admin/controller";
-import type { IdentityResponse, ImageTagAnswer, IndividualResponse, Question, ResponseSummary, SurveyAsset, SurveySection } from "../../../api/admin/model";
+import type { IdentityResponse, ImageTagAnswer, IndividualResponse, Question, ResponseSummary, SurveyAsset, SurveySection, TextAnswer } from "../../../api/admin/model";
 import { useAdminFilterStore } from "../../../store";
 import { createFakeAdminApiController, fakeSurvey } from "../../../test/fakeAdminApiController";
 import { renderWithProviders } from "../../../test/renderWithProviders";
@@ -114,7 +114,17 @@ const questions: Question[] = [
     isRequired: false,
     metricType: "none",
     topicKey: "laundry",
-    config: {},
+    config: {
+      textMode: "choice_then_text",
+      branch: { when: { questionKey: "laundry_satisfaction", operator: "lte", value: 2 } },
+      options: [
+        { value: "Not enough quantity", labelKo: "Not enough quantity" },
+        { value: "Poor condition", labelKo: "Poor condition" },
+        { value: "Difficult to use", labelKo: "Difficult to use" },
+        { value: "Not enough guidance", labelKo: "Not enough guidance" },
+        { value: "Other", labelKo: "Other" },
+      ],
+    },
     validation: {},
   },
   {
@@ -129,6 +139,31 @@ const questions: Question[] = [
     metricType: "none",
     topicKey: "facility",
     config: {},
+    validation: {},
+  },
+  {
+    id: "question-laundry-matrix",
+    surveyId: "survey-1",
+    sectionId: "section-1",
+    questionKey: "laundry_time_matrix",
+    questionType: "matrix_multi_select",
+    title: { ko: "주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능)" },
+    orderIndex: 6,
+    isRequired: false,
+    metricType: "none",
+    topicKey: "laundry",
+    config: {
+      matrixRows: [
+        { value: "row_3", labelKo: "09:00~11:00" },
+        { value: "row_7", labelKo: "19:00~21:00" },
+      ],
+      matrixColumns: [
+        { value: "column_5", labelKo: "금" },
+        { value: "column_6", labelKo: "토" },
+        { value: "column_8", labelKo: "공휴일" },
+      ],
+      matrixValueSeparator: "_",
+    },
     validation: {},
   },
   {
@@ -250,6 +285,19 @@ const individualResponses: IndividualResponse[] = [
         createdAt: "2026-05-28T00:00:00.000Z",
       },
       {
+        id: "answer-detail-profile",
+        responseId: "response-detail-1",
+        sectionId: "section-1",
+        sectionTitle: "기본 정보",
+        questionId: "question-profile-gender",
+        questionTitle: "성별",
+        questionType: "profile",
+        answerType: "profile",
+        displayValue: "응답 없음",
+        valueJson: { Gender: "남성" },
+        createdAt: "2026-05-28T00:00:30.000Z",
+      },
+      {
         id: "answer-detail-2",
         responseId: "response-detail-1",
         sectionId: "section-1",
@@ -262,6 +310,38 @@ const individualResponses: IndividualResponse[] = [
         textValue: "건조기가 부족합니다.",
         valueJson: {},
         createdAt: "2026-05-28T00:01:00.000Z",
+      },
+      {
+        id: "answer-detail-raw-json",
+        responseId: "response-detail-1",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-low-score",
+        questionTitle: "낮은 점수 후속 답변",
+        questionType: "text",
+        answerType: "text",
+        displayValue: '{"choiceValue":"low_quality","text":"세탁기 내부 상태가 좋지 않습니다.","selectedOptions":["청결","관리"]}',
+        valueJson: {
+          choiceValue: "low_quality",
+          text: "세탁기 내부 상태가 좋지 않습니다.",
+          selectedOptions: ["청결", "관리"],
+        },
+        createdAt: "2026-05-28T00:02:00.000Z",
+      },
+      {
+        id: "answer-detail-matrix",
+        responseId: "response-detail-1",
+        sectionId: "section-1",
+        sectionTitle: "세탁 및 건조기",
+        questionId: "question-laundry-matrix",
+        questionTitle: "주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능)",
+        questionType: "matrix_multi_select",
+        answerType: "matrix_multi_select",
+        displayValue: "column_6_row_3, column_5_row_7, column_8_row_7",
+        valueJson: {
+          choiceValues: ["column_6_row_3", "column_5_row_7", "column_8_row_7"],
+        },
+        createdAt: "2026-05-28T00:03:00.000Z",
       },
     ],
   },
@@ -496,6 +576,7 @@ describe("SurveyAnalysisPage", () => {
     expect(within(rosterCard!).getByText("22000123")).toBeInTheDocument();
     expect(within(rosterCard!).getByText("김태글")).toBeInTheDocument();
     expect(within(rosterCard!).getByText("비전관 · 2인실 · 장기려 · 전산전자공학부")).toBeInTheDocument();
+    expect(within(rosterCard!).queryByText("제출 시각")).not.toBeInTheDocument();
 
     await user.click(within(rosterCard!).getByRole("button", { name: "명단 내보내기" }));
 
@@ -503,9 +584,11 @@ describe("SurveyAnalysisPage", () => {
       expect(listIdentityResponses).toHaveBeenCalledWith({ surveyId: "survey-1", filters: { cursor: "cursor-page-2", limit: 200 } });
     });
     expect(downloadedFilename).toMatch(/^taglow-survey-1-detailed-roster-.*\.csv$/);
-    expect(await downloadedBlob?.text()).toContain('"학번","이름","성별","학기","학부","RC","생활관","인실","생활관 경험","제출 시각"');
-    expect(await downloadedBlob?.text()).toContain('"22000123","김태글","여성","4학기","전산전자공학부","장기려","비전관","2인실","거주 중"');
-    expect(await downloadedBlob?.text()).toContain('"22000456","이태글"');
+    const csvText = await downloadedBlob?.text();
+    expect(csvText).toContain('"학번","이름","성별","학기","학부","RC","생활관","인실","생활관 경험"');
+    expect(csvText).not.toContain("제출 시각");
+    expect(csvText).toContain('"=""22000123""","김태글","여성","4학기","전산전자공학부","장기려","비전관","2인실","거주 중"');
+    expect(csvText).toContain('"=""22000456""","이태글"');
   });
 
   it("shows individual answers in a separate analysis tab", async () => {
@@ -548,8 +631,22 @@ describe("SurveyAnalysisPage", () => {
     expect(within(card!).getByText("비전관 · 2인실 · 장기려 · 전산전자공학부")).toBeInTheDocument();
     expect(within(card!).getByText("세탁실 만족도")).toBeInTheDocument();
     expect(within(card!).getByText("2점")).toBeInTheDocument();
+    expect(within(card!).getByText("성별")).toBeInTheDocument();
+    expect(within(card!).getByText("남성")).toBeInTheDocument();
+    expect(within(card!).queryByText("응답 없음")).not.toBeInTheDocument();
     expect(within(card!).getByText("세탁실 불만족 이유")).toBeInTheDocument();
     expect(within(card!).getByText("건조기가 부족합니다.")).toBeInTheDocument();
+    expect(within(card!).getByText("낮은 점수 후속 답변")).toBeInTheDocument();
+    expect(within(card!).getByText("세탁기 내부 상태가 좋지 않습니다.")).toBeInTheDocument();
+    expect(within(card!).getAllByText("상태/품질 문제").length).toBeGreaterThan(0);
+    expect(within(card!).getByText("청결")).toBeInTheDocument();
+    expect(within(card!).getByText("관리")).toBeInTheDocument();
+    expect(within(card!).queryByText(/"choiceValue":"low_quality"/)).not.toBeInTheDocument();
+    expect(within(card!).getByText("주로 세탁기 및 건조기를 사용하는 요일과 시간대는 언제입니까? (중복 선택 가능)")).toBeInTheDocument();
+    expect(within(card!).getAllByText("토 - 09:00~11:00").length).toBeGreaterThan(0);
+    expect(within(card!).getAllByText("금 - 19:00~21:00").length).toBeGreaterThan(0);
+    expect(within(card!).getAllByText("공휴일 - 19:00~21:00").length).toBeGreaterThan(0);
+    expect(within(card!).queryByText(/column_6_row_3/)).not.toBeInTheDocument();
 
     await user.click(within(card!).getByRole("button", { name: "다음 응답" }));
 
@@ -596,36 +693,37 @@ describe("SurveyAnalysisPage", () => {
 
   it("shows text evidence grouped by each descriptive question", async () => {
     const user = userEvent.setup();
+    const textAnswerItems = [
+      {
+        id: "text-answer-1",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-low-score",
+        questionTitle: "세탁실 불만족 이유",
+        questionType: "text",
+        textValue: "건조기가 부족합니다.",
+        valueJson: {},
+        topicKey: "laundry",
+        profile: { dormitory: "비전관" },
+        createdAt: "2026-05-28T00:00:00.000Z",
+      },
+      {
+        id: "text-answer-2",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-general",
+        questionTitle: "시설 자유 의견",
+        questionType: "text",
+        textValue: "야간 소음이 큽니다.",
+        valueJson: {},
+        topicKey: "facility",
+        profile: { dormitory: "하용조관" },
+        createdAt: "2026-05-28T00:05:00.000Z",
+      },
+    ] satisfies TextAnswer[];
     renderAnalysis({
-      listTextAnswers: async () => ({
-        items: [
-          {
-            id: "text-answer-1",
-            sectionId: "section-1",
-            sectionTitle: "시설",
-            questionId: "question-text-low-score",
-            questionTitle: "세탁실 불만족 이유",
-            questionType: "text",
-            textValue: "건조기가 부족합니다.",
-            valueJson: {},
-            topicKey: "laundry",
-            profile: { dormitory: "비전관" },
-            createdAt: "2026-05-28T00:00:00.000Z",
-          },
-          {
-            id: "text-answer-2",
-            sectionId: "section-1",
-            sectionTitle: "시설",
-            questionId: "question-text-general",
-            questionTitle: "시설 자유 의견",
-            questionType: "text",
-            textValue: "야간 소음이 큽니다.",
-            valueJson: {},
-            topicKey: "facility",
-            profile: { dormitory: "하용조관" },
-            createdAt: "2026-05-28T00:05:00.000Z",
-          },
-        ],
+      listTextAnswers: async (command) => ({
+        items: command.filters.questionId ? textAnswerItems.filter((answer) => answer.questionId === command.filters.questionId) : textAnswerItems,
       }),
     });
 
@@ -642,7 +740,7 @@ describe("SurveyAnalysisPage", () => {
     await user.click(within(card!).getByRole("button", { name: /시설 자유 의견/ }));
 
     expect(within(card!).getByRole("heading", { name: "시설 자유 의견" })).toBeInTheDocument();
-    expect(within(card!).getByText("야간 소음이 큽니다.")).toBeInTheDocument();
+    expect(await within(card!).findByText("야간 소음이 큽니다.")).toBeInTheDocument();
     expect(within(card!).queryByText("건조기가 부족합니다.")).not.toBeInTheDocument();
   });
 
@@ -710,8 +808,254 @@ describe("SurveyAnalysisPage", () => {
     expect(within(card!).getByText("응답 3개")).toBeInTheDocument();
   });
 
+  it("exports all descriptive answer pages as Excel-friendly CSV", async () => {
+    const user = userEvent.setup();
+    let downloadedFilename = "";
+    let downloadedBlob: Blob | undefined;
+    const firstExportPageItems: TextAnswer[] = [
+      {
+        id: "text-export-profile",
+        responseId: "response-text-1",
+        sectionId: "section-profile",
+        sectionTitle: "기본 정보",
+        questionId: "question-profile-name",
+        questionTitle: "이름",
+        questionType: "profile",
+        textValue: "김태글",
+        valueJson: {},
+        createdAt: "2026-05-28T00:00:00",
+      },
+      {
+        id: "text-export-1",
+        responseId: "response-text-1",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-low-score",
+        questionTitle: "세탁실 불만족 이유",
+        questionType: "text",
+        textValue: "건조기가 부족합니다.",
+        valueJson: { choiceValue: "Not enough quantity" },
+        topicKey: "laundry",
+        profile: { dormitory: "비전관", roomType: "2인실", rc: "장기려", department: "전산전자공학부" },
+        createdAt: "2026-05-28T00:00:00",
+      },
+    ];
+    const secondExportPageItems: TextAnswer[] = [
+      {
+        id: "text-export-2",
+        responseId: "response-text-2",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-general",
+        questionTitle: "시설 자유 의견",
+        questionType: "text",
+        textValue: "야간 소음이 큽니다.",
+        valueJson: {},
+        topicKey: "facility",
+        profile: { dormitory: "하용조관", roomType: "3인실", department: "ICT창업학부" },
+        createdAt: "2026-05-28T00:05:00",
+      },
+    ];
+    const listTextAnswers = vi.fn<AdminApiController["listTextAnswers"]>(async (command) => {
+      if (command.filters.limit === 100 && command.filters.cursor === "text-cursor-page-2") {
+        return { items: secondExportPageItems };
+      }
+
+      return {
+        items: firstExportPageItems,
+        nextCursor: command.filters.limit === 100 ? "text-cursor-page-2" : undefined,
+      };
+    });
+
+    vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
+      downloadedBlob = blob as Blob;
+      return "blob:text-answers";
+    });
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function click(this: HTMLAnchorElement) {
+      downloadedFilename = this.download;
+    });
+
+    renderAnalysis({ listTextAnswers });
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "서술형" }));
+
+    const textCard = await screen.findByRole("heading", { name: "서술형 의견" });
+    const card = textCard.closest("article");
+    expect(card).toBeTruthy();
+
+    await user.click(within(card!).getByRole("button", { name: "서술형 내보내기" }));
+
+    await waitFor(() => {
+      expect(listTextAnswers).toHaveBeenCalledWith({ surveyId: "survey-1", filters: { cursor: "text-cursor-page-2", limit: 100 } });
+    });
+    expect(downloadedFilename).toMatch(/^taglow-survey-1-text-answers-.*\.csv$/);
+    const csvText = await downloadedBlob?.text();
+    expect(csvText?.split("\r\n")[0]).toBe('"섹션","질문","서술형 응답"');
+    expect(csvText).not.toContain("응답 ID");
+    expect(csvText).not.toContain("성별");
+    expect(csvText).not.toContain("학기");
+    expect(csvText).not.toContain("학부");
+    expect(csvText).not.toContain("RC");
+    expect(csvText).not.toContain("인실");
+    expect(csvText).not.toContain("생활관 경험");
+    expect(csvText).not.toContain("작성 시각");
+    expect(csvText).not.toContain("토픽");
+    expect(csvText).not.toContain("공간");
+    expect(csvText).not.toContain("기본 정보");
+    expect(csvText).not.toContain("김태글");
+    expect(csvText).not.toContain("카테고리");
+    expect(csvText).not.toContain("Not enough quantity");
+    expect(csvText).toContain('"시설","세탁실 불만족 이유","건조기가 부족합니다."');
+    expect(csvText).toContain('"시설","시설 자유 의견","야간 소음이 큽니다."');
+  });
+
+  it("loads the selected text question detail instead of reusing the global first page", async () => {
+    const user = userEvent.setup();
+    const selectedQuestionItems: TextAnswer[] = [
+      {
+        id: "text-answer-page-1",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-low-score",
+        questionTitle: "세탁실 불만족 이유",
+        questionType: "text",
+        textValue: "건조기가 부족합니다.",
+        valueJson: {},
+        topicKey: "laundry",
+        profile: { dormitory: "비전관" },
+        createdAt: "2026-05-28T00:00:00.000Z",
+        totalCount: 3,
+        questionTotalCount: 3,
+      },
+      {
+        id: "text-answer-selected-2",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-low-score",
+        questionTitle: "세탁실 불만족 이유",
+        questionType: "text",
+        textValue: "세탁기 내부가 자주 더럽습니다.",
+        valueJson: {},
+        topicKey: "laundry",
+        profile: { dormitory: "하용조관" },
+        createdAt: "2026-05-28T00:01:00.000Z",
+        totalCount: 3,
+        questionTotalCount: 3,
+      },
+      {
+        id: "text-answer-selected-3",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-low-score",
+        questionTitle: "세탁실 불만족 이유",
+        questionType: "text",
+        textValue: "이용 안내가 더 필요합니다.",
+        valueJson: {},
+        topicKey: "laundry",
+        profile: { dormitory: "창조관" },
+        createdAt: "2026-05-28T00:02:00.000Z",
+        totalCount: 3,
+        questionTotalCount: 3,
+      },
+    ];
+    const listTextAnswers = vi.fn<AdminApiController["listTextAnswers"]>(async (command) => ({
+      items: command.filters.questionId === "question-text-low-score" ? selectedQuestionItems : [selectedQuestionItems[0]],
+    }));
+    renderAnalysis({ listTextAnswers });
+
+    await screen.findByRole("heading", { name: "생활관 만족도 조사" });
+    await user.click(screen.getByRole("button", { name: "서술형" }));
+
+    const textCard = await screen.findByRole("heading", { name: "서술형 의견" });
+    const card = textCard.closest("article");
+    expect(card).toBeTruthy();
+    expect(within(card!).getByText("표시 중 1개 / 전체 3개")).toBeInTheDocument();
+
+    await user.click(within(card!).getByRole("button", { name: /세탁실 불만족 이유/ }));
+
+    await waitFor(() => {
+      expect(listTextAnswers).toHaveBeenCalledWith({
+        surveyId: "survey-1",
+        filters: expect.objectContaining({ questionId: "question-text-low-score", limit: 100 }),
+      });
+    });
+    expect(await within(card!).findByText("세탁기 내부가 자주 더럽습니다.")).toBeInTheDocument();
+    expect(within(card!).getByText("이용 안내가 더 필요합니다.")).toBeInTheDocument();
+    expect(within(card!).getByText(/표시 중 3개 \/ 전체 3개/)).toBeInTheDocument();
+  });
+
   it("shows satisfaction averages and choice ratios without importance-based cards", async () => {
     const user = userEvent.setup();
+    const scaleFollowUpSummaryItems: TextAnswer[] = [
+      {
+        id: "scale-answer-low-score-follow-up",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-satisfaction",
+        questionTitle: "세탁실 만족도",
+        questionType: "scale",
+        textValue: "수량이 부족합니다.",
+        valueJson: {
+          lowScoreFollowUp: true,
+          category: "Not enough quantity",
+          choiceValue: "Not enough quantity",
+          text: "수량이 부족합니다.",
+          sourceAnswerType: "scale",
+        },
+        topicKey: "laundry",
+        profile: { dormitory: "비전관" },
+        createdAt: "2026-05-28T00:02:00.000Z",
+        questionTotalCount: 2,
+      },
+      {
+        id: "text-answer-low-score",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-low-score",
+        questionTitle: "세탁실 불만족 이유",
+        questionType: "text",
+        textValue: "건조기 고장이 잦습니다.",
+        valueJson: { choiceValue: "Not enough quantity", text: "건조기 고장이 잦습니다." },
+        topicKey: "laundry",
+        profile: { dormitory: "비전관" },
+        createdAt: "2026-05-28T00:00:00.000Z",
+      },
+      {
+        id: "text-answer-low-score-condition",
+        sectionId: "section-1",
+        sectionTitle: "시설",
+        questionId: "question-text-low-score",
+        questionTitle: "세탁실 불만족 이유",
+        questionType: "text",
+        textValue: "세탁기 내부 상태가 좋지 않습니다.",
+        valueJson: { choiceValue: "low_quality", text: "세탁기 내부 상태가 좋지 않습니다." },
+        topicKey: "laundry",
+        profile: { dormitory: "하용조관" },
+        createdAt: "2026-05-28T00:01:00.000Z",
+      },
+    ];
+    const scaleFollowUpDetailItems: TextAnswer[] = [
+      scaleFollowUpSummaryItems[0],
+      {
+        ...scaleFollowUpSummaryItems[0],
+        id: "scale-answer-low-score-follow-up-2",
+        textValue: "신청 시간대가 너무 빨리 마감됩니다.",
+        valueJson: {
+          lowScoreFollowUp: true,
+          category: "Difficult to use",
+          choiceValue: "Difficult to use",
+          text: "신청 시간대가 너무 빨리 마감됩니다.",
+          sourceAnswerType: "scale",
+        },
+        profile: { dormitory: "하용조관" },
+        createdAt: "2026-05-28T00:03:00.000Z",
+        questionTotalCount: 2,
+      },
+    ];
+    const listTextAnswers = vi.fn<AdminApiController["listTextAnswers"]>(async (command) => ({
+      items: command.filters.questionId === "question-satisfaction" ? scaleFollowUpDetailItems : scaleFollowUpSummaryItems,
+    }));
     renderAnalysis({
       getSectionSatisfactionSummary: async () => [
         { sectionId: "section-1", sectionTitle: "시설", averageScore: 2.8, n: 8 },
@@ -764,23 +1108,7 @@ describe("SurveyAnalysisPage", () => {
           percentage: 30,
         },
       ],
-      listTextAnswers: async () => ({
-        items: [
-          {
-            id: "text-answer-low-score",
-            sectionId: "section-1",
-            sectionTitle: "시설",
-            questionId: "question-text-low-score",
-            questionTitle: "세탁실 불만족 이유",
-            questionType: "text",
-            textValue: "건조기 고장이 잦습니다.",
-            valueJson: {},
-            topicKey: "laundry",
-            profile: { dormitory: "비전관" },
-            createdAt: "2026-05-28T00:00:00.000Z",
-          },
-        ],
-      }),
+      listTextAnswers,
     });
 
     await screen.findByRole("heading", { name: "생활관 만족도 조사" });
@@ -789,7 +1117,7 @@ describe("SurveyAnalysisPage", () => {
     expect(screen.getByRole("heading", { name: "주제별 만족도" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "질문별 점수" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "문항별 응답 분포" })).toBeInTheDocument();
-    expect(screen.getByText("세탁실 만족도")).toBeInTheDocument();
+    expect(screen.getAllByText("세탁실 만족도").length).toBeGreaterThan(0);
     expect(screen.queryByText("세탁실 중요도")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "만족도와 중요도 차이" })).not.toBeInTheDocument();
     expect(screen.getByText("청결")).toBeInTheDocument();
@@ -798,8 +1126,27 @@ describe("SurveyAnalysisPage", () => {
 
     const followUpCard = screen.getByRole("heading", { name: "낮은 점수 후속 답변" }).closest("article");
     expect(followUpCard).toBeTruthy();
-    expect(within(followUpCard!).getByRole("button", { name: /세탁실 불만족 이유/ })).toBeInTheDocument();
+    expect(within(followUpCard!).getAllByRole("button", { name: /세탁실 만족도/ }).length).toBeGreaterThan(0);
+    expect(within(followUpCard!).getByText("세탁실 만족도 -> 낮은 점수 후속 답변")).toBeInTheDocument();
+    expect(within(followUpCard!).getByText("후속 답변 · 세탁실 불만족 이유")).toBeInTheDocument();
+    expect(within(followUpCard!).getByText("세탁실 만족도 -> 세탁실 불만족 이유")).toBeInTheDocument();
+    expect(within(followUpCard!).getAllByText("수량 부족").length).toBeGreaterThan(0);
+    expect(within(followUpCard!).getByText("상태/품질 문제")).toBeInTheDocument();
+    expect(within(followUpCard!).queryByText("low_quality")).not.toBeInTheDocument();
+    expect(within(followUpCard!).getByText("수량이 부족합니다.")).toBeInTheDocument();
     expect(within(followUpCard!).getByText("건조기 고장이 잦습니다.")).toBeInTheDocument();
+    expect(within(followUpCard!).getByText("세탁기 내부 상태가 좋지 않습니다.")).toBeInTheDocument();
+
+    await user.click(within(followUpCard!).getByRole("button", { name: /선택 카테고리 포함/ }));
+
+    await waitFor(() => {
+      expect(listTextAnswers).toHaveBeenCalledWith({
+        surveyId: "survey-1",
+        filters: { includeScaleFollowUps: true, questionId: "question-satisfaction", limit: 100 },
+      });
+    });
+    expect(await within(followUpCard!).findByText("신청 시간대가 너무 빨리 마감됩니다.")).toBeInTheDocument();
+    expect(within(followUpCard!).getByText(/표시 중 2개 \/ 전체 2개/)).toBeInTheDocument();
   });
 
   it("renders matrix multi-select choice distributions as row and column tables", async () => {

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { downloadCsvFile, downloadElementAsPng } from "./downloadHelper";
+import { createExcelTextFormulaCell, downloadCsvFile, downloadElementAsPng } from "./downloadHelper";
 
 describe("downloadElementAsPng", () => {
   afterEach(() => {
@@ -101,5 +101,20 @@ describe("downloadCsvFile", () => {
     expect(await downloadedBlob?.text()).toBe(
       '"학번","이름","학부"\r\n"22000123","\'=HYPERLINK(""https://example.com"")","전산전자공학부"',
     );
+  });
+
+  it("allows explicitly trusted Excel text formula cells", async () => {
+    let downloadedBlob: Blob | undefined;
+
+    vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
+      downloadedBlob = blob as Blob;
+      return "blob:csv";
+    });
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    downloadCsvFile("roster.csv", [["학번"], [createExcelTextFormulaCell("02400001")]]);
+
+    expect(await downloadedBlob?.text()).toBe('"학번"\r\n"=""02400001"""');
   });
 });

@@ -8,6 +8,8 @@ import type {
   IdentityResponseFilterCommand,
   IdentityResponseFilters,
   IndividualResponseFilters,
+  TextAnswer,
+  TextAnswerFilterCommand,
   TextAnswerFilters,
 } from "../model";
 import { adminQueryKeys } from "./queryKeys";
@@ -19,6 +21,8 @@ type AnalysisQueryOptions = Readonly<{
 const analysisStaleTimeMs = 60_000;
 const identityResponseExportPageSize = 200;
 const identityResponseExportMaxPages = 500;
+const textAnswerExportPageSize = 100;
+const textAnswerExportMaxPages = 500;
 
 export function useFilterOptionsQuery(surveyId: string) {
   const controller = useAdminApiController();
@@ -209,6 +213,30 @@ export function useTextAnswersInfiniteQuery(surveyId: string, filters: TextAnswe
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: Boolean(surveyId) && (options.enabled ?? true),
     staleTime: analysisStaleTimeMs,
+  });
+}
+
+export function useTextAnswersExportMutation() {
+  const controller = useAdminApiController();
+  return useMutation({
+    mutationFn: async (command: TextAnswerFilterCommand): Promise<TextAnswer[]> => {
+      const items: TextAnswer[] = [];
+      const seenCursors = new Set<string>();
+      let cursor: string | undefined;
+
+      for (let pageIndex = 0; pageIndex < textAnswerExportMaxPages; pageIndex += 1) {
+        const page = await controller.listTextAnswers({
+          surveyId: command.surveyId,
+          filters: { ...command.filters, cursor, limit: textAnswerExportPageSize },
+        });
+        items.push(...page.items);
+        if (!page.nextCursor || seenCursors.has(page.nextCursor)) break;
+        seenCursors.add(page.nextCursor);
+        cursor = page.nextCursor;
+      }
+
+      return items;
+    },
   });
 }
 

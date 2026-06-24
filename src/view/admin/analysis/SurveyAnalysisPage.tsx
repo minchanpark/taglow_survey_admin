@@ -15,6 +15,7 @@ import {
   useResponseSummaryQuery,
   useSectionSatisfactionSummaryQuery,
   useSurveyDetailQuery,
+  useTextAnswersExportMutation,
   useTextAnswersInfiniteQuery,
 } from "../../../api/admin/query";
 import {
@@ -43,6 +44,7 @@ import { ErrorState, LoadingState, StatusBadge } from "../../../components";
 import { useAdminFilterStore } from "../../../store";
 import { isReportDraftEnabled } from "../../../utils/featureFlags";
 import { downloadIdentityRosterCsv } from "../../../utils/identityRosterCsv";
+import { downloadTextAnswersCsv } from "../../../utils/textAnswerCsv";
 import {
   ChoiceDistributionCard,
   GroupCompareCard,
@@ -67,6 +69,8 @@ export function SurveyAnalysisPage() {
   const [groupBy, setGroupBy] = useState<GroupCompareDimension>("dormitory");
   const [groupTargetValue, setGroupTargetValue] = useState("survey");
   const [textKeyword, setTextKeyword] = useState("");
+  const [textSelectedQuestionKey, setTextSelectedQuestionKey] = useState("all");
+  const [scaleSelectedQuestionKey, setScaleSelectedQuestionKey] = useState("all");
   const activeFilters = filterSurveyId === surveyId ? filters : {};
   const isOverviewTab = activeTab === "overview";
   const isScaleTab = activeTab === "scale";
@@ -77,6 +81,11 @@ export function SurveyAnalysisPage() {
   const textFilters: TextAnswerFilters = useMemo(
     () => ({ ...activeFilters, keyword: textKeyword.trim() || undefined }),
     [activeFilters, textKeyword],
+  );
+  const textSelectedQuestionId = textSelectedQuestionKey === "all" ? undefined : textSelectedQuestionKey;
+  const textSelectedFilters: TextAnswerFilters = useMemo(
+    () => ({ ...textFilters, questionId: textSelectedQuestionId, limit: 100 }),
+    [textFilters, textSelectedQuestionId],
   );
   const detailQuery = useSurveyDetailQuery(surveyId);
   const filterOptionsQuery = useFilterOptionsQuery(surveyId);
@@ -94,7 +103,12 @@ export function SurveyAnalysisPage() {
     () => ({ ...activeFilters, groupBy, metricType: "satisfaction", ...groupTargetFilter }),
     [activeFilters, groupBy, groupTargetFilter],
   );
-  const scaleTextFilters = activeFilters as TextAnswerFilters;
+  const scaleTextFilters: TextAnswerFilters = useMemo(() => ({ ...activeFilters, includeScaleFollowUps: true }), [activeFilters]);
+  const scaleSelectedQuestionId = scaleSelectedQuestionKey === "all" ? undefined : scaleSelectedQuestionKey;
+  const scaleSelectedTextFilters: TextAnswerFilters = useMemo(
+    () => ({ ...activeFilters, includeScaleFollowUps: true, questionId: scaleSelectedQuestionId, limit: 100 }),
+    [activeFilters, scaleSelectedQuestionId],
+  );
   const identityFilters = activeFilters as IdentityResponseFilters;
   const individualResponseFilters = activeFilters as IndividualResponseFilters;
   const responseSummaryQuery = useResponseSummaryQuery(surveyId, activeFilters);
@@ -107,7 +121,14 @@ export function SurveyAnalysisPage() {
   const individualResponsesQuery = useIndividualResponsesInfiniteQuery(surveyId, individualResponseFilters, { enabled: isAnswersTab });
   const groupCompareQuery = useGroupCompareSummaryQuery(surveyId, groupCompareFilters, { enabled: isGroupsTab });
   const textAnswersQuery = useTextAnswersInfiniteQuery(surveyId, textFilters, { enabled: isTextTab });
+  const textAnswersExportMutation = useTextAnswersExportMutation();
+  const textSelectedAnswersQuery = useTextAnswersInfiniteQuery(surveyId, textSelectedFilters, {
+    enabled: isTextTab && Boolean(textSelectedQuestionId),
+  });
   const scaleTextAnswersQuery = useTextAnswersInfiniteQuery(surveyId, scaleTextFilters, { enabled: isScaleTab });
+  const scaleSelectedTextAnswersQuery = useTextAnswersInfiniteQuery(surveyId, scaleSelectedTextFilters, {
+    enabled: isScaleTab && Boolean(scaleSelectedQuestionId),
+  });
   const imageTagFilters = activeFilters as HeatmapFilters;
   const heatmapPointsQuery = useHeatmapPointsQuery(surveyId, imageTagFilters, { enabled: isHeatmapTab });
   const imageTagAnswersQuery = useImageTagAnswersInfiniteQuery(surveyId, imageTagFilters, { enabled: isHeatmapTab });
@@ -153,9 +174,17 @@ export function SurveyAnalysisPage() {
     () => textAnswersQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [textAnswersQuery.data],
   );
+  const textSelectedAnswers = useMemo(
+    () => textSelectedAnswersQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [textSelectedAnswersQuery.data],
+  );
   const scaleTextAnswers = useMemo(
     () => scaleTextAnswersQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [scaleTextAnswersQuery.data],
+  );
+  const scaleSelectedTextAnswers = useMemo(
+    () => scaleSelectedTextAnswersQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [scaleSelectedTextAnswersQuery.data],
   );
   const identityResponses = useMemo(
     () => identityResponsesQuery.data?.pages.flatMap((page) => page.items) ?? [],
@@ -186,7 +215,9 @@ export function SurveyAnalysisPage() {
     individualResponsesQuery,
     groupCompareQuery,
     textAnswersQuery,
+    textSelectedAnswersQuery,
     scaleTextAnswersQuery,
+    scaleSelectedTextAnswersQuery,
     heatmapPointsQuery,
     imageTagAnswersQuery,
   ].filter((query) => query.fetchStatus !== "idle" || query.isError);
@@ -354,6 +385,8 @@ export function SurveyAnalysisPage() {
             captureKey="scale-text-evidence"
             title="낮은 점수 후속 답변"
             answers={scaleFollowUpTextAnswers}
+            selectedQuestionKey={scaleSelectedQuestionKey}
+            detailAnswers={scaleSelectedQuestionId ? scaleSelectedTextAnswers : undefined}
             questions={detailQuery.data.questions}
             sections={detailQuery.data.sections}
             filters={activeFilters}
@@ -361,8 +394,29 @@ export function SurveyAnalysisPage() {
             emptyDescription="낮은 점수 뒤에 제출된 서술형 답변이 있으면 질문별로 표시됩니다."
             hasMore={Boolean(scaleTextAnswersQuery.hasNextPage)}
             isLoadingMore={scaleTextAnswersQuery.isFetchingNextPage}
+            detailHasMore={Boolean(scaleSelectedTextAnswersQuery.hasNextPage)}
+            detailIsLoadingMore={scaleSelectedTextAnswersQuery.isFetchingNextPage || (Boolean(scaleSelectedQuestionId) && scaleSelectedTextAnswersQuery.isFetching)}
+            isExporting={textAnswersExportMutation.isPending}
+            exportLabel="후속 답변 내보내기"
+            onSelectedQuestionKeyChange={setScaleSelectedQuestionKey}
             onLoadMore={() => {
               void scaleTextAnswersQuery.fetchNextPage();
+            }}
+            onDetailLoadMore={() => {
+              void scaleSelectedTextAnswersQuery.fetchNextPage();
+            }}
+            onExport={() => {
+              void (async () => {
+                try {
+                  const answers = await textAnswersExportMutation.mutateAsync({
+                    surveyId,
+                    filters: { ...scaleTextFilters, questionId: scaleSelectedQuestionId },
+                  });
+                  downloadTextAnswersCsv(surveyId, answers);
+                } catch (error) {
+                  console.error("Failed to export scale follow-up text answers.", error);
+                }
+              })();
             }}
           />
         </div>
@@ -392,6 +446,7 @@ export function SurveyAnalysisPage() {
             <IndividualResponseCard
               surveyId={surveyId}
               responses={individualResponses}
+              questions={detailQuery.data.questions}
               filters={activeFilters}
               hasMore={Boolean(individualResponsesQuery.hasNextPage)}
               isLoadingMore={individualResponsesQuery.isFetchingNextPage}
@@ -409,6 +464,8 @@ export function SurveyAnalysisPage() {
             surveyId={surveyId}
             title="서술형 의견"
             answers={textAnswers}
+            selectedQuestionKey={textSelectedQuestionKey}
+            detailAnswers={textSelectedQuestionId ? textSelectedAnswers : undefined}
             questions={detailQuery.data.questions}
             sections={detailQuery.data.sections}
             filters={activeFilters}
@@ -416,8 +473,29 @@ export function SurveyAnalysisPage() {
             onKeywordChange={setTextKeyword}
             hasMore={Boolean(textAnswersQuery.hasNextPage)}
             isLoadingMore={textAnswersQuery.isFetchingNextPage}
+            detailHasMore={Boolean(textSelectedAnswersQuery.hasNextPage)}
+            detailIsLoadingMore={textSelectedAnswersQuery.isFetchingNextPage || (Boolean(textSelectedQuestionId) && textSelectedAnswersQuery.isFetching)}
+            isExporting={textAnswersExportMutation.isPending}
+            exportLabel="서술형 내보내기"
+            onSelectedQuestionKeyChange={setTextSelectedQuestionKey}
             onLoadMore={() => {
               void textAnswersQuery.fetchNextPage();
+            }}
+            onDetailLoadMore={() => {
+              void textSelectedAnswersQuery.fetchNextPage();
+            }}
+            onExport={() => {
+              void (async () => {
+                try {
+                  const answers = await textAnswersExportMutation.mutateAsync({
+                    surveyId,
+                    filters: { ...textFilters, questionId: textSelectedQuestionId },
+                  });
+                  downloadTextAnswersCsv(surveyId, answers);
+                } catch (error) {
+                  console.error("Failed to export text answers.", error);
+                }
+              })();
             }}
           />
         </div>
@@ -593,6 +671,7 @@ function resolveAnswerImage(
 }
 
 function isLikelyScaleFollowUpTextAnswer(answer: TextAnswer, questionById: Map<string, Question>): boolean {
+  if (answer.valueJson.lowScoreFollowUp === true) return true;
   const question = answer.questionId ? questionById.get(answer.questionId) : undefined;
   const questionTitle = answer.questionTitle ?? (question ? formatLocalizedTitle(question.title, question.questionKey) : "");
   const normalizedTitle = questionTitle.toLocaleLowerCase("ko-KR");

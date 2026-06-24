@@ -24,6 +24,8 @@ export type HeatmapFilters = AnalysisFilters & Readonly<{
 
 export type TextAnswerFilters = AnalysisFilters & Readonly<{
   keyword?: string;
+  includeScaleFollowUps?: boolean;
+  questionId?: string;
   cursor?: string;
   limit?: number;
 }>;

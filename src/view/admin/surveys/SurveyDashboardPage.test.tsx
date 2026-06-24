@@ -70,6 +70,7 @@ describe("SurveyDashboardPage", () => {
     expect(screen.getByText("비전관 · 2인실 · 장기려")).toBeInTheDocument();
     expect(within(rosterPanel as HTMLElement).getByText("전체 240명")).toBeInTheDocument();
     expect(within(rosterPanel as HTMLElement).getByText("제출 응답 전체")).toBeInTheDocument();
+    expect(within(rosterPanel as HTMLElement).queryByText("제출 시각")).not.toBeInTheDocument();
     expect(within(rosterPanel as HTMLElement).queryByText("표시 중 1명")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "먼저 볼 항목" })).not.toBeInTheDocument();
   });

@@ -42,6 +42,18 @@ export async function downloadElementAsPng(element: HTMLElement, filename: strin
   }
 }
 
+type TrustedCsvFormula = Readonly<{
+  kind: "trusted-csv-formula";
+  formula: string;
+}>;
+
+export function createExcelTextFormulaCell(value: string): TrustedCsvFormula {
+  return {
+    kind: "trusted-csv-formula",
+    formula: `="${value.replace(/"/g, '""')}"`,
+  };
+}
+
 export function downloadCsvFile(filename: string, rows: ReadonlyArray<ReadonlyArray<unknown>>): void {
   const csv = rows.map((row) => row.map(formatCsvCell).join(",")).join("\r\n");
   const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
@@ -227,9 +239,16 @@ function ensureCsvFilename(filename: string): string {
 }
 
 function formatCsvCell(value: unknown): string {
+  if (isTrustedCsvFormula(value)) {
+    return `"${value.formula.replace(/"/g, '""')}"`;
+  }
   const text = value == null ? "" : String(value);
   const safeText = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
   return `"${safeText.replace(/"/g, '""')}"`;
+}
+
+function isTrustedCsvFormula(value: unknown): value is TrustedCsvFormula {
+  return Boolean(value && typeof value === "object" && (value as TrustedCsvFormula).kind === "trusted-csv-formula");
 }
 
 function downloadBlob(blob: Blob, filename: string): void {

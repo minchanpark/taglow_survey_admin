@@ -248,7 +248,6 @@ function RosterPanel(props: {
                 <th>학번</th>
                 <th>이름</th>
                 <th>기본 정보</th>
-                <th>제출 시각</th>
               </tr>
             </thead>
             <tbody>
@@ -257,7 +256,6 @@ function RosterPanel(props: {
                   <td>{response.studentNumber ?? "-"}</td>
                   <td>{response.name ?? "-"}</td>
                   <td>{formatProfile(response.profile)}</td>
-                  <td>{formatDateTime(response.submittedAt)}</td>
                 </tr>
               ))}
             </tbody>

@@ -49,10 +49,10 @@ describe("handongDomSurveyQuestionSet", () => {
     expect(questions.get(42)?.questionType).toBe("attention_check");
     expect(questions.get(42)?.config).toMatchObject({
       scaleMin: 1,
-      scaleMax: 7,
-      labelsKo: ["참여경험없음", "매우 불만족", "불만족", "보통", "만족", "매우 만족", "들어본 적 없음"],
-      labelsEn: ["No participation experience", "Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied", "Never heard of it"],
-      expectedValue: "5",
+      scaleMax: 5,
+      labelsKo: ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
+      labelsEn: ["Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied"],
+      expectedValue: "4",
       excludeIfFailed: true,
     });
     expect(questions.get(42)?.title.en).toBe("Please select 'Satisfied'.");

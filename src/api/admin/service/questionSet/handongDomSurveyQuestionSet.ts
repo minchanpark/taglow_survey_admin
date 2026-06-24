@@ -782,12 +782,22 @@ function inferConfig(source: SourceQuestion, questionType: QuestionType, metricT
 
   if (questionType === "attention_check") {
     const isImportanceCheck = source.text.includes("중요");
+    const useExtendedSatisfactionScale = !isImportanceCheck && hasAny(source.text, ["참여경험", "들어본 적"]);
+    const scaleMax = isImportanceCheck || !useExtendedSatisfactionScale ? 5 : 7;
     return {
       scaleMin: 1,
-      scaleMax: isImportanceCheck ? 5 : 7,
-      labelsKo: isImportanceCheck ? ["전혀 중요하지 않음", "중요하지 않음", "보통", "중요함", "매우 중요함"] : ["참여경험없음", "매우 불만족", "불만족", "보통", "만족", "매우 만족", "들어본 적 없음"],
-      labelsEn: isImportanceCheck ? ["Not important at all", "Not important", "Neutral", "Important", "Very important"] : ["No participation experience", "Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied", "Never heard of it"],
-      expectedValue: inferAttentionCheckExpectedValue(source.text, isImportanceCheck),
+      scaleMax,
+      labelsKo: isImportanceCheck
+        ? ["전혀 중요하지 않음", "중요하지 않음", "보통", "중요함", "매우 중요함"]
+        : useExtendedSatisfactionScale
+          ? ["참여경험없음", "매우 불만족", "불만족", "보통", "만족", "매우 만족", "들어본 적 없음"]
+          : ["매우 불만족", "불만족", "보통", "만족", "매우 만족"],
+      labelsEn: isImportanceCheck
+        ? ["Not important at all", "Not important", "Neutral", "Important", "Very important"]
+        : useExtendedSatisfactionScale
+          ? ["No participation experience", "Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied", "Never heard of it"]
+          : ["Very dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very satisfied"],
+      expectedValue: inferAttentionCheckExpectedValue(source.text, isImportanceCheck, scaleMax),
       excludeIfFailed: true,
     };
   }
@@ -990,7 +1000,7 @@ function importanceScaleChoiceOptions() {
   ].map(([labelKo, labelEn]) => ({ value: stableValue(labelKo), labelKo, labelEn }));
 }
 
-function inferAttentionCheckExpectedValue(text: string, isImportanceCheck: boolean): string {
+function inferAttentionCheckExpectedValue(text: string, isImportanceCheck: boolean, scaleMax: number): string {
   const quotedValue = text.match(/['"“”‘’]([^'"“”‘’]+)['"“”‘’]/)?.[1]?.trim();
   if (quotedValue) {
     if (/^[1-7]$/.test(quotedValue)) return quotedValue;
@@ -1000,10 +1010,11 @@ function inferAttentionCheckExpectedValue(text: string, isImportanceCheck: boole
     if (isImportanceCheck && quotedValue.includes("중요")) return "4";
     if (!isImportanceCheck && quotedValue.includes("참여경험")) return "1";
     if (!isImportanceCheck && quotedValue.includes("들어본 적")) return "7";
-    if (!isImportanceCheck && quotedValue.includes("매우 불만족")) return "2";
-    if (!isImportanceCheck && quotedValue.includes("불만족")) return "3";
-    if (!isImportanceCheck && quotedValue.includes("매우 만족")) return "6";
-    if (!isImportanceCheck && quotedValue.includes("만족")) return "5";
+    if (!isImportanceCheck && quotedValue.includes("매우 불만족")) return scaleMax >= 7 ? "2" : "1";
+    if (!isImportanceCheck && quotedValue.includes("불만족")) return scaleMax >= 7 ? "3" : "2";
+    if (!isImportanceCheck && quotedValue.includes("매우 만족")) return scaleMax >= 7 ? "6" : "5";
+    if (!isImportanceCheck && quotedValue.includes("만족")) return scaleMax >= 7 ? "5" : "4";
+    if (!isImportanceCheck && quotedValue.includes("보통")) return scaleMax >= 7 ? "4" : "3";
     if (quotedValue.includes("보통")) return "3";
   }
   return isImportanceCheck ? "3" : "4";

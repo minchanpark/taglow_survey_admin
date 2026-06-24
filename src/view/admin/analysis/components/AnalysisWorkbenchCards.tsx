@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Download, FileText, GitBranch, Layers3, ListChecks, ListFilter, MapPinned, Target, TrendingUp, UserRound } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getChoiceMatrix, getChoiceOptions } from "../../../../api/admin/model";
 import type {
   AnalysisFilters,
   ChoiceDistribution,
@@ -8,6 +9,7 @@ import type {
   GroupCompareResult,
   HeatmapPoint,
   IdentityResponse,
+  IndividualAnswer,
   IndividualResponse,
   PriorityIssue,
   ProfileDistribution,
@@ -136,7 +138,6 @@ export function IdentityResponseCard(props: {
                 <th>학번</th>
                 <th>이름</th>
                 <th>기본 정보</th>
-                <th>제출 시각</th>
               </tr>
             </thead>
             <tbody>
@@ -145,7 +146,6 @@ export function IdentityResponseCard(props: {
                   <td>{response.studentNumber ?? "-"}</td>
                   <td>{response.name ?? "-"}</td>
                   <td>{formatProfile(response.profile)}</td>
-                  <td>{formatDateTime(response.submittedAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -168,6 +168,7 @@ export function IdentityResponseCard(props: {
 export function IndividualResponseCard(props: {
   surveyId: string;
   responses: IndividualResponse[];
+  questions?: readonly Question[];
   filters: AnalysisFilters;
   hasMore?: boolean;
   isLoadingMore?: boolean;
@@ -176,6 +177,7 @@ export function IndividualResponseCard(props: {
   const [activeIndex, setActiveIndex] = useState(0);
   const [pendingIndex, setPendingIndex] = useState<number | undefined>();
   const activeResponse = props.responses[activeIndex];
+  const questionById = useMemo(() => new Map((props.questions ?? []).map((question) => [question.id, question] as const)), [props.questions]);
   const canGoPrevious = activeIndex > 0;
   const canGoNext = pendingIndex === undefined && (activeIndex < props.responses.length - 1 || Boolean(props.hasMore));
 
@@ -264,7 +266,7 @@ export function IndividualResponseCard(props: {
                     {answer.sectionTitle ? <small>{answer.sectionTitle}</small> : null}
                   </dt>
                   <dd>
-                    <p>{answer.displayValue}</p>
+                    <IndividualAnswerValue answer={answer} question={answer.questionId ? questionById.get(answer.questionId) : undefined} />
                     <small>{formatAnswerType(answer.answerType ?? answer.questionType)}</small>
                   </dd>
                 </div>
@@ -323,6 +325,261 @@ export function PriorityTop5Card(props: { surveyId: string; issues: PriorityIssu
       )}
     </AnalysisCard>
   );
+}
+
+type IndividualAnswerDisplay = Readonly<{
+  summary: string;
+  chips: string[];
+  details: ReadonlyArray<Readonly<{ label: string; value: string }>>;
+}>;
+
+function IndividualAnswerValue(props: { answer: IndividualAnswer; question?: Question }) {
+  const display = buildIndividualAnswerDisplay(props.answer, props.question);
+
+  return (
+    <div className="tg-analysis-individual-answer-value">
+      <p>{display.summary}</p>
+      {display.chips.length ? (
+        <div className="tg-analysis-individual-answer-value__chips" aria-label="응답 선택값">
+          {display.chips.map((chip) => (
+            <span key={chip}>{chip}</span>
+          ))}
+        </div>
+      ) : null}
+      {display.details.length ? (
+        <dl className="tg-analysis-individual-answer-value__details">
+          {display.details.map((detail) => (
+            <div key={`${detail.label}:${detail.value}`}>
+              <dt>{detail.label}</dt>
+              <dd>{detail.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+    </div>
+  );
+}
+
+function buildIndividualAnswerDisplay(answer: IndividualAnswer, question?: Question): IndividualAnswerDisplay {
+  const json = answer.valueJson;
+  const details: Array<{ label: string; value: string }> = [];
+  const chips = new Set<string>();
+  const choiceLabelMap = question ? buildChoiceValueLabelMap(question) : new Map<string, string>();
+
+  const scoreText = answer.scoreValue !== undefined ? `${answer.scoreValue}점` : getDisplayNumberString(json.scoreValue) ?? getDisplayNumberString(json.score_value);
+  const categoryValue =
+    getNonEmptyString(json.category) ??
+    getNonEmptyString(json.low_score_reason) ??
+    getNonEmptyString(json.lowScoreReason) ??
+    getNonEmptyString(json.choiceValue) ??
+    getNonEmptyString(json.choice_value) ??
+    answer.choiceValue;
+  const categoryLabel = categoryValue ? getGeneralizedLowScoreCategoryLabel(categoryValue) ?? categoryValue : undefined;
+  const textValue =
+    answer.textValue ??
+    getNonEmptyString(json.text) ??
+    getNonEmptyString(json.textValue) ??
+    getNonEmptyString(json.text_value) ??
+    getNonEmptyString(json.low_score_text) ??
+    getNonEmptyString(json.lowScoreText);
+  const choiceValues = uniqueStrings([
+    ...getDisplayStringList(json.values),
+    ...getDisplayStringList(json.choiceValues),
+    ...getDisplayStringList(json.choice_values),
+    ...getDisplayStringList(json.selectedOptions),
+    ...getDisplayStringList(json.selected_values),
+    ...getDisplayChoiceListFromDisplayValue(answer),
+  ]);
+  const choiceLabels = choiceValues.map((value) => resolveChoiceDisplayLabel(value, choiceLabelMap));
+  const imagePath =
+    getNonEmptyString(json.storagePath) ??
+    getNonEmptyString(json.storage_path) ??
+    getNestedString(json.image, "storagePath") ??
+    getNestedString(json.image, "storage_path");
+
+  if (categoryLabel && categoryLabel !== textValue) chips.add(categoryLabel);
+  for (const label of choiceLabels) chips.add(label);
+
+  if (textValue && scoreText) details.push({ label: "후속 답변", value: textValue });
+  if (categoryLabel && textValue && categoryLabel !== textValue) details.push({ label: "선택 카테고리", value: categoryLabel });
+  if (answer.tagType) details.push({ label: "표시 유형", value: answer.tagType });
+  if (answer.xRatio !== undefined && answer.yRatio !== undefined) {
+    details.push({ label: "표시 위치", value: `가로 ${Math.round(answer.xRatio * 100)}%, 세로 ${Math.round(answer.yRatio * 100)}%` });
+  }
+  if (imagePath) details.push({ label: "첨부 이미지", value: compactStoragePath(imagePath) });
+
+  for (const detail of getStructuredJsonDetails(json)) {
+    if (!details.some((item) => item.label === detail.label && item.value === detail.value)) {
+      details.push(detail);
+    }
+  }
+
+  const summary =
+    scoreText ??
+    textValue ??
+    (choiceLabels.length ? choiceLabels.join(", ") : undefined) ??
+    categoryLabel ??
+    buildTagSummary(answer) ??
+    getPrimaryStructuredJsonValue(json) ??
+    getReadableDisplayValue(answer.displayValue) ??
+    "응답 없음";
+
+  return {
+    summary,
+    chips: [...chips].filter((chip) => chip !== summary),
+    details: details.filter((detail) => detail.value !== summary),
+  };
+}
+
+function buildChoiceValueLabelMap(question: Question): Map<string, string> {
+  const labels = new Map<string, string>();
+  const options = [...getChoiceOptions(question), ...(getChoiceMatrix(question)?.options ?? [])];
+  for (const option of options) {
+    const label = option.labelKo || option.labelEn || option.value;
+    labels.set(option.value, label);
+    labels.set(normalizeTextAnswerCategory(option.value), label);
+    if (option.labelKo) labels.set(option.labelKo, label);
+    if (option.labelEn) labels.set(option.labelEn, label);
+  }
+  return labels;
+}
+
+function resolveChoiceDisplayLabel(value: string, labelMap: ReadonlyMap<string, string>): string {
+  return getGeneralizedLowScoreCategoryLabel(value) ?? labelMap.get(value) ?? labelMap.get(normalizeTextAnswerCategory(value)) ?? value;
+}
+
+function getDisplayChoiceListFromDisplayValue(answer: IndividualAnswer): string[] {
+  if (!isChoiceListAnswer(answer)) return [];
+  const displayValue = getReadableDisplayValue(answer.displayValue);
+  if (!displayValue) return [];
+  return displayValue.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function isChoiceListAnswer(answer: IndividualAnswer): boolean {
+  const type = answer.answerType ?? answer.questionType;
+  return type === "multi_select" || type === "matrix_multi_select";
+}
+
+function getPrimaryStructuredJsonValue(json: IndividualAnswer["valueJson"]): string | undefined {
+  return getStructuredJsonDetails(json).find((detail) => detail.value)?.value;
+}
+
+function getStructuredJsonDetails(json: IndividualAnswer["valueJson"]): Array<{ label: string; value: string }> {
+  const hiddenKeys = new Set([
+    "answer",
+    "category",
+    "choiceValue",
+    "choice_value",
+    "choiceValues",
+    "choice_values",
+    "image",
+    "label",
+    "lowScoreFollowUp",
+    "lowScoreReason",
+    "lowScoreText",
+    "low_score_followup",
+    "low_score_reason",
+    "low_score_text",
+    "scoreValue",
+    "score_value",
+    "selectedOptions",
+    "selected_values",
+    "sourceAnswerType",
+    "source_answer_type",
+    "storagePath",
+    "storage_path",
+    "text",
+    "textValue",
+    "text_value",
+    "value",
+    "values",
+  ]);
+
+  return Object.entries(json)
+    .filter(([key]) => !hiddenKeys.has(key))
+    .flatMap(([key, value]) => {
+      const displayValue = getStructuredJsonDisplayValue(value);
+      return displayValue ? [{ label: formatJsonFieldLabel(key), value: displayValue }] : [];
+    });
+}
+
+function getStructuredJsonDisplayValue(value: unknown): string | undefined {
+  if (typeof value === "string") return value.trim() || undefined;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return value ? "예" : "아니오";
+  const list = getDisplayStringList(value);
+  if (list.length) return list.join(", ");
+  const record = asUnknownRecord(value);
+  if (record) return getNonEmptyString(record.label) ?? getNonEmptyString(record.value) ?? getNonEmptyString(record.name) ?? getNonEmptyString(record.text);
+  return undefined;
+}
+
+function formatJsonFieldLabel(key: string): string {
+  const knownLabels: Record<string, string> = {
+    assetId: "이미지",
+    asset_id: "이미지",
+    sourceAnswerType: "응답 출처",
+    source_answer_type: "응답 출처",
+    source: "출처",
+    tagType: "표시 유형",
+    tag_type: "표시 유형",
+    xRatio: "가로 위치",
+    x_ratio: "가로 위치",
+    yRatio: "세로 위치",
+    y_ratio: "세로 위치",
+  };
+  if (knownLabels[key]) return knownLabels[key];
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase("ko-KR"));
+}
+
+function buildTagSummary(answer: IndividualAnswer): string | undefined {
+  if (!answer.tagType && answer.xRatio === undefined && answer.yRatio === undefined) return undefined;
+  const coordinate =
+    answer.xRatio !== undefined && answer.yRatio !== undefined ? `가로 ${Math.round(answer.xRatio * 100)}%, 세로 ${Math.round(answer.yRatio * 100)}%` : undefined;
+  return [answer.tagType ?? "이미지 표시", coordinate].filter(Boolean).join(" · ");
+}
+
+function getReadableDisplayValue(value: string): string | undefined {
+  const trimmedValue = value.trim();
+  if (!trimmedValue || trimmedValue === "-") return undefined;
+  if (trimmedValue === "응답 없음") return undefined;
+  if ((trimmedValue.startsWith("{") && trimmedValue.endsWith("}")) || (trimmedValue.startsWith("[") && trimmedValue.endsWith("]"))) return undefined;
+  return trimmedValue;
+}
+
+function getDisplayNumberString(value: unknown): string | undefined {
+  const numberValue = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(numberValue) ? `${numberValue}점` : undefined;
+}
+
+function getDisplayStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === "string" || typeof item === "number") return String(item);
+      const record = asUnknownRecord(item);
+      if (record) return getNonEmptyString(record.label) ?? getNonEmptyString(record.value) ?? getNonEmptyString(record.name) ?? getNonEmptyString(record.text);
+      return undefined;
+    })
+    .filter((item): item is string => Boolean(item));
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter((value) => value.trim()).map((value) => value.trim()))];
+}
+
+function getNestedString(value: unknown, key: string): string | undefined {
+  const record = asUnknownRecord(value);
+  return record ? getNonEmptyString(record[key]) : undefined;
+}
+
+function compactStoragePath(value: string): string {
+  const parts = value.split("/").filter(Boolean);
+  return parts.length > 2 ? parts.slice(-2).join("/") : value;
 }
 
 export function SectionAverageCard(props: { surveyId: string; sections: SectionSummary[]; filters: AnalysisFilters }) {
@@ -618,18 +875,34 @@ export function TextEvidenceCard(props: {
   captureKey?: string;
   title?: string;
   answers: TextAnswer[];
+  detailAnswers?: TextAnswer[];
   questions?: readonly Question[];
   sections?: readonly SurveySection[];
   filters: AnalysisFilters;
+  selectedQuestionKey?: string;
   keyword?: string;
   onKeywordChange?: (keyword: string) => void;
+  onSelectedQuestionKeyChange?: (questionKey: string) => void;
   emptyTitle?: string;
   emptyDescription?: string;
   hasMore?: boolean;
   isLoadingMore?: boolean;
+  detailHasMore?: boolean;
+  detailIsLoadingMore?: boolean;
+  isExporting?: boolean;
+  exportLabel?: string;
   onLoadMore?: () => void;
+  onDetailLoadMore?: () => void;
+  onExport?: () => void;
 }) {
-  const [selectedQuestionKey, setSelectedQuestionKey] = useState("all");
+  const [localSelectedQuestionKey, setLocalSelectedQuestionKey] = useState("all");
+  const selectedQuestionKey = props.selectedQuestionKey ?? localSelectedQuestionKey;
+  const setSelectedQuestionKey = (questionKey: string) => {
+    if (props.selectedQuestionKey === undefined) {
+      setLocalSelectedQuestionKey(questionKey);
+    }
+    props.onSelectedQuestionKeyChange?.(questionKey);
+  };
   const questionGroups = useMemo(
     () => buildTextAnswerQuestionGroups(props.answers, props.questions ?? [], props.sections ?? []),
     [props.answers, props.questions, props.sections],
@@ -637,7 +910,7 @@ export function TextEvidenceCard(props: {
   const activeQuestionKey =
     selectedQuestionKey === "all" || questionGroups.some((group) => group.key === selectedQuestionKey) ? selectedQuestionKey : "all";
   const selectedGroup = activeQuestionKey === "all" ? undefined : questionGroups.find((group) => group.key === activeQuestionKey);
-  const visibleAnswers = selectedGroup?.answers ?? props.answers;
+  const visibleAnswers = selectedGroup ? props.detailAnswers ?? selectedGroup.answers : props.answers;
   const totalAnswerCount = getKnownMaxCount(props.answers.map((answer) => answer.totalCount));
   const selectedTotalCount = selectedGroup?.totalCount ?? totalAnswerCount;
   const answerGroupById = useMemo(() => {
@@ -647,7 +920,18 @@ export function TextEvidenceCard(props: {
     }
     return groupsByAnswerId;
   }, [questionGroups]);
+  const answerSections = useMemo(
+    () =>
+      selectedGroup
+        ? [buildTextAnswerDisplaySection({ ...selectedGroup, answers: visibleAnswers })]
+        : questionGroups.map((group) => buildTextAnswerDisplaySection(group)),
+    [questionGroups, selectedGroup, visibleAnswers],
+  );
+  const activeHasMore = selectedGroup ? Boolean(props.detailHasMore) : Boolean(props.hasMore);
+  const activeIsLoadingMore = selectedGroup ? Boolean(props.detailIsLoadingMore) : Boolean(props.isLoadingMore);
+  const activeLoadMore = selectedGroup ? props.onDetailLoadMore : props.onLoadMore;
   const detailHeadingId = `${props.captureKey ?? "text-evidence"}-selected-question`;
+  const hasActions = Boolean(props.onKeywordChange || props.onExport);
 
   return (
     <AnalysisCard
@@ -658,11 +942,25 @@ export function TextEvidenceCard(props: {
       meta={formatFilterSummary(props.filters)}
       className="tg-analysis-card--wide"
       action={
-        props.onKeywordChange ? (
-          <label className="tg-analysis-search">
-            <span>검색</span>
-            <input value={props.keyword ?? ""} placeholder="찾을 단어" onChange={(event) => props.onKeywordChange?.(event.target.value)} />
-          </label>
+        hasActions ? (
+          <div className="tg-analysis-card-controls">
+            {props.onKeywordChange ? (
+              <label className="tg-analysis-search">
+                <span>검색</span>
+                <input value={props.keyword ?? ""} placeholder="찾을 단어" onChange={(event) => props.onKeywordChange?.(event.target.value)} />
+              </label>
+            ) : null}
+            {props.onExport ? (
+              <Button
+                variant="secondary"
+                icon={<Download size={15} aria-hidden="true" />}
+                onClick={props.onExport}
+                disabled={props.isExporting || !props.answers.length}
+              >
+                {props.isExporting ? "내보내는 중" : props.exportLabel ?? "Excel 내보내기"}
+              </Button>
+            ) : null}
+          </div>
         ) : undefined
       }
     >
@@ -688,8 +986,8 @@ export function TextEvidenceCard(props: {
                 onClick={() => setSelectedQuestionKey(group.key)}
               >
                 <span>
-                  <strong>{group.questionTitle}</strong>
-                  <small>{group.sectionTitle ?? group.topicLabel ?? "미분류"}</small>
+                  <strong>{getTextAnswerGroupDisplayTitle(group)}</strong>
+                  <small>{getTextAnswerGroupContext(group)}</small>
                 </span>
                 <StatusBadge tone={getCountTone(group.totalCount ?? group.answers.length)}>
                   {formatEvidenceCount(group.totalCount, group.answers.length)}
@@ -700,9 +998,9 @@ export function TextEvidenceCard(props: {
           <section className="tg-analysis-text-detail" aria-labelledby={detailHeadingId}>
             <header className="tg-analysis-text-detail__header">
               <div>
-                <h3 id={detailHeadingId}>{selectedGroup?.questionTitle ?? "전체 질문"}</h3>
+                <h3 id={detailHeadingId}>{selectedGroup ? getTextAnswerGroupDisplayTitle(selectedGroup) : "전체 질문"}</h3>
                 <p>
-                  {selectedGroup?.sectionTitle ? `${selectedGroup.sectionTitle} · ` : ""}
+                  {selectedGroup ? `${getTextAnswerGroupContext(selectedGroup)} · ` : ""}
                   {formatEvidenceSummary(selectedTotalCount, visibleAnswers.length)}
                 </p>
               </div>
@@ -711,20 +1009,42 @@ export function TextEvidenceCard(props: {
               </StatusBadge>
             </header>
             <ul className="tg-analysis-text-answer-list">
-              {visibleAnswers.map((answer) => {
-                const group = answerGroupById.get(answer.id);
-                return (
-                  <li key={answer.id}>
-                    {selectedGroup ? null : <strong>{group?.questionTitle ?? "질문 미분류"}</strong>}
-                    <p>{answer.textValue}</p>
-                    <div className="tg-analysis-text-answer-list__meta">
-                      <span>{formatProfile(answer.profile)}</span>
-                      <span>{formatDateTime(answer.createdAt)}</span>
-                      {answer.topicKey || answer.spaceKey ? <span>{answer.topicKey ?? answer.spaceKey}</span> : null}
-                    </div>
-                  </li>
-                );
-              })}
+              {answerSections.map((section) => (
+                <li key={section.key} className="tg-analysis-text-answer-section">
+                  {selectedGroup ? null : <strong className="tg-analysis-text-answer-section__title">{section.title}</strong>}
+                  <div className="tg-analysis-text-category-groups">
+                    {section.categoryGroups.map((categoryGroup) => {
+                      const showCategoryHeader = categoryGroup.key !== uncategorizedTextAnswerCategoryKey || section.categoryGroups.length > 1;
+                      return (
+                        <section key={categoryGroup.key} className="tg-analysis-text-category-group">
+                          {showCategoryHeader ? (
+                            <header className="tg-analysis-text-category-group__header">
+                              <strong>{categoryGroup.label}</strong>
+                              <StatusBadge tone={getCountTone(categoryGroup.answers.length)}>{categoryGroup.answers.length.toLocaleString("ko-KR")}개</StatusBadge>
+                            </header>
+                          ) : null}
+                          <ul className="tg-analysis-text-answer-items">
+                            {categoryGroup.answers.map((answer) => {
+                              const group = answerGroupById.get(answer.id);
+                              return (
+                                <li key={answer.id}>
+                                  {selectedGroup || showCategoryHeader ? null : <strong>{group ? getTextAnswerGroupPath(group) : "질문 미분류"}</strong>}
+                                  <p>{answer.textValue}</p>
+                                  <div className="tg-analysis-text-answer-list__meta">
+                                    <span>{formatProfile(answer.profile)}</span>
+                                    <span>{formatDateTime(answer.createdAt)}</span>
+                                    {answer.topicKey || answer.spaceKey ? <span>{answer.topicKey ?? answer.spaceKey}</span> : null}
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </section>
+                      );
+                    })}
+                  </div>
+                </li>
+              ))}
             </ul>
           </section>
         </div>
@@ -734,10 +1054,10 @@ export function TextEvidenceCard(props: {
           description={props.emptyDescription ?? "검색어를 지우거나 조건을 줄여보세요."}
         />
       )}
-      {props.hasMore ? (
+      {activeHasMore ? (
         <div className="tg-analysis-load-more">
-          <Button variant="secondary" onClick={props.onLoadMore} disabled={props.isLoadingMore}>
-            {props.isLoadingMore ? "불러오는 중" : "더 보기"}
+          <Button variant="secondary" onClick={activeLoadMore} disabled={activeIsLoadingMore}>
+            {activeIsLoadingMore ? "불러오는 중" : "더 보기"}
           </Button>
         </div>
       ) : null}
@@ -748,13 +1068,33 @@ export function TextEvidenceCard(props: {
 type TextAnswerQuestionGroup = Readonly<{
   key: string;
   questionTitle: string;
+  parentQuestionTitle?: string;
   sectionTitle?: string;
   topicLabel?: string;
   sectionOrder: number;
   questionOrder: number;
+  followUpQuestionOrder: number;
+  isScaleLowScoreFollowUp: boolean;
+  categoryLabels: ReadonlyMap<string, string>;
+  categoryOrders: ReadonlyMap<string, number>;
   totalCount?: number;
   answers: TextAnswer[];
 }>;
+
+type TextAnswerDisplaySection = Readonly<{
+  key: string;
+  title: string;
+  categoryGroups: TextAnswerCategoryGroup[];
+}>;
+
+type TextAnswerCategoryGroup = Readonly<{
+  key: string;
+  label: string;
+  order: number;
+  answers: TextAnswer[];
+}>;
+
+const uncategorizedTextAnswerCategoryKey = "__uncategorized__";
 
 function buildTextAnswerQuestionGroups(
   answers: readonly TextAnswer[],
@@ -762,11 +1102,17 @@ function buildTextAnswerQuestionGroups(
   sections: readonly SurveySection[],
 ): TextAnswerQuestionGroup[] {
   const questionById = new Map(questions.map((question) => [question.id, question] as const));
+  const questionByLookupKey = new Map<string, Question>();
+  for (const question of questions) {
+    questionByLookupKey.set(question.id, question);
+    questionByLookupKey.set(question.questionKey, question);
+  }
   const sectionById = new Map(sections.map((section) => [section.id, section] as const));
   const groups = new Map<string, TextAnswerQuestionGroup>();
 
   for (const answer of answers) {
     const question = answer.questionId ? questionById.get(answer.questionId) : undefined;
+    const parentQuestion = question ? resolveFollowUpParentQuestion(question, questionByLookupKey) : undefined;
     const section = answer.sectionId ? sectionById.get(answer.sectionId) : undefined;
     const topicLabel = answer.topicKey ?? answer.spaceKey;
     const key = answer.questionId ?? `${answer.sectionId ?? "section"}:${topicLabel ?? "unclassified"}`;
@@ -774,19 +1120,26 @@ function buildTextAnswerQuestionGroups(
     if (existing) {
       groups.set(key, {
         ...existing,
+        isScaleLowScoreFollowUp: existing.isScaleLowScoreFollowUp || isScaleLowScoreFollowUpAnswer(answer),
         totalCount: getKnownMaxCount([existing.totalCount, answer.questionTotalCount]),
         answers: [...existing.answers, answer],
       });
       continue;
     }
 
+    const categoryMetadata = question ? buildChoiceTextCategoryMetadata(question) : { labels: new Map<string, string>(), orders: new Map<string, number>() };
     groups.set(key, {
       key,
       questionTitle: answer.questionTitle ?? (question ? formatLocalizedText(question.title, question.questionKey) : undefined) ?? topicLabel ?? "질문 미분류",
+      parentQuestionTitle: parentQuestion ? formatLocalizedText(parentQuestion.title, parentQuestion.questionKey) : undefined,
       sectionTitle: answer.sectionTitle ?? (section ? formatLocalizedText(section.title, section.sectionKey) : undefined),
       topicLabel,
       sectionOrder: section?.orderIndex ?? Number.MAX_SAFE_INTEGER,
-      questionOrder: question?.orderIndex ?? Number.MAX_SAFE_INTEGER,
+      questionOrder: parentQuestion?.orderIndex ?? question?.orderIndex ?? Number.MAX_SAFE_INTEGER,
+      followUpQuestionOrder: question?.orderIndex ?? Number.MAX_SAFE_INTEGER,
+      isScaleLowScoreFollowUp: isScaleLowScoreFollowUpAnswer(answer),
+      categoryLabels: categoryMetadata.labels,
+      categoryOrders: categoryMetadata.orders,
       totalCount: answer.questionTotalCount,
       answers: [answer],
     });
@@ -796,12 +1149,212 @@ function buildTextAnswerQuestionGroups(
     (a, b) =>
       a.sectionOrder - b.sectionOrder ||
       a.questionOrder - b.questionOrder ||
+      a.followUpQuestionOrder - b.followUpQuestionOrder ||
       a.questionTitle.localeCompare(b.questionTitle, "ko"),
   );
 }
 
 function formatLocalizedText(title: { ko?: string; en?: string }, fallback: string): string {
   return title.ko?.trim() || title.en?.trim() || fallback;
+}
+
+function buildTextAnswerDisplaySection(group: TextAnswerQuestionGroup): TextAnswerDisplaySection {
+  return {
+    key: group.key,
+    title: getTextAnswerGroupPath(group),
+    categoryGroups: buildTextAnswerCategoryGroups(group),
+  };
+}
+
+function buildTextAnswerCategoryGroups(group: TextAnswerQuestionGroup): TextAnswerCategoryGroup[] {
+  const groups = new Map<string, TextAnswerCategoryGroup>();
+  for (const answer of group.answers) {
+    const category = getTextAnswerCategory(answer, group);
+    const existing = groups.get(category.key);
+    if (existing) {
+      groups.set(category.key, { ...existing, answers: [...existing.answers, answer] });
+      continue;
+    }
+    groups.set(category.key, { ...category, answers: [answer] });
+  }
+
+  return [...groups.values()].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label, "ko"));
+}
+
+function getTextAnswerCategory(
+  answer: TextAnswer,
+  group: TextAnswerQuestionGroup,
+): Omit<TextAnswerCategoryGroup, "answers"> {
+  const value = getTextAnswerCategoryValue(answer);
+  if (!value) {
+    return { key: uncategorizedTextAnswerCategoryKey, label: "카테고리 없음", order: Number.MAX_SAFE_INTEGER };
+  }
+  const normalizedValue = normalizeTextAnswerCategory(value);
+  const configuredLabel = group.categoryLabels.get(value) ?? group.categoryLabels.get(normalizedValue);
+  return {
+    key: value,
+    label: getGeneralizedLowScoreCategoryLabel(value) ?? configuredLabel ?? value,
+    order: group.categoryOrders.get(value) ?? getDefaultLowScoreCategoryOrder(value),
+  };
+}
+
+function getTextAnswerCategoryValue(answer: TextAnswer): string | undefined {
+  return (
+    getNonEmptyString(answer.valueJson.category) ??
+    getNonEmptyString(answer.valueJson.low_score_reason) ??
+    getNonEmptyString(answer.valueJson.lowScoreReason) ??
+    getNonEmptyString(answer.valueJson.issue_type) ??
+    getNonEmptyString(answer.valueJson.issueType) ??
+    getNonEmptyString(answer.valueJson.choiceValue) ??
+    getNonEmptyString(answer.valueJson.choice_value)
+  );
+}
+
+function buildChoiceTextCategoryMetadata(question: Question): {
+  labels: Map<string, string>;
+  orders: Map<string, number>;
+} {
+  const labels = new Map<string, string>();
+  const orders = new Map<string, number>();
+  getChoiceOptions(question).forEach((option, index) => {
+    const label = option.labelKo || option.labelEn || option.value;
+    labels.set(option.value, label);
+    labels.set(normalizeTextAnswerCategory(option.value), label);
+    orders.set(option.value, index);
+    orders.set(normalizeTextAnswerCategory(option.value), index);
+    if (option.labelKo) labels.set(option.labelKo, label);
+    if (option.labelEn) labels.set(option.labelEn, label);
+  });
+  return { labels, orders };
+}
+
+function getDefaultLowScoreCategoryOrder(value: string): number {
+  const normalizedValue = normalizeTextAnswerCategory(value);
+  const index = lowScoreCategoryDefinitions.findIndex((definition) => definition.matches.some((match) => normalizedValue === match));
+  return index === -1 ? Number.MAX_SAFE_INTEGER - 1 : index;
+}
+
+const lowScoreCategoryDefinitions = [
+  {
+    label: "수량 부족",
+    matches: ["not enough quantity", "not enough supplies", "insufficient quantity", "insufficient supplies", "lack of quantity", "lack of supplies", "shortage", "quantity"],
+    keywords: ["quantity", "supplies", "supply", "amount", "availability", "available", "shortage"],
+  },
+  {
+    label: "상태/품질 문제",
+    matches: ["poor condition", "low quality", "poor quality", "bad condition", "facility condition", "condition", "quality"],
+    keywords: ["condition", "quality", "broken", "damage", "damaged", "dirty", "cleanliness", "hygiene", "maintenance"],
+  },
+  {
+    label: "이용 불편",
+    matches: ["difficult to use", "hard to use", "difficult use", "usage difficulty", "usability", "ease of use", "inconvenient", "accessibility"],
+    keywords: ["difficult", "hard", "use", "usage", "usability", "inconvenient", "access", "accessibility"],
+  },
+  {
+    label: "안내 부족",
+    matches: ["not enough guidance", "insufficient guidance", "lack of guidance", "no guidance", "guidance"],
+    keywords: ["guidance", "guide", "rule", "rules", "instruction", "instructions", "information", "notice"],
+  },
+  {
+    label: "기타",
+    matches: ["other", "etc", "기타"],
+    keywords: ["other", "etc"],
+  },
+] as const;
+
+function getGeneralizedLowScoreCategoryLabel(value: string): string | undefined {
+  const normalizedValue = normalizeTextAnswerCategory(value);
+  const exactDefinition = lowScoreCategoryDefinitions.find((definition) => definition.matches.some((match) => normalizedValue === match));
+  if (exactDefinition) return exactDefinition.label;
+
+  const keywordDefinition = lowScoreCategoryDefinitions.find((definition) => definition.keywords.some((keyword) => normalizedValue.includes(keyword)));
+  return keywordDefinition?.label;
+}
+
+function normalizeTextAnswerCategory(value: string): string {
+  return value.trim().replace(/[_-]+/g, " ").replace(/\s+/g, " ").toLowerCase();
+}
+
+function getTextAnswerGroupDisplayTitle(group: TextAnswerQuestionGroup): string {
+  return group.parentQuestionTitle ?? group.questionTitle;
+}
+
+function getTextAnswerGroupContext(group: TextAnswerQuestionGroup): string {
+  if (group.isScaleLowScoreFollowUp) {
+    return "후속 답변 · 선택 카테고리 포함";
+  }
+  if (group.parentQuestionTitle) {
+    return `후속 답변 · ${group.questionTitle}`;
+  }
+  return group.sectionTitle ?? group.topicLabel ?? "미분류";
+}
+
+function getTextAnswerGroupPath(group: TextAnswerQuestionGroup): string {
+  if (group.isScaleLowScoreFollowUp) {
+    return `${group.questionTitle} -> 낮은 점수 후속 답변`;
+  }
+  return group.parentQuestionTitle ? `${group.parentQuestionTitle} -> ${group.questionTitle}` : group.questionTitle;
+}
+
+function isScaleLowScoreFollowUpAnswer(answer: TextAnswer): boolean {
+  return answer.valueJson.lowScoreFollowUp === true || answer.valueJson.low_score_followup === true;
+}
+
+function resolveFollowUpParentQuestion(question: Question, questionByLookupKey: ReadonlyMap<string, Question>): Question | undefined {
+  for (const sourceKey of getFollowUpSourceQuestionKeys(question.config)) {
+    const parentQuestion = questionByLookupKey.get(sourceKey);
+    if (parentQuestion && parentQuestion.id !== question.id) {
+      return parentQuestion;
+    }
+  }
+  return undefined;
+}
+
+function getFollowUpSourceQuestionKeys(config: unknown): string[] {
+  const configRecord = asUnknownRecord(config);
+  if (!configRecord) return [];
+  const branch = asUnknownRecord(configRecord.branch);
+  const visibility = asUnknownRecord(configRecord.visibility);
+  const candidates = [
+    branch?.when,
+    visibility?.when,
+    Array.isArray(branch?.rules) ? branch.rules : undefined,
+    Array.isArray(visibility?.rules) ? visibility.rules : undefined,
+    configRecord.visibleWhen,
+    configRecord.visible_when,
+    configRecord.condition,
+    configRecord.dependsOn,
+    configRecord.depends_on,
+  ];
+  return candidates.flatMap((candidate) => getFollowUpSourceKeysFromRule(candidate));
+}
+
+function getFollowUpSourceKeysFromRule(rule: unknown): string[] {
+  if (Array.isArray(rule)) {
+    return rule.flatMap((item) => getFollowUpSourceKeysFromRule(item));
+  }
+
+  const record = asUnknownRecord(rule);
+  if (!record) return [];
+
+  return [
+    getNonEmptyString(record.questionId),
+    getNonEmptyString(record.question_id),
+    getNonEmptyString(record.sourceQuestionId),
+    getNonEmptyString(record.source_question_id),
+    getNonEmptyString(record.questionKey),
+    getNonEmptyString(record.question_key),
+    getNonEmptyString(record.sourceQuestionKey),
+    getNonEmptyString(record.source_question_key),
+  ].filter((value): value is string => Boolean(value));
+}
+
+function asUnknownRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Readonly<Record<string, unknown>>) : undefined;
+}
+
+function getNonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
 function getKnownMaxCount(values: Array<number | undefined>): number | undefined {
